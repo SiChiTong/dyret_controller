@@ -1,0 +1,1 @@
+#include "GaitSegment.h"

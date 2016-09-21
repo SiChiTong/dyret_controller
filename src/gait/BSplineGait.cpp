@@ -96,9 +96,9 @@ void BSplineGait::bSplineInit(std::vector<vec3P> givenPoints, float givenStepLen
 std::vector<vec3P> BSplineGait::createBSplineGaitPoints(double stepHeight, double stepLength, double smoothing, double groundHeight){
     std::vector<vec3P> result =
     {
-      { 0.0f, -((stepLength/2.0f)), groundHeight + (stepHeight/1.5f) },             // Back smoothing
-      { 0.0f,                  0.0,        groundHeight + stepHeight },             // Top
-      { 0.0f,    (stepLength/2.0f) + smoothing, groundHeight + (stepHeight/4.0f) }  // Front smoothing
+      { 0.0f, (float)            -((stepLength/2.0f)), (float) (groundHeight + (stepHeight/1.5f)) }, // Back smoothing
+      { 0.0f,                                    0.0f, (float)        (groundHeight + stepHeight) }, // Top
+      { 0.0f, (float) ((stepLength/2.0f) + smoothing), (float) (groundHeight + (stepHeight/4.0f)) }  // Front smoothing
     };
     // from front to back
     const int N = 22;

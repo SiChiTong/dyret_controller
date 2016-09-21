@@ -8,8 +8,8 @@
 #include "forwardKinematics.h"
 #include "interpolation.h"
 
-#include "robo_cont_types/calculate_inverse_kinematics.h"
-#include "dynamixel_server/Pose.h"
+#include "dyret_common/calculate_inverse_kinematics.h"
+#include "dyret_common/Pose.h"
 
 
 double dyn2rad(int angleInDynamixel) {

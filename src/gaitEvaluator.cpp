@@ -10,10 +10,10 @@
 #include "tf/transform_datatypes.h"
 #include "tf/LinearMath/Matrix3x3.h"
 
-#include "dynamixel_server/ServoState.h"
-#include "dynamixel_server/ServoStateArray.h"
-#include "robo_cont_types/get_gait_evaluation.h"
-#include "robo_cont_types/distAngMsg.h"
+#include "dyret_common/ServoState.h"
+#include "dyret_common/ServoStateArray.h"
+#include "dyret_common/get_gait_evaluation.h"
+#include "dyret_common/distAngMsg.h"
 
 #include "robo_cont_utils.h"
 
@@ -42,8 +42,8 @@ void my_function(int sig){
   discardSolution = 1;
 }
 
-bool getGaitEvaluationService(robo_cont_types::get_gait_evaluation::Request  &req,
-         robo_cont_types::get_gait_evaluation::Response &res){
+bool getGaitEvaluationService(dyret_common::get_gait_evaluation::Request  &req,
+		dyret_common::get_gait_evaluation::Response &res){
 
   std::vector<float> results;
 
@@ -240,7 +240,7 @@ void imuDataCallback(const sensor_msgs::Imu::ConstPtr& msg){
   linAcc_z = msg->linear_acceleration.z;
 }
 
-void servoStatesCallback(const dynamixel_server::ServoStateArray::ConstPtr& msg){
+void servoStatesCallback(const dyret_common::ServoStateArray::ConstPtr& msg){
   if (enableCapture){
       for(int i = 0; i < 12; i++){
           currentData[i].push_back(msg->servoStates[i].current);
@@ -248,7 +248,7 @@ void servoStatesCallback(const dynamixel_server::ServoStateArray::ConstPtr& msg)
   }
 }
 
-void gaitInferredPos_Callback(const robo_cont_types::distAngMsg::ConstPtr& msg)
+void gaitInferredPos_Callback(const dyret_common::distAngMsg::ConstPtr& msg)
 {
   if (msg->msgType == msg->t_measurementInferred){
       accPos += msg->distance;

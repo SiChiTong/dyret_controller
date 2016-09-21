@@ -3,10 +3,10 @@
 
 #include "ros/ros.h"
 
-#include "robo_cont_types/calculate_inverse_kinematics.h"
-#include "dynamixel_server/Pose.h"
-#include "dynamixel_server/ServoConfig.h"
-#include "dynamixel_server/ServoConfigArray.h"
+#include "dyret_common/calculate_inverse_kinematics.h"
+#include "dyret_common/Pose.h"
+#include "dyret_common/ServoConfig.h"
+#include "dyret_common/ServoConfigArray.h"
 
 #include "movementFunctions.h"
 #include "interpolation.h"
@@ -68,7 +68,7 @@ std::vector<vec3P> currentLegPositions(std::vector<double> servoAnglesInRad){
 }
 
 std::vector<double> getInverseSolution(int legId, vec3P givenPoint, ros::ServiceClient givenInverseKinematicsServiceClient){
-  robo_cont_types::calculate_inverse_kinematics srv;
+  dyret_common::calculate_inverse_kinematics srv;
 
   vec3P localLegPosition = calculateLocalPosition(legId, givenPoint);
 
@@ -114,7 +114,7 @@ void moveLegToGlobal(int givenLegId, vec3P givenPoint, ros::ServiceClient givenI
 
   anglesInRad = getInverseSolution(givenLegId, givenPoint, givenInverseKinematicsServiceClient);
 
-  dynamixel_server::Pose poseMsg;
+  dyret_common::Pose poseMsg;
   poseMsg.id = servoIds;
   poseMsg.angle = anglesInRad;
   givenDynCommands_pub.publish(poseMsg);
@@ -133,7 +133,7 @@ void moveAllLegsToGlobal(vec3P givenPoint, ros::ServiceClient givenInverseKinema
       anglesInRad.insert(anglesInRad.end(), inverseReturn.begin(), inverseReturn.end());
   }
 
-  dynamixel_server::Pose poseMsg;
+  dyret_common::Pose poseMsg;
   poseMsg.id = servoIds;
   poseMsg.angle = anglesInRad;
   givenDynCommands_pub.publish(poseMsg);
@@ -152,7 +152,7 @@ void moveAllLegsToGlobal(std::vector<vec3P> givenPoints, ros::ServiceClient give
       anglesInRad.insert(anglesInRad.end(), inverseReturn.begin(), inverseReturn.end());
   }
 
-  dynamixel_server::Pose poseMsg;
+  dyret_common::Pose poseMsg;
   poseMsg.id = servoIds;
   poseMsg.angle = anglesInRad;
   givenDynCommands_pub.publish(poseMsg);
@@ -179,7 +179,7 @@ bool interpolatingLegMoveOpenLoop(std::vector<vec3P> givenGoalPositions, std::ve
   for (int i = 0; i < 12; i++) servoIds[i] = i;
 
   for (int i = 0; i < 4; i++){
-    robo_cont_types::calculate_inverse_kinematics srv;
+    dyret_common::calculate_inverse_kinematics srv;
 
     vec3P globalLegPosition = lineInterpolation(givenStartPositions[i], givenGoalPositions[i], givenProgress);
 
@@ -211,7 +211,7 @@ bool interpolatingLegMoveOpenLoop(std::vector<vec3P> givenGoalPositions, std::ve
     }
   }
 
-  dynamixel_server::Pose poseMsg;
+  dyret_common::Pose poseMsg;
   poseMsg.id = servoIds;
   poseMsg.angle = anglesInRad;
   givenDynCommands_pub.publish(poseMsg);
@@ -241,7 +241,7 @@ bool interpolatingLegMoveClosedLoop(std::vector<vec3P> givenGoalPosition, double
   for (int j = 0; j < 12; j++) servoIds[j] = j;
 
   for (int j = 0; j < 4; j++){
-      robo_cont_types::calculate_inverse_kinematics srv;
+	dyret_common::calculate_inverse_kinematics srv;
 
     vec3P currentLegPosition = currentLegPos(j, servoAnglesInRad);
 
@@ -275,7 +275,7 @@ bool interpolatingLegMoveClosedLoop(std::vector<vec3P> givenGoalPosition, double
     }
   }
 
-  dynamixel_server::Pose poseMsg;
+  dyret_common::Pose poseMsg;
   poseMsg.id = servoIds;
   poseMsg.angle = anglesInRad;
   givenDynCommands_pub.publish(poseMsg);
@@ -289,7 +289,7 @@ bool interpolatingLegMoveClosedLoop(int givenLegId, vec3P givenGoalPosition, dou
 
   vec3P globalLegPosition = incInterpolation(legPos, givenGoalPosition, givenInterpolationIncrement);
 
-  robo_cont_types::calculate_inverse_kinematics srv;
+  dyret_common::calculate_inverse_kinematics srv;
 
   vec3P localLegPosition = calculateLocalPosition(givenLegId, globalLegPosition);
 
@@ -323,7 +323,7 @@ bool interpolatingLegMoveClosedLoop(int givenLegId, vec3P givenGoalPosition, dou
       }
   }
 
-  dynamixel_server::Pose poseMsg;
+  dyret_common::Pose poseMsg;
   poseMsg.id = servoIds;
   poseMsg.angle = anglesInRad;
   givenDynCommands_pub.publish(poseMsg);
@@ -340,7 +340,7 @@ bool interpolatingLegMoveOpenLoop(int givenLegId, vec3P givenGoalPosition, vec3P
 
   vec3P globalLegPosition = lineInterpolation(givenStartPosition, givenGoalPosition, givenProgress);
 
-  robo_cont_types::calculate_inverse_kinematics srv;
+  dyret_common::calculate_inverse_kinematics srv;
 
   vec3P localLegPosition = calculateLocalPosition(givenLegId, globalLegPosition);
 
@@ -374,7 +374,7 @@ bool interpolatingLegMoveOpenLoop(int givenLegId, vec3P givenGoalPosition, vec3P
       }
   }
 
-  dynamixel_server::Pose poseMsg;
+  dyret_common::Pose poseMsg;
   poseMsg.id = servoIds;
   poseMsg.angle = anglesInRad;
   givenDynCommands_pub.publish(poseMsg);
@@ -409,12 +409,12 @@ void moveLegToGlobalZ(int givenLegId, double givenHeight, std::vector<double> se
 }
 
 void setServoPIDs(std::vector<int> givenPIDs, ros::Publisher givenServoConfigPublisher){
-  dynamixel_server::ServoConfigArray msg;
-  std::vector<dynamixel_server::ServoConfig> msgContents(12);
+	dyret_common::ServoConfigArray msg;
+  std::vector<dyret_common::ServoConfig> msgContents(12);
 
   for (int i = 0; i < 12; i++){
       msgContents[i].servoId = i;
-      msgContents[i].configType = dynamixel_server::ServoConfig::t_setPID;
+      msgContents[i].configType = dyret_common::ServoConfig::t_setPID;
       msgContents[i].parameters.resize(3);
 
       if (i == 0 || i == 3 || i == 6 || i == 9){
@@ -442,12 +442,12 @@ void setServoPIDs(std::vector<int> givenPIDs, ros::Publisher givenServoConfigPub
 
 // givenSpeed is a double 0->1
 void setServoSpeeds(double givenSpeed, ros::Publisher givenServoConfigPublisher){
-  dynamixel_server::ServoConfigArray msg;
-  std::vector<dynamixel_server::ServoConfig> msgContents(12);
+  dyret_common::ServoConfigArray msg;
+  std::vector<dyret_common::ServoConfig> msgContents(12);
 
   for (int i = 0; i < 12; i++){
       msgContents[i].servoId = i;
-      msgContents[i].configType = dynamixel_server::ServoConfig::t_setSpeed;
+      msgContents[i].configType = dyret_common::ServoConfig::t_setSpeed;
       msgContents[i].parameters.resize(1);
       msgContents[i].parameters[0] = givenSpeed;
   }
@@ -458,13 +458,13 @@ void setServoSpeeds(double givenSpeed, ros::Publisher givenServoConfigPublisher)
 }
 
 void setServoLog(bool enable, ros::Publisher givenServoConfigPublisher){
-  dynamixel_server::ServoConfigArray msg;
-  std::vector<dynamixel_server::ServoConfig> msgContents(1);
+  dyret_common::ServoConfigArray msg;
+  std::vector<dyret_common::ServoConfig> msgContents(1);
 
   if (enable == true){
-      msgContents[0].configType = dynamixel_server::ServoConfig::t_enableLog;
+      msgContents[0].configType = dyret_common::ServoConfig::t_enableLog;
   } else {
-      msgContents[0].configType = dynamixel_server::ServoConfig::t_disableLog;
+      msgContents[0].configType = dyret_common::ServoConfig::t_disableLog;
   }
 
   msg.servoConfigs = msgContents;

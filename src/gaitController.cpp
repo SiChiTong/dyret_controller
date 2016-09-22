@@ -63,11 +63,11 @@ bool getGaitControllerStatusService(dyret_common::GetGaitControllerStatus::Reque
 }
 
 void actionMessagesCallback(const dyret_common::ActionMessage::ConstPtr& msg){
-  printf("Switching currentAction from %u to %u\n", currentAction, msg->actionType);
+  ROS_INFO("Switching currentAction from %u to %u", currentAction, msg->actionType);
   lastActionMessage = msg;
   currentAction = msg->actionType;
 
-  printf("Direction is %.2f (%.2f)\n", lastActionMessage->direction, msg->direction);
+  ROS_INFO("Direction is %.2f (%.2f)", lastActionMessage->direction, msg->direction);
 }
 
 void servoStatesCallback(const dyret_common::ServoStateArray::ConstPtr& msg){
@@ -77,7 +77,7 @@ void servoStatesCallback(const dyret_common::ServoStateArray::ConstPtr& msg){
 }
 
 void gaitControllerParamConfigCallback(robo_cont::gaitControllerParamsConfig &config, uint32_t level) {
-  printf("Reconfigure Request: \n\tstepHeight: %.2f\n\tstepLength: %.2f\n\tsmoothing: %.2f\n\tspeed: %.2f\n\twagAmplitude_x: %.2f\n\twagAmplitude_y: %.2f\n\twagPhaseOffset: %.2f",
+  ROS_INFO("Reconfigure Request: \n\tstepHeight: %.2f\n\tstepLength: %.2f\n\tsmoothing: %.2f\n\tspeed: %.2f\n\twagAmplitude_x: %.2f\n\twagAmplitude_y: %.2f\n\twagPhaseOffset: %.2f",
             config.stepHeight,
             config.stepLength,
             config.smoothing,
@@ -85,8 +85,8 @@ void gaitControllerParamConfigCallback(robo_cont::gaitControllerParamsConfig &co
             config.wagAmplitude_x,
             config.wagAmplitude_y,
             config.wagPhase);
-  printf("\n\tC: P%u I%u D%u\n\tF: P%u I%u D%u\n\tT: P%u I%u D%u\n\n",
-         config.cP, config.cI, config.cD, config.fP, config.fI, config.fD, config.tP, config.tI, config.tD);
+  ROS_INFO("\n\tC: P%u I%u D%u\n\tF: P%u I%u D%u\n\tT: P%u I%u D%u\n\n",
+            config.cP, config.cI, config.cD, config.fP, config.fI, config.fD, config.tP, config.tI, config.tD);
 
   lastGaitControllerParamsConfigMessage = config;
 
@@ -99,7 +99,7 @@ void startGaitRecording(ros::ServiceClient get_gait_evaluation_client){
   srv.request.givenCommand = dyret_common::GetGaitEvaluation::Request::t_start;
 
   if (get_gait_evaluation_client.call(srv)) {
-    printf("Called startGaitRecording service\n");
+    ROS_INFO("Called startGaitRecording service\n");
   }
 
 }
@@ -111,7 +111,7 @@ void pauseGaitRecording(ros::ServiceClient get_gait_evaluation_client){
   srv.request.givenCommand = dyret_common::GetGaitEvaluation::Request::t_pause;
 
   if (get_gait_evaluation_client.call(srv)) {
-    printf("Called pauseGaitRecording service\n");
+    ROS_INFO("Called pauseGaitRecording service\n");
   }
 
 }
@@ -123,6 +123,7 @@ int main(int argc, char **argv)
 
   ros::init(argc, argv, "gaitController");
   ros::NodeHandle n;
+  sleep(1);
 
   // Initialize services
   ros::ServiceClient get_gait_evaluation_client = n.serviceClient<dyret_common::GetGaitEvaluation>("get_gait_evaluation");
@@ -178,7 +179,7 @@ int main(int argc, char **argv)
 
   FILE * wagLog;
   wagLog = fopen("wagLog.csv", "w");
-  fprintf(wagLog,"L0z, L1z, L2z, L3_z, wag_commanded_x, wag_commanded_y, L0_x, L1_x, L2_x, L3_x\n");
+//  fprintf(wagLog,"L0z, L1z, L2z, L3_z, wag_commanded_x, wag_commanded_y, L0_x, L1_x, L2_x, L3_x\n");
 
   IncPoseAdjuster restPoseAdjuster(false, restPose, &servoAnglesInRad, inverseKinematicsService_client, dynCommands_pub);
 
@@ -256,25 +257,24 @@ int main(int argc, char **argv)
               bSplineGait = BSplineGait(globalStepHeight, globalStepLength, globalSmoothing, groundHeight, spreadAmount, frontOffset, leftOffset, rearLegOffset);
               bSplineGait.enableWag(0.83f+globalWagPhaseOffset, globalWagAmplitude_x, globalWagAmplitude_y);
 
-              printf("stepLength: %.2f, gndContactPercent: %.2f, globalGaitSpeed: %.2f\n", bSplineGait.getStepLength(), bSplineGait.getGndContactPercent(), globalGaitSpeed);
 
               if ((std::isnan(globalGaitSpeed) == true) && (std::isnan(globalGaitFrequency) == true)){
-                  printf("GlobalGaitSpeed or globalGaitFrequency has to be set\n");
+                  ROS_ERROR("GlobalGaitSpeed or globalGaitFrequency has to be set\n");
               } else if (std::isnan(globalGaitFrequency) == true){
                   // Speed has been set => Calculate frequency from speed
 
                   globalGaitFrequency = globalGaitSpeed / ( (bSplineGait.getStepLength() / bSplineGait.getGndContactPercent() ) * (60.0 / 1000.0));
 
-                  printf("globalGaitFrequency set to %.2f\n", globalGaitFrequency);
+                  ROS_INFO("globalGaitFrequency set to %.2f\n", globalGaitFrequency);
               } else if (std::isnan(globalGaitSpeed) == true) {
                   // Frequency has been set
               } else {
-                  printf("GlobalGaitSpeed or globalGaitFrequency can not both be set\n");
+                  ROS_ERROR("GlobalGaitSpeed or globalGaitFrequency can not both be set\n");
               }
 
               float calculatedSpeed = (bSplineGait.getStepLength() / bSplineGait.getGndContactPercent()) * globalGaitFrequency * (60.0/1000.0);
 
-              printf("Calculated speed: %.2f\n", calculatedSpeed);
+              ROS_INFO("Calculated speed: %.2f\n", calculatedSpeed);
 
               dyret_common::DistAng posChangeMsg;
                               posChangeMsg.distance = calculatedSpeed;
@@ -363,7 +363,7 @@ int main(int argc, char **argv)
             std::vector<vec3P> currentPositions = currentLegPositions(servoAnglesInRad);
 
             // L0z, L1z, L2z, L3_z, wag_commanded_x, wag_commanded_y, L0_x, L1_x, L2_x, L3_x
-            fprintf(wagLog, "%.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f\n",
+/*            fprintf(wagLog, "%.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f\n",
                     currentPositions[0].points[2],
                     currentPositions[1].points[2],
                     currentPositions[2].points[2],
@@ -374,15 +374,13 @@ int main(int argc, char **argv)
                     currentPositions[1].points[0],
                     currentPositions[2].points[0],
                     currentPositions[3].points[0]);
-
+*/
 
             // Get IK solutions for each leg:
             for (int i = 0; i < 4; i++){ // For each leg
             	dyret_common::CalculateInverseKinematics srv;
 
                 vec3P localLegPosition = calculateLocalPosition(i, add(globalLegPositions[i], wag));
-                //printf("%.2f + %.2f = %.2f\n", globalLegPositions[i].points[0], wag.points[0], localLegPosition.x());
-
 
                 srv.request.point.x = localLegPosition.x();
                 srv.request.point.y = localLegPosition.y();
@@ -427,7 +425,7 @@ int main(int argc, char **argv)
         vec3P leg2 = add(globalLegPositions[2], wag);
         vec3P leg3 = add(globalLegPositions[3], wag);
 
-        fprintf(gaitLogGlobal,"%.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f\n",
+/*        fprintf(gaitLogGlobal,"%.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f\n",
                 currentRelativeTime,
                 leg0.x(), leg0.y(), leg0.z(),
                 actual[0].x(), actual[0].y(), actual[0].z(),
@@ -438,12 +436,13 @@ int main(int argc, char **argv)
                 leg3.x(), leg3.y(), leg3.z(),
                 actual[3].x(), actual[3].y(), actual[3].z()
                 );
+*/
         if (servoIds.size() != 0){
             msg.id = servoIds;
             msg.angle = anglesInRad;
             dynCommands_pub.publish(msg);
         } else {
-            printf("Did not send invalid dyn commands!\n");
+            ROS_WARN("Did not send invalid dyn commands!\n");
         }
       }
     } else {
@@ -458,7 +457,7 @@ int main(int argc, char **argv)
   fclose(wagLog);
   fclose(gaitLogGlobal);
 
-  printf("Exiting program\n");
+  ROS_INFO("Exiting gaitController");
 
   return 0;
 }

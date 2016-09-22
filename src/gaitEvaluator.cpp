@@ -26,7 +26,7 @@ std::vector<std::vector<float>> currentData;
 
 FILE * imuLog;
 FILE * mocapLog;
-bool loggingEnabled = true;
+bool loggingEnabled = false;
 
 long long int startTime;
 long long int accTime;
@@ -39,8 +39,8 @@ std::vector<float> lastSavedPosition;
 
 volatile sig_atomic_t discardSolution = 0;
 
-void my_function(int sig){
-  printf(" Discarding\n");
+void discardFunction(int sig){
+  ROS_WARN(" Discarding solution\n");
   discardSolution = 1;
 }
 
@@ -52,7 +52,7 @@ bool getGaitEvaluationService(dyret_common::GetGaitEvaluation::Request  &req,
   switch (req.givenCommand){
     case (req.t_start):
     {
-        printf("req.t_start received\n");
+        ROS_INFO("req.t_start received\n");
         enableCapture = true;
         startTime = getMs();
 
@@ -73,7 +73,7 @@ bool getGaitEvaluationService(dyret_common::GetGaitEvaluation::Request  &req,
         break;
     }
     case (req.t_pause):
-        printf("req.t_pause received\n");
+        ROS_INFO("req.t_pause received\n");
         enableCapture = false;
         accTime += getMs() - startTime;
 
@@ -108,15 +108,14 @@ bool getGaitEvaluationService(dyret_common::GetGaitEvaluation::Request  &req,
 
       break;
     case (req.t_getResults):
-      //printf("req.t_getResults received\n");
 
       if (discardSolution == 1){
-        printf("Discarded!\n");
+        ROS_WARN("Discarded!\n");
         discardSolution = 0;
       } else if (linAcc_z < 0){
-        printf("Upside down!\n");
+        ROS_WARN("Upside down!\n");
       } else if (linAcc_z < 8){
-        printf("Sideways!\n");
+        ROS_WARN("Sideways!\n");
       } else {
 
         results.resize(6); // 0: speed, 1: sum(SD['angVel'], 2: sum(SD['linAcc']), 3: sum(SD*('orientation'), 4: current, 5: mocapDistance
@@ -166,15 +165,14 @@ bool getGaitEvaluationService(dyret_common::GetGaitEvaluation::Request  &req,
             }
         }
 */
-
         float mocapDist = sqrt(pow(startPosition[0] - lastSavedPosition[0],2) + pow(startPosition[1] - lastSavedPosition[1],2) + pow(startPosition[2] - lastSavedPosition[2],2));
         float mocapSpeed = mocapDist / (((double) accTime / 1000.0) / 60);
 
-        printf("Origin: %.2f, %.2f, %.2f\n", startPosition[0], startPosition[1], startPosition[2]);
-        printf("End:    %.2f, %.2f, %.2f\n", lastSavedPosition[0], lastSavedPosition[1], startPosition[2]);
+        ROS_INFO("Origin: %.2f, %.2f, %.2f\n", startPosition[0], startPosition[1], startPosition[2]);
+        ROS_INFO("End:    %.2f, %.2f, %.2f\n", lastSavedPosition[0], lastSavedPosition[1], startPosition[2]);
 
         // Calculate mocap fitness value
-        printf("Distance: %.2f (S: %.2f)\n", mocapDist, mocapSpeed);
+        ROS_INFO("Distance: %.2f (S: %.2f)\n", mocapDist, mocapSpeed);
 
         // Assign fitness values:
         results[0] = calculatedInferredSpeed;            // Inferred speed in in m/min
@@ -285,8 +283,8 @@ int main(int argc, char **argv) {
   waitForRosInit(imuData_sub, "imuData");
   waitForRosInit(servoStates_sub, "servoStates");
 
-  signal(SIGINT, my_function);
+//  signal(SIGINT, discardFunction);
 
-  ros::spin();
+  while(ros::ok()) ros::spin();
 
 }

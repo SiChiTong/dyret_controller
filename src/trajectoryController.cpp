@@ -35,19 +35,12 @@ void gaitInferredPos_Callback(const dyret_common::DistAng::ConstPtr& msg)
       if (started == false){
           started = true;
           startTime = getMs();
-          printf("Set new startTime\n");
+          ROS_INFO("Set new startTime\n");
       }
 
       accPos   += msg->distance;
       accAngle += msg->angle;
   }
-
-/*
-  printf("\tdistGoal: %.2f, dist: %.2f\n"
-         "\tAccPos: %.2f, absError: %.2f\n",
-         distanceGoal[currentSegment], msg->distance, accPos,
-         fabs(distanceGoal[currentSegment] - accPos));
-*/
 
 }
 
@@ -67,7 +60,7 @@ void trajectoryMessages_Callback(const dyret_common::Trajectory::ConstPtr& msg)
           timeoutInSec[i] = msg->trajectorySegments[i].timeoutInSec;
       }
   } else if (msg->command == msg->t_resetPosition){
-      printf("Reset position from %.2f to 0.00\n", accPos);
+      ROS_INFO("Reset position from %.2f to 0.00\n", accPos);
       started = false;
       accPos = 0.0;
       distanceGoal.clear();
@@ -112,7 +105,7 @@ int main(int argc, char **argv)
 
   ros::Subscriber gaitInferredPos_sub = n.subscribe("gaitInferredPos", 1000, gaitInferredPos_Callback);
   ros::Subscriber trajectoryMessages_sub = n.subscribe("trajectoryMessages", 1000, trajectoryMessages_Callback);
-  ros::Publisher  actionMessages_pub = n.advertise<dyret_common::ActionMessage>("ActionMessages", 10);
+  ros::Publisher  actionMessages_pub = n.advertise<dyret_common::ActionMessage>("actionMessages", 10);
   ros::AsyncSpinner spinner(4); // Use 4 threads
 
   sleep(1);
@@ -135,7 +128,7 @@ int main(int argc, char **argv)
             currentSegment = 0;
             currentState   = SETUP_WALK;
             newTrajectoryMessageReceived = false;
-            printf("WAIT -> SETUP_WALK (s%u)\n", currentSegment);
+            ROS_INFO("WAIT -> SETUP_WALK (s%u)\n", currentSegment);
         }
 
         break;
@@ -146,7 +139,7 @@ int main(int argc, char **argv)
             // No more segments to cover
             sendRestPoseMessage(actionMessages_pub);
             currentState = WAIT;
-            printf("SETUP_WALK -> WAIT (finished @ %u)\n", currentSegment);
+            ROS_INFO("SETUP_WALK -> WAIT (finished @ %u)\n", currentSegment);
         } else {
 
             // Send correct message:
@@ -162,7 +155,7 @@ int main(int argc, char **argv)
 
             started = false;
             currentState = WALKING;
-            if (directionForward == true) printf("SETUP_WALK -> WALKING (F)\n"); else printf("SETUP_WALK -> WALKING (R)\n");
+            if (directionForward == true) ROS_INFO("SETUP_WALK -> WALKING (F)\n"); else ROS_INFO("SETUP_WALK -> WALKING (R)\n");
         }
 
         break;
@@ -172,7 +165,7 @@ int main(int argc, char **argv)
         if ( (directionForward ==  true && (distanceGoal[currentSegment] - accPos) < 0) ||
              (directionForward == false && (distanceGoal[currentSegment] - accPos) > 0) ){
                 // Goal reached
-                printf("WALKING -> SETUP_WALK (seg%u done)\n", currentSegment);
+                ROS_INFO("WALKING -> SETUP_WALK (seg%u done)\n", currentSegment);
                 currentSegment++;
                 currentState = SETUP_WALK;
         }
@@ -181,7 +174,7 @@ int main(int argc, char **argv)
 
         if ( (started == true) && (timeoutInSec[currentSegment] != 0.0) && (currentRelativeTime > timeoutInSec[currentSegment]) ){
             // TIMEOUT
-            printf("WALKING -> SETUP_WALK (Timeout @ %.2f, seg%u)\n", currentRelativeTime, currentSegment);
+            ROS_INFO("WALKING -> SETUP_WALK (Timeout @ %.2f, seg%u)\n", currentRelativeTime, currentSegment);
             currentSegment++;
             currentState = SETUP_WALK;
         }
@@ -189,7 +182,7 @@ int main(int argc, char **argv)
         break;
       }
       default:
-        printf("INVALID CURRENTSTATE IN TRAJECTORYCONTROLLER\n");
+        ROS_INFO("INVALID CURRENTSTATE IN TRAJECTORYCONTROLLER\n");
         break;
     }
   }

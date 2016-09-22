@@ -1,6 +1,6 @@
 #include <math.h> 
 #include <stdio.h> 
-#include "../robotConstants.h"
+#include "dyret_common/dimensions.h"
 #include "kinematicTypes.h"
 
 vec3P forwardKinematics(double t1, double t2, double t3, double r3){

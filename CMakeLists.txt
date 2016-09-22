@@ -19,7 +19,8 @@ find_package(catkin REQUIRED COMPONENTS
   genmsg
   dynamic_reconfigure
   dyret_common
-  dynamixel_server
+  dyret_utils
+  dyret_hardware
 )
 
 find_package(Boost REQUIRED COMPONENTS 
@@ -69,6 +70,8 @@ add_executable(trajectoryController
                src/trajectoryController.cpp
               )
 target_link_libraries(trajectoryController ${catkin_LIBRARIES})
+add_dependencies(trajectoryController 
+	${catkin_EXPORTED_TARGETS})
 
 add_executable(gaitEvaluator
                src/gaitEvaluator.cpp

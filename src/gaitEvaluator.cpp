@@ -15,7 +15,8 @@
 #include "dyret_common/get_gait_evaluation.h"
 #include "dyret_common/distAngMsg.h"
 
-#include "robo_cont_utils.h"
+#include "dyret_utils/wait_for_ros.h"
+#include "dyret_utils/timeHandling.h"
 
 bool enableCapture;
 

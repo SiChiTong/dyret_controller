@@ -9,7 +9,8 @@
 #include "dyret_common/actionMessage.h"
 #include "dyret_common/trajectoryMsg.h"
 
-#include "robo_cont_utils.h"
+#include "dyret_utils/wait_for_ros.h"
+#include "dyret_utils/timeHandling.h"
 
 #include "states/trajectoryControllerState.h"
 

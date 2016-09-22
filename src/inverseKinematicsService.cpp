@@ -3,7 +3,7 @@
 
 #include "ros/ros.h"
 #include "dyret_common/calculate_inverse_kinematics.h"
-#include "robotConstants.h"
+#include "dyret_common/dimensions.h"
 
 struct vec2A {
 	double angles[2];

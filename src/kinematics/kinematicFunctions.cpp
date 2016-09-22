@@ -8,7 +8,7 @@
 #include "forwardKinematics.h"
 #include "interpolation.h"
 
-#include "dyret_common/calculate_inverse_kinematics.h"
+#include "dyret_common/CalculateInverseKinematics.h"
 #include "dyret_common/Pose.h"
 
 

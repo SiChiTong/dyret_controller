@@ -3,7 +3,7 @@
 
 #include "ros/ros.h"
 
-#include "dyret_common/calculate_inverse_kinematics.h"
+#include "dyret_common/CalculateInverseKinematics.h"
 #include "dyret_common/Pose.h"
 #include "dyret_common/ServoConfig.h"
 #include "dyret_common/ServoConfigArray.h"
@@ -68,7 +68,7 @@ std::vector<vec3P> currentLegPositions(std::vector<double> servoAnglesInRad){
 }
 
 std::vector<double> getInverseSolution(int legId, vec3P givenPoint, ros::ServiceClient givenInverseKinematicsServiceClient){
-  dyret_common::calculate_inverse_kinematics srv;
+  dyret_common::CalculateInverseKinematics srv;
 
   vec3P localLegPosition = calculateLocalPosition(legId, givenPoint);
 
@@ -179,7 +179,7 @@ bool interpolatingLegMoveOpenLoop(std::vector<vec3P> givenGoalPositions, std::ve
   for (int i = 0; i < 12; i++) servoIds[i] = i;
 
   for (int i = 0; i < 4; i++){
-    dyret_common::calculate_inverse_kinematics srv;
+    dyret_common::CalculateInverseKinematics srv;
 
     vec3P globalLegPosition = lineInterpolation(givenStartPositions[i], givenGoalPositions[i], givenProgress);
 
@@ -241,7 +241,7 @@ bool interpolatingLegMoveClosedLoop(std::vector<vec3P> givenGoalPosition, double
   for (int j = 0; j < 12; j++) servoIds[j] = j;
 
   for (int j = 0; j < 4; j++){
-	dyret_common::calculate_inverse_kinematics srv;
+	  dyret_common::CalculateInverseKinematics srv;
 
     vec3P currentLegPosition = currentLegPos(j, servoAnglesInRad);
 
@@ -289,7 +289,7 @@ bool interpolatingLegMoveClosedLoop(int givenLegId, vec3P givenGoalPosition, dou
 
   vec3P globalLegPosition = incInterpolation(legPos, givenGoalPosition, givenInterpolationIncrement);
 
-  dyret_common::calculate_inverse_kinematics srv;
+  dyret_common::CalculateInverseKinematics srv;
 
   vec3P localLegPosition = calculateLocalPosition(givenLegId, globalLegPosition);
 
@@ -340,7 +340,7 @@ bool interpolatingLegMoveOpenLoop(int givenLegId, vec3P givenGoalPosition, vec3P
 
   vec3P globalLegPosition = lineInterpolation(givenStartPosition, givenGoalPosition, givenProgress);
 
-  dyret_common::calculate_inverse_kinematics srv;
+  dyret_common::CalculateInverseKinematics srv;
 
   vec3P localLegPosition = calculateLocalPosition(givenLegId, globalLegPosition);
 

@@ -12,8 +12,9 @@
 
 #include "dyret_common/ServoState.h"
 #include "dyret_common/ServoStateArray.h"
-#include "dyret_common/get_gait_evaluation.h"
-#include "dyret_common/distAngMsg.h"
+#include "dyret_common/GetGaitEvaluation.h"
+#include "dyret_common/GetGaitControllerStatus.h"
+#include "dyret_common/DistAng.h"
 
 #include "dyret_utils/wait_for_ros.h"
 #include "dyret_utils/timeHandling.h"
@@ -43,8 +44,8 @@ void my_function(int sig){
   discardSolution = 1;
 }
 
-bool getGaitEvaluationService(dyret_common::get_gait_evaluation::Request  &req,
-		dyret_common::get_gait_evaluation::Response &res){
+bool getGaitEvaluationService(dyret_common::GetGaitEvaluation::Request  &req,
+		dyret_common::GetGaitEvaluation::Response &res){
 
   std::vector<float> results;
 
@@ -249,7 +250,7 @@ void servoStatesCallback(const dyret_common::ServoStateArray::ConstPtr& msg){
   }
 }
 
-void gaitInferredPos_Callback(const dyret_common::distAngMsg::ConstPtr& msg)
+void gaitInferredPos_Callback(const dyret_common::DistAng::ConstPtr& msg)
 {
   if (msg->msgType == msg->t_measurementInferred){
       accPos += msg->distance;

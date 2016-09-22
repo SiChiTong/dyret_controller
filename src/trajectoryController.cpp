@@ -5,9 +5,9 @@
 
 #include "ros/ros.h"
 
-#include "dyret_common/distAngMsg.h"
-#include "dyret_common/actionMessage.h"
-#include "dyret_common/trajectoryMsg.h"
+#include "dyret_common/DistAng.h"
+#include "dyret_common/ActionMessage.h"
+#include "dyret_common/Trajectory.h"
 
 #include "dyret_utils/wait_for_ros.h"
 #include "dyret_utils/timeHandling.h"
@@ -29,7 +29,7 @@ bool newTrajectoryMessageReceived;
 
 t_trajectoryControllerState currentState;
 
-void gaitInferredPos_Callback(const dyret_common::distAngMsg::ConstPtr& msg)
+void gaitInferredPos_Callback(const dyret_common::DistAng::ConstPtr& msg)
 {
   if (msg->msgType == msg->t_measurementInferred){
       if (started == false){
@@ -51,7 +51,7 @@ void gaitInferredPos_Callback(const dyret_common::distAngMsg::ConstPtr& msg)
 
 }
 
-void trajectoryMessages_Callback(const dyret_common::trajectoryMsg::ConstPtr& msg)
+void trajectoryMessages_Callback(const dyret_common::Trajectory::ConstPtr& msg)
 {
   currentSegment = 0;
 
@@ -81,18 +81,18 @@ void trajectoryMessages_Callback(const dyret_common::trajectoryMsg::ConstPtr& ms
 }
 
 void sendRestPoseMessage(ros::Publisher givenActionMessages_pub){
-	dyret_common::actionMessage actionMessage;
-  actionMessage.configuration = dyret_common::actionMessage::t_mammal;
-  actionMessage.actionType = dyret_common::actionMessage::t_restPose;
+	dyret_common::ActionMessage actionMessage;
+  actionMessage.configuration = dyret_common::ActionMessage::t_mammal;
+  actionMessage.actionType = dyret_common::ActionMessage::t_restPose;
   actionMessage.speed = 0.0;
   actionMessage.direction = 0.0;
   givenActionMessages_pub.publish(actionMessage);
 }
 
 void sendContGaitMessage(double givenDirection, ros::Publisher givenActionMessages_pub){
-	dyret_common::actionMessage actionMessage;
-  actionMessage.configuration = dyret_common::actionMessage::t_mammal;
-  actionMessage.actionType = dyret_common::actionMessage::t_contGait;
+	dyret_common::ActionMessage actionMessage;
+  actionMessage.configuration = dyret_common::ActionMessage::t_mammal;
+  actionMessage.actionType = dyret_common::ActionMessage::t_contGait;
   actionMessage.speed = 0.0;
   actionMessage.direction = givenDirection;
   givenActionMessages_pub.publish(actionMessage);
@@ -112,7 +112,7 @@ int main(int argc, char **argv)
 
   ros::Subscriber gaitInferredPos_sub = n.subscribe("gaitInferredPos", 1000, gaitInferredPos_Callback);
   ros::Subscriber trajectoryMessages_sub = n.subscribe("trajectoryMessages", 1000, trajectoryMessages_Callback);
-  ros::Publisher  actionMessages_pub = n.advertise<dyret_common::actionMessage>("actionMessages", 10);
+  ros::Publisher  actionMessages_pub = n.advertise<dyret_common::ActionMessage>("ActionMessages", 10);
   ros::AsyncSpinner spinner(4); // Use 4 threads
 
   sleep(1);

@@ -2,7 +2,7 @@
 #include <vector>
 
 #include "ros/ros.h"
-#include "dyret_common/calculate_inverse_kinematics.h"
+#include "dyret_common/CalculateInverseKinematics.h"
 #include "dyret_common/dimensions.h"
 
 struct vec2A {
@@ -37,12 +37,12 @@ double round(double originalNumber, int decimals) {
 	return numberToReturn;
 }
 
-bool add(dyret_common::calculate_inverse_kinematics::Request  &req,
-		 dyret_common::calculate_inverse_kinematics::Response &res)
+bool add(dyret_common::CalculateInverseKinematics::Request  &req,
+		 dyret_common::CalculateInverseKinematics::Response &res)
 {
   ROS_INFO("request: x=%.2f, y=%.2f, z=%.2f", req.point.x, req.point.y, req.point.z);
 
-  std::vector<dyret_common::inverse_kinematics_solution> solutions(4);
+  std::vector<dyret_common::InverseKinematicsSolution> solutions(4);
   
   double t1_1 = atan2(req.point.y,req.point.x);
 	double t1_2 = M_PI + t1_1;

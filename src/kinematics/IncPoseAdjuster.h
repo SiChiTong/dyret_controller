@@ -25,8 +25,8 @@ class IncPoseAdjuster{
 
   // Parameters for movement:
   const float stepHeight = 40.0;
-  const float leanSpeed = 1.2;
-  const float legMoveSpeed = 1.2;
+  const float leanSpeed = 0.2;
+  const float legMoveSpeed = 0.2;
   const float stepDownSpeed = 0.8;
   const float liftSpeed = 1.0;
 

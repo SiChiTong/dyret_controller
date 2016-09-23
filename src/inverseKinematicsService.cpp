@@ -40,7 +40,7 @@ double round(double originalNumber, int decimals) {
 bool add(dyret_common::CalculateInverseKinematics::Request  &req,
 		 dyret_common::CalculateInverseKinematics::Response &res)
 {
-  ROS_INFO("request: x=%.2f, y=%.2f, z=%.2f", req.point.x, req.point.y, req.point.z);
+  //ROS_INFO("request: x=%.2f, y=%.2f, z=%.2f", req.point.x, req.point.y, req.point.z);
 
   std::vector<dyret_common::InverseKinematicsSolution> solutions(4);
   

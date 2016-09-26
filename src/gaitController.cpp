@@ -420,23 +420,19 @@ int main(int argc, char **argv)
         }
 
         std::vector<vec3P> actual = currentLegPositions(servoAnglesInRad);
-        vec3P leg0 = add(globalLegPositions[0], wag);
-        vec3P leg1 = add(globalLegPositions[1], wag);
-        vec3P leg2 = add(globalLegPositions[2], wag);
-        vec3P leg3 = add(globalLegPositions[3], wag);
 
-/*        fprintf(gaitLogGlobal,"%.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f\n",
+        fprintf(gaitLogGlobal,"%.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f\n",
                 currentRelativeTime,
-                leg0.x(), leg0.y(), leg0.z(),
+                globalLegPositions[0].x(), globalLegPositions[0].y(), globalLegPositions[0].z(),
                 actual[0].x(), actual[0].y(), actual[0].z(),
-                leg1.x(), leg1.y(), leg1.z(),
+                globalLegPositions[1].x(), globalLegPositions[1].y(), globalLegPositions[1].z(),
                 actual[1].x(), actual[1].y(), actual[1].z(),
-                leg2.x(), leg2.y(), leg2.z(),
+                globalLegPositions[2].x(), globalLegPositions[2].y(), globalLegPositions[2].z(),
                 actual[2].x(), actual[2].y(), actual[2].z(),
-                leg3.x(), leg3.y(), leg3.z(),
+                globalLegPositions[3].x(), globalLegPositions[3].y(), globalLegPositions[3].z(),
                 actual[3].x(), actual[3].y(), actual[3].z()
-                );
-*/
+               );
+
         if (servoIds.size() != 0){
             msg.id = servoIds;
             msg.angle = anglesInRad;

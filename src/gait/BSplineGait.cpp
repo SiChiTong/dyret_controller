@@ -79,7 +79,7 @@ void BSplineGait::bSplineInit(std::vector<vec3P> givenPoints, float givenStepLen
   legPhaseOffset[3][1] = 0.50;
 
   // Write spline to file:
-  int numberOfPointsToGenerate = 1000;
+/*  int numberOfPointsToGenerate = 1000;
 
   FILE * fp;
   fp = fopen("bSplineGaitOutput.csv", "w");
@@ -91,6 +91,7 @@ void BSplineGait::bSplineInit(std::vector<vec3P> givenPoints, float givenStepLen
   }
 
   fclose(fp);
+*/
 }
 
 std::vector<vec3P> BSplineGait::createBSplineGaitPoints(double stepHeight, double stepLength, double smoothing, double groundHeight){
@@ -120,27 +121,27 @@ BSplineGait::BSplineGait(double stepHeight, double stepLength, double smoothing,
 
 double BSplineGait::applyGndTimeScaling(double givenTime){
   FILE * scaleLog;
-  scaleLog = fopen("scaleLog.csv", "a+");
+//  scaleLog = fopen("scaleLog.csv", "a+");
 
   if (givenTime < gndStart){
-      fprintf(scaleLog,"%.2f, %.2f\n", givenTime, givenTime);
-      fclose(scaleLog);
+//      fprintf(scaleLog,"%.2f, %.2f\n", givenTime, givenTime);
+//      fclose(scaleLog);
       return givenTime; // No correction needed
 
   } else if (givenTime > gndEnd){ // Correction needed for extra gnd space
       float oldGndEnd = ((gndEnd - gndStart) / gndFactor) + gndStart;
       float retValue = (givenTime - gndEnd) + oldGndEnd;
 
-      fprintf(scaleLog,"%.2f, %.2f\n", givenTime, retValue);
-      fclose(scaleLog);
+//      fprintf(scaleLog,"%.2f, %.2f\n", givenTime, retValue);
+//      fclose(scaleLog);
 
       return retValue;
 
   } else { // Correction needed, in gnd position
       float retValue = ((givenTime - gndStart) / gndFactor) + gndStart;
 
-      fprintf(scaleLog,"%.2f, %.2f\n", givenTime, retValue);
-      fclose(scaleLog);
+//      fprintf(scaleLog,"%.2f, %.2f\n", givenTime, retValue);
+//      fclose(scaleLog);
 
       return retValue;
   }

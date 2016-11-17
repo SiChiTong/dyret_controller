@@ -72,7 +72,7 @@ void actionMessagesCallback(const dyret_common::ActionMessage::ConstPtr& msg){
 
 void servoStatesCallback(const dyret_common::ServoStateArray::ConstPtr& msg){
   for (int i = 0; i < 12; i++){
-      servoAnglesInRad[i] = dyn2rad(msg->servoStates[i].position);
+      servoAnglesInRad[i] = msg->servoStates[i].position;
   }
 }
 

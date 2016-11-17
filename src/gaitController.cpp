@@ -137,10 +137,10 @@ int main(int argc, char **argv)
   ros::Publisher  servoConfig_pub = n.advertise<dyret_common::ServoConfigArray>("servoConfigs", 10);
 
   sleep(1);
-  waitForRosInit(get_gait_evaluation_client, "get_gait_evaluation");
-  waitForRosInit(inverseKinematicsService_client, "inverseKinematicsService");
-  waitForRosInit(actionMessages_sub, "actionMessages");
-  waitForRosInit(servoStates_sub, "servoStates");
+  //waitForRosInit(get_gait_evaluation_client, "get_gait_evaluation");
+  //waitForRosInit(inverseKinematicsService_client, "inverseKinematicsService");
+  //waitForRosInit(actionMessages_sub, "actionMessages");
+  //waitForRosInit(servoStates_sub, "servoStates");
 
   // Initialize dynamic reconfiguration:
   dynamic_reconfigure::Server<robo_cont::gaitControllerParamsConfig> gaitControllerParamsConfigServer;

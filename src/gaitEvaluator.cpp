@@ -279,9 +279,9 @@ int main(int argc, char **argv) {
   ros::Subscriber servoStates_sub = n.subscribe("servoStates", 1, servoStatesCallback);
   ros::Subscriber mocapData_sub = n.subscribe("/Robot_1/pose", 5, mocapDataCallback);
 
-  waitForRosInit(gaitInferredPos_sub, "gaitInferredPos");
-  waitForRosInit(imuData_sub, "imuData");
-  waitForRosInit(servoStates_sub, "servoStates");
+  //waitForRosInit(gaitInferredPos_sub, "gaitInferredPos");
+  //waitForRosInit(imuData_sub, "imuData");
+  //waitForRosInit(servoStates_sub, "servoStates");
 
 //  signal(SIGINT, discardFunction);
 

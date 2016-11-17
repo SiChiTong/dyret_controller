@@ -110,8 +110,8 @@ int main(int argc, char **argv)
 
   sleep(1);
 
-  waitForRosInit(gaitInferredPos_sub, "gaitInferredPos");
-  waitForRosInit(trajectoryMessages_sub, "trajectoryMessages");
+  //waitForRosInit(gaitInferredPos_sub, "gaitInferredPos");
+  //waitForRosInit(trajectoryMessages_sub, "trajectoryMessages");
 
   spinner.start();
 

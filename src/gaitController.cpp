@@ -131,10 +131,10 @@ int main(int argc, char **argv)
   ros::ServiceServer gaitControllerStatusService_server = n.advertiseService("get_gait_controller_status", getGaitControllerStatusService);
   // Initialize topics
   ros::Subscriber actionMessages_sub = n.subscribe("actionMessages", 100, actionMessagesCallback);
-  ros::Subscriber servoStates_sub = n.subscribe("servoStates", 1, servoStatesCallback);
-  ros::Publisher  dynCommands_pub = n.advertise<dyret_common::Pose>("dynCommands", 3);
+  ros::Subscriber servoStates_sub = n.subscribe("/dyret/servoStates", 1, servoStatesCallback);
+  ros::Publisher  dynCommands_pub = n.advertise<dyret_common::Pose>("/dyret/dynCommands", 3);
   ros::Publisher  gaitInferredPos_pub = n.advertise<dyret_common::DistAng>("gaitInferredPos", 1000);
-  ros::Publisher  servoConfig_pub = n.advertise<dyret_common::ServoConfigArray>("servoConfigs", 10);
+  ros::Publisher  servoConfig_pub = n.advertise<dyret_common::ServoConfigArray>("/dyret/servoConfigs", 10);
 
   sleep(1);
   //waitForRosInit(get_gait_evaluation_client, "get_gait_evaluation");

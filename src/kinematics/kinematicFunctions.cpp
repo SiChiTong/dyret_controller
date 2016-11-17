@@ -11,37 +11,11 @@
 #include "dyret_common/CalculateInverseKinematics.h"
 #include "dyret_common/Pose.h"
 
-
-double dyn2rad(int angleInDynamixel) {
-	int normalizedInput = fmod(angleInDynamixel,4095);
-	if (normalizedInput < 0) normalizedInput = normalizedInput + 4095;
-
-	double angleToReturn = (double) ((normalizedInput-2048.0) / 2048.0) * M_PI;
-	return angleToReturn;
-}
-
-int rad2dyn(double angleInRad) {
-
-	// Normalize to -2pi -> 2pi:
-	double normalizedInput = (fmod(angleInRad+M_PI, 2*M_PI)-M_PI);
-	if (normalizedInput < 0) normalizedInput = normalizedInput + 2*M_PI;
-	int returnVariable = ((normalizedInput / (2 * M_PI)) * 4095.0) + (2048);
-	return returnVariable;
-}
-
 double round(double originalNumber, int decimals) {
 	double num = originalNumber * pow(10.0, (decimals));
 	long long int rounded = (long long int)((double)num + 0.5);
 	double numberToReturn = ((double)rounded) / pow(10.0, (decimals));
 	return numberToReturn;
-}
-
-double rad2deg(double angleInRad) {
-	return (angleInRad/(2.0*M_PI))*360.0;
-}
-
-double deg2rad(double angleInDeg) {
-	return (angleInDeg / 360.0) * 2.0 * M_PI;
 }
 
 vec3P calculateLocalPosition(int givenLegId, vec3P givenLegGlobalPosition) {

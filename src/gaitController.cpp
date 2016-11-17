@@ -3,6 +3,8 @@
 #include <chrono>
 #include <iostream>
 
+#include "dyret_utils/angleConv.h"
+
 #include "ros/ros.h"
 #include <ros/console.h>
 #include "dyret_common/CalculateInverseKinematics.h"
@@ -409,9 +411,9 @@ int main(int argc, char **argv)
                 for (int j = 0; j < 3; j++){ // For each joint in the leg
                   servoIds[currentActuatorIndex] = currentActuatorIndex; // Set ids
                   if (i == 0 || i == 1){
-                      anglesInRad[currentActuatorIndex++] = srv.response.solutions[1].anglesInRad[j];
+                      anglesInRad[currentActuatorIndex++] = normalizeRad(srv.response.solutions[1].anglesInRad[j]);
                   }else{
-                      anglesInRad[currentActuatorIndex++] = srv.response.solutions[0].anglesInRad[j];
+                      anglesInRad[currentActuatorIndex++] = normalizeRad(srv.response.solutions[0].anglesInRad[j]);
                   }
                 }
               } else {

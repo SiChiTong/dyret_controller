@@ -8,6 +8,8 @@
 #include "dyret_common/ServoConfig.h"
 #include "dyret_common/ServoConfigArray.h"
 
+#include "dyret_utils/angleConv.h"
+
 #include "movementFunctions.h"
 #include "interpolation.h"
 #include "kinematicTypes.h"
@@ -98,9 +100,9 @@ std::vector<double> getInverseSolution(int legId, vec3P givenPoint, ros::Service
    // Successful in getting solution
    for (int j = 0; j < 3; j++){ // For each joint in the leg
        if (legId == 0 || legId == 1){
-           anglesInRad[j] = srv.response.solutions[1].anglesInRad[j];
+           anglesInRad[j] = normalizeRad(srv.response.solutions[1].anglesInRad[j]);
        }else{
-           anglesInRad[j] = srv.response.solutions[0].anglesInRad[j];
+           anglesInRad[j] = normalizeRad(srv.response.solutions[0].anglesInRad[j]);
        }
    }
 

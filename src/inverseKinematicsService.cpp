@@ -5,6 +5,8 @@
 #include "dyret_common/CalculateInverseKinematics.h"
 #include "dyret_common/dimensions.h"
 
+#include "dyret_utils/angleConv.h"
+
 struct vec2A {
 	double angles[2];
 };
@@ -96,6 +98,12 @@ bool add(dyret_common::CalculateInverseKinematics::Request  &req,
 
 	solutions.erase(solutions.end());
   solutions.erase(solutions.end());
+
+  for (int i = 0; i < solutions.size(); i++){
+      for (int j = 0; j < 3; j++){
+          solutions[i].anglesInRad[j] = normalizeRad(solutions[i].anglesInRad[j]);
+      }
+  }
 
   res.solutions = solutions;
 

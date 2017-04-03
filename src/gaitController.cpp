@@ -155,7 +155,8 @@ int main(int argc, char **argv)
   gaitControllerParamsConfigServer.setCallback(gaitControllerParamsConfigFunction);
 
   // Initialize bSplineGait
-  const float groundHeight = -362.0;
+  const float groundHeight = -450.0;
+  //const float groundHeight = -562.0; // Tallest
 
   globalStepLength     = 150.0;
   globalStepHeight     = 35.0;

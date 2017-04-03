@@ -72,6 +72,10 @@ std::vector<vec3P> currentLegPositions(std::vector<double> servoAnglesInRad){
 std::vector<double> getInverseSolution(int legId, vec3P givenPoint, ros::ServiceClient givenInverseKinematicsServiceClient){
   dyret_common::CalculateInverseKinematics srv;
 
+  if (givenInverseKinematicsServiceClient.exists() == false){
+      printf("Inverse kinematics service not online!");
+  }
+
   vec3P localLegPosition = calculateLocalPosition(legId, givenPoint);
 
   srv.request.point.x = localLegPosition.x();

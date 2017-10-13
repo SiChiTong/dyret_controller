@@ -195,9 +195,10 @@ int main(int argc, char **argv)
   int lastAction = dyret_common::ActionMessage::t_idle;
   currentAction  = dyret_common::ActionMessage::t_idle;
 
-  setServoSpeeds(0.2, servoConfig_pub);
+  setServoSpeeds(0.08, servoConfig_pub);
   sleep(1);
   moveAllLegsToGlobal(restPose, inverseKinematicsService_client, dynCommands_pub);
+    ROS_ERROR("Moved all legs to global restpose");
   restPoseAdjuster.skip();
 
   const double poseAdjustSpeed = 0.08;
@@ -264,19 +265,14 @@ int main(int argc, char **argv)
               bSplineGait = BSplineGait(globalStepHeight, globalStepLength, globalSmoothing, groundHeight, spreadAmount, frontOffset, leftOffset, rearLegOffset);
               bSplineGait.enableWag(0.83f+globalWagPhaseOffset, globalWagAmplitude_x, globalWagAmplitude_y);
 
-
               if ((std::isnan(globalGaitSpeed) == true) && (std::isnan(globalGaitFrequency) == true)){
                   ROS_ERROR("GlobalGaitSpeed or globalGaitFrequency has to be set\n");
               } else if (std::isnan(globalGaitFrequency) == true){
-                  // Speed has been set => Calculate frequency from speed
+                  // Frequency has not been set => Calculate frequency from speed
 
                   globalGaitFrequency = globalGaitSpeed / ( (bSplineGait.getStepLength() / bSplineGait.getGndContactPercent() ) * (60.0 / 1000.0));
 
                   ROS_INFO("globalGaitFrequency set to %.2f\n", globalGaitFrequency);
-              } else if (std::isnan(globalGaitSpeed) == true) {
-                  // Frequency has been set
-              } else {
-                  ROS_ERROR("GlobalGaitSpeed or globalGaitFrequency can not both be set\n");
               }
 
               float calculatedSpeed = (bSplineGait.getStepLength() / bSplineGait.getGndContactPercent()) * globalGaitFrequency * (60.0/1000.0);

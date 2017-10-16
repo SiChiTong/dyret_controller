@@ -4,8 +4,11 @@
 #include "ros/ros.h"
 #include "dyret_common/CalculateInverseKinematics.h"
 #include "dyret_common/dimensions.h"
+#include "dyret_common/Configuration.h"
 
 #include "dyret_utils/angleConv.h"
+
+double femurActuatorLength, tibiaActuatorLength;
 
 struct vec2A {
 	double angles[2];
@@ -39,7 +42,7 @@ double round(double originalNumber, int decimals) {
 	return numberToReturn;
 }
 
-bool add(dyret_common::CalculateInverseKinematics::Request  &req,
+bool calculateInverseKinematics(dyret_common::CalculateInverseKinematics::Request  &req,
 		 dyret_common::CalculateInverseKinematics::Response &res)
 {
   ROS_INFO("request: x=%.2f, y=%.2f, z=%.2f", req.point.x, req.point.y, req.point.z);
@@ -47,7 +50,10 @@ bool add(dyret_common::CalculateInverseKinematics::Request  &req,
   std::vector<dyret_common::InverseKinematicsSolution> solutions(4);
   
   double t1_1 = atan2(req.point.y,req.point.x);
-	double t1_2 = M_PI + t1_1;
+  double t1_2 = M_PI + t1_1;
+
+  double L12_corrected = L12 + femurActuatorLength;
+  double L23_corrected = L23 + tibiaActuatorLength;
 
   solutions[0].anglesInRad[0] = t1_1;
   solutions[1].anglesInRad[0] = t1_1;
@@ -66,37 +72,29 @@ bool add(dyret_common::CalculateInverseKinematics::Request  &req,
 	double L13_2 = sqrt(pow((req.point.x - p1_x_2), 2) + pow((req.point.y - p1_y_2), 2) + pow((req.point.z - p1_z_2), 2));
 
   // Calculate first two solutions
-  solutions[0].anglesInRad[2] = M_PI - acos((pow(L12,2) + pow(L23,2) - pow(L13_1,2)) / (2 * L12*L23));
+  solutions[0].anglesInRad[2] = M_PI - acos((pow(L12_corrected,2) + pow(L23_corrected,2) - pow(L13_1,2)) / (2 * L12_corrected*L23_corrected));
 	solutions[1].anglesInRad[2] = (2 * M_PI) - solutions[0].anglesInRad[2];
 
-  vec2A t2Angles = calculateT2(req.point.x, p1_x_1, req.point.y, p1_y_1, req.point.z, L12, L13_1, L23);
+  vec2A t2Angles = calculateT2(req.point.x, p1_x_1, req.point.y, p1_y_1, req.point.z, L12_corrected, L13_1, L23_corrected);
 	solutions[0].anglesInRad[1] = t2Angles.angles[0];
 	solutions[1].anglesInRad[1] = t2Angles.angles[1];
   
   // Calculate second two solutions
-  solutions[2].anglesInRad[2] = M_PI - acos((pow(L12,2) + pow(L23,2) - pow(L13_2,2)) / (2 * L12*L23));
+  solutions[2].anglesInRad[2] = M_PI - acos((pow(L12_corrected,2) + pow(L23_corrected,2) - pow(L13_2,2)) / (2 * L12_corrected*L23_corrected));
 	solutions[3].anglesInRad[2] = (2 * M_PI) - solutions[2].anglesInRad[2];
 
-	t2Angles = calculateT2(req.point.x, p1_x_2, req.point.y, p1_y_2, req.point.z, L12, L13_2, L23);
+	t2Angles = calculateT2(req.point.x, p1_x_2, req.point.y, p1_y_2, req.point.z, L12_corrected, L13_2, L23_corrected);
   solutions[2].anglesInRad[1] = t2Angles.angles[0];
 	solutions[3].anglesInRad[1] = t2Angles.angles[1];
 
   // Delete invalid solutions
-	if ((L13_1 > L12 + L23) || (L13_1 + L12 < L23)){
+	if ((L13_1 > L12_corrected + L23_corrected) || (L13_1 + L12_corrected < L23_corrected)){
     // Delete first two solutions
     solutions.erase(solutions.begin()); 
     solutions.erase(solutions.begin()); 
   }
 
-/* DEBUG:
-	if (L13_2 > L12 + L23 || (L13_2 + L12 < L23)) {
-    // Delete second two solutions
-    solutions.erase(solutions.end());
-    solutions.erase(solutions.end());
-  }
-*/
-
-	solutions.erase(solutions.end());
+  solutions.erase(solutions.end());
   solutions.erase(solutions.end());
 
   for (int i = 0; i < solutions.size(); i++){
@@ -110,12 +108,30 @@ bool add(dyret_common::CalculateInverseKinematics::Request  &req,
   return true;
 }
 
+void actuatorState_Callback(const dyret_common::Configuration::ConstPtr& msg){
+
+    if (msg->id.size() == 8 && msg->distance.size() == 8) {
+        femurActuatorLength = (msg->distance[0] + msg->distance[2] + msg->distance[4] + msg->distance[6]) / 4.0;
+        tibiaActuatorLength = (msg->distance[1] + msg->distance[3] + msg->distance[5] + msg->distance[7]) / 4.0;
+    } else {
+        ROS_WARN("Did not apply actuatorCommand to inverse kinematic");
+    }
+
+}
+
 int main(int argc, char **argv)
 {
   ros::init(argc, argv, "calculate_inverse_kinematics_server");
   ros::NodeHandle n;
 
-  ros::ServiceServer service = n.advertiseService("calculate_inverse_kinematics", add);
+  // Initiate actuator positions to 0:
+  femurActuatorLength = 0.0;
+  tibiaActuatorLength = 0.0;
+
+  ros::ServiceServer service = n.advertiseService("calculate_inverse_kinematics", calculateInverseKinematics);
+  ros::Subscriber gaitInferredPos_sub = n.subscribe("actuatorStates", 1000, actuatorState_Callback);
+
+
   ROS_INFO("Ready to add calculate inverse kinematics.");
   ros::spin();
 

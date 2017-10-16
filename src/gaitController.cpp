@@ -212,7 +212,9 @@ int main(int argc, char **argv)
 
   while ( ros::ok() ) {
       if (currentAction == dyret_common::ActionMessage::t_idle){
-          loop_rate.sleep();
+          //loop_rate.sleep();
+
+          moveAllLegsToGlobal(restPose, inverseKinematicsService_client, dynCommands_pub);
 
       }else if (currentAction == dyret_common::ActionMessage::t_restPose){
           // Check for transition

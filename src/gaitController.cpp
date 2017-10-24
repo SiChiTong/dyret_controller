@@ -20,6 +20,7 @@
 #include "dyret_common/ActionMessage.h"
 #include "dyret_common/DistAng.h"
 #include "dyret_common/GetGaitEvaluation.h"
+#include "dyret_common/Configuration.h"
 
 #include "dyret_controller/gaitControllerParamsConfig.h"
 #include "dyret_common/GetGaitControllerStatus.h"
@@ -52,10 +53,27 @@ double globalGaitSpeed;
 double globalWagAmplitude_x;
 double globalWagAmplitude_y;
 double globalWagPhaseOffset;
+const double groundHeightOffset = -450;
+const double groundCorrectionFactor = 0.8;
+float groundHeight = -450.0;
+//double groundHeight = -562.0; // Tallest
 
 std::vector<int> pidParameters;
 
 std::vector<double> servoAnglesInRad(12);
+
+void actuatorState_Callback(const dyret_common::Configuration::ConstPtr& msg){
+
+    if (msg->id.size() == 8 && msg->distance.size() == 8) {
+        float femurActuatorLength = (msg->distance[0] + msg->distance[2] + msg->distance[4] + msg->distance[6]) / 4.0;
+        float tibiaActuatorLength = (msg->distance[1] + msg->distance[3] + msg->distance[5] + msg->distance[7]) / 4.0;
+
+        groundHeight = groundHeightOffset - ((femurActuatorLength + tibiaActuatorLength) * groundCorrectionFactor);
+    } else {
+        ROS_WARN("Did not apply actuatorCommand to inverse kinematic");
+    }
+
+}
 
 bool getGaitControllerStatusService(dyret_common::GetGaitControllerStatus::Request  &req,
 		dyret_common::GetGaitControllerStatus::Response &res){
@@ -122,6 +140,18 @@ void pauseGaitRecording(ros::ServiceClient get_gait_evaluation_client){
 
 }
 
+std::vector<vec3P> getRestPose(){
+    const float spreadAmount  =  35.0;
+    const float frontOffset   =  0.0;
+
+    const std::vector<vec3P> restPose = {{ -spreadAmount, frontOffset, groundHeight },
+                                         {  spreadAmount, frontOffset, groundHeight },
+                                         {  spreadAmount, frontOffset, groundHeight },
+                                         { -spreadAmount, frontOffset, groundHeight }};
+
+    return restPose;
+}
+
 int main(int argc, char **argv)
 {
 
@@ -129,7 +159,6 @@ int main(int argc, char **argv)
 
   ros::init(argc, argv, "gaitController");
   ros::NodeHandle n;
-  sleep(1);
 
   // Initialize services
   ros::ServiceClient get_gait_evaluation_client = n.serviceClient<dyret_common::GetGaitEvaluation>("get_gait_evaluation");
@@ -138,9 +167,10 @@ int main(int argc, char **argv)
   // Initialize topics
   ros::Subscriber actionMessages_sub = n.subscribe("actionMessages", 100, actionMessagesCallback);
   ros::Subscriber servoStates_sub = n.subscribe("/dyret/servoStates", 1, servoStatesCallback);
+  ros::Subscriber gaitInferredPos_sub = n.subscribe("actuatorStates", 1000, actuatorState_Callback);
   ros::Publisher  dynCommands_pub = n.advertise<dyret_common::Pose>("/dyret/dynCommands", 3);
   ros::Publisher  gaitInferredPos_pub = n.advertise<dyret_common::DistAng>("gaitInferredPos", 1000);
-  ros::Publisher  servoConfig_pub = n.advertise<dyret_common::ServoConfigArray>("/dyret/servoConfigs", 10);
+  ros::Publisher  servoConfig_pub = n.advertise<dyret_common::ServoConfigArray>("/dyret/servoConfigs", 1);
 
   sleep(1);
   //waitForRosInit(get_gait_evaluation_client, "get_gait_evaluation");
@@ -155,8 +185,6 @@ int main(int argc, char **argv)
   gaitControllerParamsConfigServer.setCallback(gaitControllerParamsConfigFunction);
 
   // Initialize bSplineGait
-  const float groundHeight = -450.0;
-  //const float groundHeight = -562.0; // Tallest
 
   globalStepLength     = 150.0;
   globalStepHeight     = 35.0;
@@ -171,10 +199,6 @@ int main(int argc, char **argv)
 	const float leftOffset    =   0.0;
 	const float rearLegOffset = -30.0;
 
-	const std::vector<vec3P> restPose = {{ -spreadAmount, frontOffset, groundHeight },
-	                                     {  spreadAmount, frontOffset, groundHeight },
-	                                     {  spreadAmount, frontOffset, groundHeight },
-	                                     { -spreadAmount, frontOffset, groundHeight }};
 
 	BSplineGait bSplineGait = BSplineGait(globalStepHeight, globalStepLength, globalSmoothing, groundHeight, spreadAmount, frontOffset, leftOffset, rearLegOffset);
 	bSplineGait.enableWag(0.83f, 40.0f, 0.0f);
@@ -188,7 +212,7 @@ int main(int argc, char **argv)
   wagLog = fopen("wagLog.csv", "w");
 //  fprintf(wagLog,"L0z, L1z, L2z, L3_z, wag_commanded_x, wag_commanded_y, L0_x, L1_x, L2_x, L3_x\n");
 
-  IncPoseAdjuster restPoseAdjuster(false, restPose, &servoAnglesInRad, inverseKinematicsService_client, dynCommands_pub);
+  IncPoseAdjuster restPoseAdjuster(false, getRestPose(), &servoAnglesInRad, inverseKinematicsService_client, dynCommands_pub);
 
   bool printedPos = false; // DEBUG
 
@@ -196,8 +220,8 @@ int main(int argc, char **argv)
   currentAction  = dyret_common::ActionMessage::t_idle;
 
   setServoSpeeds(0.08, servoConfig_pub);
-  sleep(1);
-  moveAllLegsToGlobal(restPose, inverseKinematicsService_client, dynCommands_pub);
+
+  moveAllLegsToGlobal(getRestPose(), inverseKinematicsService_client, dynCommands_pub);
     ROS_ERROR("Moved all legs to global restpose");
   restPoseAdjuster.skip();
 
@@ -214,7 +238,7 @@ int main(int argc, char **argv)
       if (currentAction == dyret_common::ActionMessage::t_idle){
           //loop_rate.sleep();
 
-          moveAllLegsToGlobal(restPose, inverseKinematicsService_client, dynCommands_pub);
+//          moveAllLegsToGlobal(getRestPose(), inverseKinematicsService_client, dynCommands_pub);
 
       }else if (currentAction == dyret_common::ActionMessage::t_restPose){
           // Check for transition

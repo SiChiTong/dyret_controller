@@ -15,6 +15,7 @@
 #include "kinematicTypes.h"
 #include "kinematicFunctions.h"
 #include "forwardKinematics.h"
+#include "dyret_utils/wait_for_ros.h"
 
 bool legIsAtPos(int legId, vec3P givenGoalPosition, std::vector<double> servoAnglesInRad, double resolutionInMM){
 
@@ -161,6 +162,7 @@ void moveAllLegsToGlobal(std::vector<vec3P> givenPoints, ros::ServiceClient give
   dyret_common::Pose poseMsg;
   poseMsg.id = servoIds;
   poseMsg.angle = anglesInRad;
+  waitForRosInit(givenDynCommands_pub, "dynCommands");
   givenDynCommands_pub.publish(poseMsg);
 
 }
@@ -459,6 +461,7 @@ void setServoSpeeds(double givenSpeed, ros::Publisher givenServoConfigPublisher)
   }
 
   msg.servoConfigs = msgContents;
+  waitForRosInit(givenServoConfigPublisher, "servoConfigPublisher");
   givenServoConfigPublisher.publish(msg);
 
 }

@@ -39,12 +39,10 @@ vec3P lineInterpolation(vec3P startPosition, vec3P goalPosition, float distance)
   double y = goalPosition.y();
   double z = goalPosition.z();
 
-  if (distance <= totalDistance){ // Check for valid distance
+  if (distance <= totalDistance){ // Check for valid distance, if it is beyond goal, just return goal
       x = startPosition.x() + ((goalPosition.x() - startPosition.x()) * stepInPercent);
       y = startPosition.y() + ((goalPosition.y() - startPosition.y()) * stepInPercent);
       z = startPosition.z() + ((goalPosition.z() - startPosition.z()) * stepInPercent);
-  } else {
-      //printf("Distance %.2f is larger than totaldistance %.2f\n", distance, totalDistance);
   }
 
   vec3P positionToReturn = vec3P(x, y, z);

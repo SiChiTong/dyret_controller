@@ -20,6 +20,10 @@ class IncPoseAdjuster{
   std::vector<vec3P> positionArray;
   std::vector<double> currentLean = {0.0, 0.0};
 
+  std::vector<double> legActuatorLengths = {0.0, 0.0};
+
+  static constexpr float stateTransitionDelay = 0.0f;
+
   bool reachedPose;
   vec3P tmpLegPoseVar;
 
@@ -27,7 +31,7 @@ class IncPoseAdjuster{
   const float stepHeight = 40.0;
   const float leanSpeed = 0.2;
   const float legMoveSpeed = 0.2;
-  const float stepDownSpeed = 0.8;
+  const float stepDownSpeed = 0.1;
   const float liftSpeed = 1.0;
 
   float groundHeight;
@@ -52,7 +56,8 @@ public:
     reachedPose = false;
   }
 
-  void setGoalPose(std::vector<vec3P> givenGoalPose){
+  void setPoseAndActuatorLengths(std::vector<vec3P> givenGoalPose, std::vector<double> givenActuatorLengths){
+    legActuatorLengths = givenActuatorLengths;
     goalPose = givenGoalPose;
   }
 
@@ -60,6 +65,7 @@ public:
   void reset(){
     for (int i = 0; i < 4; i++) currentPoseStates[i] = INIT_STEPDOWN;
     reachedPose = false;
+    startPositions.clear();
   }
 
   void skip(){

@@ -56,6 +56,7 @@ double globalWagPhaseOffset;
 const double groundHeightOffset = -450;
 const double groundCorrectionFactor = 0.8;
 float groundHeight = -450.0;
+std::vector<double> legActuatorLengths = {0.0, 0.0};
 //double groundHeight = -562.0; // Tallest
 
 std::vector<int> pidParameters;
@@ -67,6 +68,9 @@ void actuatorState_Callback(const dyret_common::Configuration::ConstPtr& msg){
     if (msg->id.size() == 8 && msg->distance.size() == 8) {
         float femurActuatorLength = (msg->distance[0] + msg->distance[2] + msg->distance[4] + msg->distance[6]) / 4.0;
         float tibiaActuatorLength = (msg->distance[1] + msg->distance[3] + msg->distance[5] + msg->distance[7]) / 4.0;
+
+        legActuatorLengths[0] = femurActuatorLength;
+        legActuatorLengths[1] = tibiaActuatorLength;
 
         groundHeight = groundHeightOffset - ((femurActuatorLength + tibiaActuatorLength) * groundCorrectionFactor);
     } else {
@@ -194,14 +198,13 @@ int main(int argc, char **argv)
   globalWagAmplitude_y = 20.0;
   globalWagPhaseOffset = 0.0;
 
-	const float spreadAmount  =  35.0;
-	const float frontOffset   =  0.0;
-	const float leftOffset    =   0.0;
-	const float rearLegOffset = -30.0;
+  const float spreadAmount  =  35.0;
+  const float frontOffset   =  0.0;
+  const float leftOffset    =   0.0;
+  const float rearLegOffset = -30.0;
 
-
-	BSplineGait bSplineGait = BSplineGait(globalStepHeight, globalStepLength, globalSmoothing, groundHeight, spreadAmount, frontOffset, leftOffset, rearLegOffset);
-	bSplineGait.enableWag(0.83f, 40.0f, 0.0f);
+  BSplineGait bSplineGait = BSplineGait(globalStepHeight, globalStepLength, globalSmoothing, groundHeight, spreadAmount, frontOffset, leftOffset, rearLegOffset);
+  bSplineGait.enableWag(0.83f, 40.0f, 0.0f);
 
   IncPoseAdjuster bSplineInitAdjuster(false, add(bSplineGait.getPosition(0.0, true), bSplineGait.getGaitWagPoint(0.0)), &servoAnglesInRad, inverseKinematicsService_client, dynCommands_pub);
 
@@ -238,9 +241,10 @@ int main(int argc, char **argv)
       if (currentAction == dyret_common::ActionMessage::t_idle){
           //loop_rate.sleep();
 
-//          moveAllLegsToGlobal(getRestPose(), inverseKinematicsService_client, dynCommands_pub);
+          moveAllLegsToGlobal(getRestPose(), inverseKinematicsService_client, dynCommands_pub);
 
       }else if (currentAction == dyret_common::ActionMessage::t_restPose){
+
           // Check for transition
           if (lastAction == dyret_common::ActionMessage::t_contGait){
 
@@ -250,6 +254,8 @@ int main(int argc, char **argv)
               activatedRecording = false;
 
               setServoSpeeds(poseAdjustSpeed, servoConfig_pub);
+
+              restPoseAdjuster.setPoseAndActuatorLengths(getRestPose(), legActuatorLengths);
               restPoseAdjuster.reset();
           }
 
@@ -321,7 +327,7 @@ int main(int argc, char **argv)
               if (movingForward == false) wagPoint.points[0] = -wagPoint.points[0];
 
               std::vector<vec3P> initPose = lockToZ(add(bSplineGait.getPosition(0.0, movingForward), wagPoint), groundHeight);
-              bSplineInitAdjuster.setGoalPose(initPose);
+              bSplineInitAdjuster.setPoseAndActuatorLengths(initPose, legActuatorLengths);
 
           }
 
@@ -389,7 +395,7 @@ int main(int argc, char **argv)
                 wag.points[1] = -wag.points[1];
             }
 
-            std::vector<vec3P> currentPositions = currentLegPositions(servoAnglesInRad);
+            std::vector<vec3P> currentPositions = currentLegPositions(servoAnglesInRad, legActuatorLengths);
 
             // L0z, L1z, L2z, L3_z, wag_commanded_x, wag_commanded_y, L0_x, L1_x, L2_x, L3_x
 /*            fprintf(wagLog, "%.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f\n",
@@ -448,7 +454,7 @@ int main(int argc, char **argv)
             }
         }
 
-        std::vector<vec3P> actual = currentLegPositions(servoAnglesInRad);
+        std::vector<vec3P> actual = currentLegPositions(servoAnglesInRad, legActuatorLengths);
 
         fprintf(gaitLogGlobal,"%.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f\n",
                 currentRelativeTime,

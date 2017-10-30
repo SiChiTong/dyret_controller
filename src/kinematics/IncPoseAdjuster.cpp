@@ -23,7 +23,7 @@ bool IncPoseAdjuster::Spin(){
           printf("INIT_STEPDOWN\n");
 
           // Startpositions has not been initialized:
-          startPositions = currentLegPositions(*servoAnglesInRad);
+          startPositions = currentLegPositions(*servoAnglesInRad, legActuatorLengths);
 
           groundHeight = fmin(fmin(goalPose[0].points[2], goalPose[1].points[2]),fmin(goalPose[2].points[2], goalPose[3].points[2]));
 
@@ -34,14 +34,17 @@ bool IncPoseAdjuster::Spin(){
           currentProgress = 0.0;
 
       } else {
+
           currentProgress += stepDownSpeed;
 
           if (interpolatingLegMoveOpenLoop(positionArray, startPositions, currentProgress, inverseKinematicsService_client, dynCommands_pub) == true){
+
               startPositions.clear();
               for (int i = 0; i < 4; i++){
                   currentPoseStates[i] = LEAN_GENERATE;
               }
               printf("L* -> Lean Generate\n");
+              sleep(stateTransitionDelay);
           }
       }
 
@@ -73,7 +76,7 @@ bool IncPoseAdjuster::Spin(){
               {
                 std::vector<vec3P> currentPositions(4);
                 double leanAmount = 35.0;
-                vec3P leanVector;
+
                 if (legId == 0) currentLean = { -leanAmount,  leanAmount}; // Lener bak høyre
                 if (legId == 1) currentLean = {  leanAmount,  leanAmount}; // Lener bak venstre
                 if (legId == 2) currentLean = {  leanAmount, -leanAmount}; // Lener foran høyre
@@ -81,6 +84,7 @@ bool IncPoseAdjuster::Spin(){
 
                 currentPoseStates[legId] = LEAN_INTERPOLATE;
                 printf("L%u: -> leanInterpolate\n", legId);
+                sleep(stateTransitionDelay);
 
                 break;
               }
@@ -88,7 +92,7 @@ bool IncPoseAdjuster::Spin(){
               {
                 if (startPositions.size() == 0){
                   // Startpositions has not been initialized:
-                  startPositions = currentLegPositions(*servoAnglesInRad);
+                  startPositions = currentLegPositions(*servoAnglesInRad, legActuatorLengths);
                   currentProgress = 0.0;
                 } else {
                  currentProgress += leanSpeed;
@@ -101,6 +105,7 @@ bool IncPoseAdjuster::Spin(){
                      printf("L%u: -> lift\n", legId);
                      currentProgress = 0.0;
                      startPositions.clear();
+                     sleep(stateTransitionDelay);
                  }
                 }
 
@@ -111,7 +116,7 @@ bool IncPoseAdjuster::Spin(){
                 if (startPositions.size() == 0){
                   // Startpositions has not been initialized:
                     startPositions.resize(1);
-                    startPositions[0] = currentLegPos(legId, *servoAnglesInRad);
+                    startPositions[0] = currentLegPos(legId, *servoAnglesInRad, legActuatorLengths);
 
                     tmpLegPoseVar = startPositions[0];
                     tmpLegPoseVar.points[2] = goalPose[legId].points[2] + stepHeight; // LegLiftHight
@@ -125,6 +130,7 @@ bool IncPoseAdjuster::Spin(){
                     currentPoseStates[legId] = LINE_INTERPOLATE;
                     currentProgress = 0.0;
                     printf("L%u: -> LineInterpolate\n", legId);
+                    sleep(stateTransitionDelay);
 
                 }
 
@@ -139,6 +145,7 @@ bool IncPoseAdjuster::Spin(){
                 if (interpolatingLegMoveOpenLoop(legId, raisedLegPose, tmpLegPoseVar, currentProgress, *servoAnglesInRad, inverseKinematicsService_client, dynCommands_pub) == true){
                     currentPoseStates[legId] = STEPDOWN;
                     printf("L%u: -> stepDown\n", legId);
+                    sleep(stateTransitionDelay);
                 }
 
                 currentProgress += legMoveSpeed;
@@ -151,7 +158,7 @@ bool IncPoseAdjuster::Spin(){
                 if (startPositions.size() == 0){
                     // Startpositions has not been initialized:
                     startPositions.resize(1);
-                    startPositions[0] = currentLegPos(legId, *servoAnglesInRad);
+                    startPositions[0] = currentLegPos(legId, *servoAnglesInRad, legActuatorLengths);
                     currentProgress = 0.0;
                   } else{
                     currentProgress += stepDownSpeed;
@@ -162,6 +169,7 @@ bool IncPoseAdjuster::Spin(){
                     currentPoseStates[legId] = LEAN_BACK;
                     positionArray[legId] = goalPose[legId];
                     printf("L%u: -> LEAN_BACK\n",legId);
+                    sleep(stateTransitionDelay);
                   }
 
                   break;
@@ -170,7 +178,7 @@ bool IncPoseAdjuster::Spin(){
             {
                 if (startPositions.size() == 0){
                     // Startpositions has not been initialized:
-                    startPositions = currentLegPositions(*servoAnglesInRad);
+                    startPositions = currentLegPositions(*servoAnglesInRad, legActuatorLengths);
                     currentProgress = 0.0;
                 } else {
                     currentProgress += leanSpeed;
@@ -181,6 +189,7 @@ bool IncPoseAdjuster::Spin(){
                     currentProgress = 0.0;
                     currentPoseStates[legId] = FINISHED;
                     printf("L%u: -> FINISHED\n", legId);
+                    sleep(stateTransitionDelay);
                 }
 
                 break;

@@ -17,9 +17,9 @@
 #include "forwardKinematics.h"
 #include "dyret_utils/wait_for_ros.h"
 
-bool legIsAtPos(int legId, vec3P givenGoalPosition, std::vector<double> servoAnglesInRad, double resolutionInMM){
+bool legIsAtPos(int legId, vec3P givenGoalPosition, std::vector<double> servoAnglesInRad, double resolutionInMM, std::vector<double> legActuatorLengths){
 
-  vec3P currentLocalLegPosition = forwardKinematics(servoAnglesInRad[3*legId], servoAnglesInRad[(3*legId)+1], servoAnglesInRad[(3*legId)+2], 0.0f);
+  vec3P currentLocalLegPosition = forwardKinematics(servoAnglesInRad[3*legId], servoAnglesInRad[(3*legId)+1], servoAnglesInRad[(3*legId)+2], 0.0f, legActuatorLengths[0], legActuatorLengths[1]);
   vec3P currentGlobalLegPosistion = calculateGlobalPosition(legId, currentLocalLegPosition);
 
   for (int i = 0; i < 3; i++){
@@ -31,21 +31,21 @@ bool legIsAtPos(int legId, vec3P givenGoalPosition, std::vector<double> servoAng
   return true;
 }
 
-bool legIsAtPos(int legId, vec3P givenGoalPosition, std::vector<double> servoAnglesInRad){
-  return legIsAtPos(legId, givenGoalPosition, servoAnglesInRad, 7.5); // 7.5mm default
+bool legIsAtPos(int legId, vec3P givenGoalPosition, std::vector<double> servoAnglesInRad, std::vector<double> legActuatorLengths){
+  return legIsAtPos(legId, givenGoalPosition, servoAnglesInRad, 7.5, legActuatorLengths); // 7.5mm default
 }
 
-bool legIsAtHeight(int legId, double goalHeight, std::vector<double> servoAnglesInRad, double marginInMM){
-  if (fabs(currentLegPos(legId, servoAnglesInRad).points[2] - goalHeight) > 5.0){ // Distance
+bool legIsAtHeight(int legId, double goalHeight, std::vector<double> servoAnglesInRad, double marginInMM, std::vector<double> legActuatorLengths){
+  if (fabs(currentLegPos(legId, servoAnglesInRad,  legActuatorLengths).points[2] - goalHeight) > 5.0){ // Distance
      return false;
   }
   return true;
 }
 
-bool legsAreAtHeight(double goalHeight, std::vector<double> servoAnglesInRad, double marginInMM){
+bool legsAreAtHeight(double goalHeight, std::vector<double> servoAnglesInRad, double marginInMM, std::vector<double> legActuatorLengths){
 
   for (int i = 0; i < 4; i++){
-      if (legIsAtHeight(i, goalHeight, servoAnglesInRad, marginInMM) == false){
+      if (legIsAtHeight(i, goalHeight, servoAnglesInRad, marginInMM, legActuatorLengths) == false){
           return false;
       }
   }
@@ -53,18 +53,18 @@ bool legsAreAtHeight(double goalHeight, std::vector<double> servoAnglesInRad, do
   return true;
 }
 
-vec3P currentLegPos(int legId, std::vector<double> servoAnglesInRad){
-  vec3P localPosition = forwardKinematics(servoAnglesInRad[3*legId], servoAnglesInRad[(3*legId)+1], servoAnglesInRad[(3*legId)+2], 0.0f);
+vec3P currentLegPos(int legId, std::vector<double> servoAnglesInRad, std::vector<double> legActuatorLengths){
+  vec3P localPosition = forwardKinematics(servoAnglesInRad[3*legId], servoAnglesInRad[(3*legId)+1], servoAnglesInRad[(3*legId)+2], 0.0f, legActuatorLengths[0], legActuatorLengths[1]);
   vec3P globalPosition = calculateGlobalPosition(legId, localPosition);
 
   return globalPosition;
 }
 
-std::vector<vec3P> currentLegPositions(std::vector<double> servoAnglesInRad){
+std::vector<vec3P> currentLegPositions(std::vector<double> servoAnglesInRad, std::vector<double> legLengths){
   std::vector<vec3P> vectorToReturn(4);
 
   for (int i = 0; i < 4; i++){
-      vectorToReturn[i] = currentLegPos(i, servoAnglesInRad);
+      vectorToReturn[i] = currentLegPos(i, servoAnglesInRad, legLengths);
   }
 
   return vectorToReturn;
@@ -170,15 +170,16 @@ void moveAllLegsToGlobal(std::vector<vec3P> givenPoints, ros::ServiceClient give
 // Open loop interpolation move of 4 legs
 bool interpolatingLegMoveOpenLoop(std::vector<vec3P> givenGoalPositions, std::vector<vec3P> givenStartPositions, float givenProgress, ros::ServiceClient givenInverseKinematicsServiceClient, ros::Publisher givenDynCommands_pub){
 
+  // Check to see which legs have reached their positions
   bool reachedPositions = true;
   for (int i = 0; i < 4; i++){
       if (givenProgress <= getInterpolatedLength(givenStartPositions[i], givenGoalPositions[i])){
           reachedPositions = false;
-          break;
+          break; // break with reachedPositions = false
       }
   }
 
-  if (reachedPositions == true) return true;
+  if (reachedPositions == true) return true; // All legs have reached their positions
 
   int currentServoId = 0;
   std::vector<int> servoIds(12);
@@ -228,13 +229,13 @@ bool interpolatingLegMoveOpenLoop(std::vector<vec3P> givenGoalPositions, std::ve
 }
 
 // Closed loop interpolation move of four legs
-bool interpolatingLegMoveClosedLoop(std::vector<vec3P> givenGoalPosition, double givenInterpolationIncrement, double givenGoalMargin, std::vector<double> servoAnglesInRad, ros::ServiceClient givenInverseKinematicsServiceClient, ros::Publisher givenDynCommands_pub){
+bool interpolatingLegMoveClosedLoop(std::vector<vec3P> givenGoalPosition, double givenInterpolationIncrement, double givenGoalMargin, std::vector<double> servoAnglesInRad, ros::ServiceClient givenInverseKinematicsServiceClient, ros::Publisher givenDynCommands_pub, std::vector<double> legActuatorLengths){
 
   // Check if we have arrived:
   bool finishedMoving = true;
 
   for (int j = 0; j < 4; j++){
-      if (legIsAtPos(j, givenGoalPosition[j], servoAnglesInRad, givenGoalMargin) == false){ // measureDistance
+      if (legIsAtPos(j, givenGoalPosition[j], servoAnglesInRad, givenGoalMargin, legActuatorLengths) == false){ // measureDistance
           finishedMoving = false;
           break;
       }
@@ -251,7 +252,7 @@ bool interpolatingLegMoveClosedLoop(std::vector<vec3P> givenGoalPosition, double
   for (int j = 0; j < 4; j++){
 	  dyret_common::CalculateInverseKinematics srv;
 
-    vec3P currentLegPosition = currentLegPos(j, servoAnglesInRad);
+    vec3P currentLegPosition = currentLegPos(j, servoAnglesInRad, legActuatorLengths);
 
     vec3P globalLegPosition = incInterpolation(currentLegPosition, givenGoalPosition[j], givenInterpolationIncrement); // moveDistance
 
@@ -292,8 +293,8 @@ bool interpolatingLegMoveClosedLoop(std::vector<vec3P> givenGoalPosition, double
 }
 
 // Closed loop interpolation move of 1 leg
-bool interpolatingLegMoveClosedLoop(int givenLegId, vec3P givenGoalPosition, double givenInterpolationIncrement, double givenGoalMargin, std::vector<double> servoAnglesInRad, ros::ServiceClient givenInverseKinematicsServiceClient, ros::Publisher givenDynCommands_pub){
-  vec3P legPos = currentLegPos(givenLegId, servoAnglesInRad);
+bool interpolatingLegMoveClosedLoop(int givenLegId, vec3P givenGoalPosition, double givenInterpolationIncrement, double givenGoalMargin, std::vector<double> servoAnglesInRad, ros::ServiceClient givenInverseKinematicsServiceClient, ros::Publisher givenDynCommands_pub, std::vector<double> legActuatorLengths){
+  vec3P legPos = currentLegPos(givenLegId, servoAnglesInRad, legActuatorLengths);
 
   vec3P globalLegPosition = incInterpolation(legPos, givenGoalPosition, givenInterpolationIncrement);
 
@@ -390,7 +391,7 @@ bool interpolatingLegMoveOpenLoop(int givenLegId, vec3P givenGoalPosition, vec3P
   return false;
 }
 
-void moveAllLegsToGlobalZ(double givenHeight, std::vector<double> servoAnglesInRad, ros::ServiceClient givenInverseKinematicsServiceClient, ros::Publisher givenDynCommands_pub){
+void moveAllLegsToGlobalZ(double givenHeight, std::vector<double> servoAnglesInRad, ros::ServiceClient givenInverseKinematicsServiceClient, ros::Publisher givenDynCommands_pub, std::vector<double> legActuatorLengths){
   std::vector<vec3P> legPositions(4);
 
   bool nonZero = false;
@@ -401,15 +402,15 @@ void moveAllLegsToGlobalZ(double givenHeight, std::vector<double> servoAnglesInR
   if (nonZero == false) printf("All servo angles are zero!\n");
 
   for (int i = 0; i < 4; i++){
-      legPositions[i] = currentLegPos(i, servoAnglesInRad);
+      legPositions[i] = currentLegPos(i, servoAnglesInRad, legActuatorLengths);
       legPositions[i].points[2] = givenHeight;
   }
 
   moveAllLegsToGlobal(legPositions, givenInverseKinematicsServiceClient, givenDynCommands_pub);
 }
 
-void moveLegToGlobalZ(int givenLegId, double givenHeight, std::vector<double> servoAnglesInRad, ros::ServiceClient givenInverseKinematicsServiceClient, ros::Publisher givenDynCommands_pub){
-  vec3P legPos = currentLegPos(givenLegId, servoAnglesInRad);
+void moveLegToGlobalZ(int givenLegId, double givenHeight, std::vector<double> servoAnglesInRad, ros::ServiceClient givenInverseKinematicsServiceClient, ros::Publisher givenDynCommands_pub, std::vector<double> legActuatorLengths){
+  vec3P legPos = currentLegPos(givenLegId, servoAnglesInRad, legActuatorLengths);
   vec3P newLegPosition = legPos;
   newLegPosition.points[2] = givenHeight;
 

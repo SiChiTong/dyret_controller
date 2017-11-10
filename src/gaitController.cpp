@@ -53,11 +53,13 @@ double globalGaitSpeed;
 double globalWagAmplitude_x;
 double globalWagAmplitude_y;
 double globalWagPhaseOffset;
-const double groundHeightOffset = -450;
+const double groundHeightOffset = -430;
 const double groundCorrectionFactor = 0.8;
-float groundHeight = -450.0;
+float groundHeight = -430.0;
 std::vector<double> legActuatorLengths = {0.0, 0.0};
 //double groundHeight = -562.0; // Tallest
+
+const float spreadAmount  =  100.0; // was 35
 
 std::vector<int> pidParameters;
 
@@ -145,7 +147,6 @@ void pauseGaitRecording(ros::ServiceClient get_gait_evaluation_client){
 }
 
 std::vector<vec3P> getRestPose(){
-    const float spreadAmount  =  35.0;
     const float frontOffset   =  0.0;
 
     const std::vector<vec3P> restPose = {{ -spreadAmount, frontOffset, groundHeight },
@@ -198,7 +199,6 @@ int main(int argc, char **argv)
   globalWagAmplitude_y = 20.0;
   globalWagPhaseOffset = 0.0;
 
-  const float spreadAmount  =  35.0;
   const float frontOffset   =  0.0;
   const float leftOffset    =   0.0;
   const float rearLegOffset = -30.0;

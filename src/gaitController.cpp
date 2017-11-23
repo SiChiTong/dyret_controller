@@ -59,7 +59,7 @@ float groundHeight = -430.0;
 std::vector<double> legActuatorLengths = {0.0, 0.0};
 //double groundHeight = -562.0; // Tallest
 
-const float spreadAmount  =  100.0; // was 35
+const float spreadAmount  =  50.0; // was 35
 
 std::vector<int> pidParameters;
 
@@ -177,11 +177,10 @@ int main(int argc, char **argv)
   ros::Publisher  gaitInferredPos_pub = n.advertise<dyret_common::DistAng>("gaitInferredPos", 1000);
   ros::Publisher  servoConfig_pub = n.advertise<dyret_common::ServoConfigArray>("/dyret/servoConfigs", 1);
 
-  sleep(1);
-  //waitForRosInit(get_gait_evaluation_client, "get_gait_evaluation");
-  //waitForRosInit(inverseKinematicsService_client, "inverseKinematicsService");
-  //waitForRosInit(actionMessages_sub, "actionMessages");
-  //waitForRosInit(servoStates_sub, "servoStates");
+  waitForRosInit(get_gait_evaluation_client, "get_gait_evaluation");
+  waitForRosInit(inverseKinematicsService_client, "inverseKinematicsService");
+  waitForRosInit(actionMessages_sub, "actionMessages");
+  waitForRosInit(servoStates_sub, "servoStates");
 
   // Initialize dynamic reconfiguration:
   dynamic_reconfigure::Server<robo_cont::gaitControllerParamsConfig> gaitControllerParamsConfigServer;
@@ -223,6 +222,18 @@ int main(int argc, char **argv)
   currentAction  = dyret_common::ActionMessage::t_idle;
 
   setServoSpeeds(0.08, servoConfig_pub);
+
+  printf("P: %d, I: %d, D: %d\n", lastGaitControllerParamsConfigMessage.cP, lastGaitControllerParamsConfigMessage.cI, lastGaitControllerParamsConfigMessage.cD);
+  pidParameters[0] = lastGaitControllerParamsConfigMessage.cP;
+  pidParameters[1] = lastGaitControllerParamsConfigMessage.cI;
+  pidParameters[2] = lastGaitControllerParamsConfigMessage.cD;
+  pidParameters[3] = lastGaitControllerParamsConfigMessage.fP;
+  pidParameters[4] = lastGaitControllerParamsConfigMessage.fI;
+  pidParameters[5] = lastGaitControllerParamsConfigMessage.fD;
+  pidParameters[6] = lastGaitControllerParamsConfigMessage.tP;
+  pidParameters[7] = lastGaitControllerParamsConfigMessage.tI;
+  pidParameters[8] = lastGaitControllerParamsConfigMessage.tD;
+  setServoPIDs(pidParameters, servoConfig_pub);
 
   moveAllLegsToGlobal(getRestPose(), inverseKinematicsService_client, dynCommands_pub);
     ROS_ERROR("Moved all legs to global restpose");

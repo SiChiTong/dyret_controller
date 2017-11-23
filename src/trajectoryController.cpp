@@ -179,6 +179,8 @@ int main(int argc, char **argv)
             currentState = SETUP_WALK;
         }
 
+        //printf("Goal: %.2f, currentPos: %.2f, currentTime: %.2f, timeout: %.2f\n", distanceGoal[currentSegment], accPos, currentRelativeTime, timeoutInSec[currentSegment] );
+
         break;
       }
       default:

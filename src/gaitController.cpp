@@ -224,7 +224,8 @@ int main(int argc, char **argv)
   setServoSpeeds(0.08, servoConfig_pub);
 
   printf("P: %d, I: %d, D: %d\n", lastGaitControllerParamsConfigMessage.cP, lastGaitControllerParamsConfigMessage.cI, lastGaitControllerParamsConfigMessage.cD);
-  pidParameters[0] = lastGaitControllerParamsConfigMessage.cP;
+  //pidParameters[0] = lastGaitControllerParamsConfigMessage.cP;
+  pidParameters[0] = 10;
   pidParameters[1] = lastGaitControllerParamsConfigMessage.cI;
   pidParameters[2] = lastGaitControllerParamsConfigMessage.cD;
   pidParameters[3] = lastGaitControllerParamsConfigMessage.fP;

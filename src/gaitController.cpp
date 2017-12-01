@@ -207,12 +207,13 @@ int main(int argc, char **argv)
 
   IncPoseAdjuster bSplineInitAdjuster(false, add(bSplineGait.getPosition(0.0, true), bSplineGait.getGaitWagPoint(0.0)), &servoAnglesInRad, inverseKinematicsService_client, dynCommands_pub);
 
-  FILE * gaitLogGlobal;
+  /*FILE * gaitLogGlobal;
   gaitLogGlobal = fopen("gaitLogGlobal.csv", "w");
 
   FILE * wagLog;
   wagLog = fopen("wagLog.csv", "w");
-//  fprintf(wagLog,"L0z, L1z, L2z, L3_z, wag_commanded_x, wag_commanded_y, L0_x, L1_x, L2_x, L3_x\n");
+  fprintf(wagLog,"L0z, L1z, L2z, L3_z, wag_commanded_x, wag_commanded_y, L0_x, L1_x, L2_x, L3_x\n");
+*/
 
   IncPoseAdjuster restPoseAdjuster(false, getRestPose(), &servoAnglesInRad, inverseKinematicsService_client, dynCommands_pub);
 
@@ -468,6 +469,7 @@ int main(int argc, char **argv)
 
         std::vector<vec3P> actual = currentLegPositions(servoAnglesInRad, legActuatorLengths);
 
+        /*
         fprintf(gaitLogGlobal,"%.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f\n",
                 currentRelativeTime,
                 globalLegPositions[0].x(), globalLegPositions[0].y(), globalLegPositions[0].z(),
@@ -479,6 +481,7 @@ int main(int argc, char **argv)
                 globalLegPositions[3].x(), globalLegPositions[3].y(), globalLegPositions[3].z(),
                 actual[3].x(), actual[3].y(), actual[3].z()
                );
+        */
 
         if (servoIds.size() != 0){
             msg.id = servoIds;
@@ -497,8 +500,10 @@ int main(int argc, char **argv)
 
   }
 
+  /*
   fclose(wagLog);
   fclose(gaitLogGlobal);
+  */
 
   ROS_INFO("Exiting gaitController");
 

@@ -45,7 +45,7 @@ double round(double originalNumber, int decimals) {
 bool calculateInverseKinematics(dyret_common::CalculateInverseKinematics::Request  &req,
 		 dyret_common::CalculateInverseKinematics::Response &res)
 {
-  ROS_INFO("request: x=%.2f, y=%.2f, z=%.2f", req.point.x, req.point.y, req.point.z);
+  //ROS_INFO("request: x=%.2f, y=%.2f, z=%.2f", req.point.x, req.point.y, req.point.z);
 
   std::vector<dyret_common::InverseKinematicsSolution> solutions(4);
   
@@ -131,8 +131,7 @@ int main(int argc, char **argv)
   ros::ServiceServer service = n.advertiseService("calculate_inverse_kinematics", calculateInverseKinematics);
   ros::Subscriber gaitInferredPos_sub = n.subscribe("actuatorStates", 1000, actuatorState_Callback);
 
-
-  ROS_INFO("Ready to add calculate inverse kinematics.");
+  ROS_INFO("Ready to calculate inverse kinematics.");
   ros::spin();
 
   return 0;

@@ -387,7 +387,7 @@ int main(int argc, char **argv)
                 }
 
                 dyret_common::DistAng posChangeMsg;
-                posChangeMsg.distance = -(distanceCovered/pointCounter);
+                if (pointCounter > 0) posChangeMsg.distance = float(-(distanceCovered/pointCounter)); else posChangeMsg.distance = 0.0f;
                 posChangeMsg.msgType = posChangeMsg.t_measurementInferred;
                 posChangeMsg.angle    = 0.0f;
                 gaitInferredPos_pub.publish(posChangeMsg);

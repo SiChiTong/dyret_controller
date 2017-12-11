@@ -251,7 +251,9 @@ int main(int argc, char **argv)
   std::vector<vec3P> lastGlobalLegPositions;
 
   while ( ros::ok() ) {
-      if (currentAction == dyret_common::ActionMessage::t_idle){
+      if (currentAction == dyret_common::ActionMessage::t_sleep){
+
+      } else if (currentAction == dyret_common::ActionMessage::t_idle){
           //loop_rate.sleep();
 
           moveAllLegsToGlobal(getRestPose(), inverseKinematicsService_client, dynCommands_pub);

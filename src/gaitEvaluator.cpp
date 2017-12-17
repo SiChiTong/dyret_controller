@@ -26,7 +26,7 @@ std::vector<std::vector<float>> currentData;
 
 FILE * imuLog;
 FILE * mocapLog;
-bool loggingEnabled = false;
+bool loggingEnabled = true;
 
 long long int startTime;
 long long int accTime;
@@ -61,11 +61,22 @@ bool getGaitEvaluationService(dyret_common::GetGaitEvaluation::Request  &req,
 
         if (loggingEnabled == true){
             char fileNameBufferImu[100];
-            sprintf(fileNameBufferImu,"imuLogs/imu_%04u%02u%02u%02u%02u%02u.csv", now->tm_year+1900, now->tm_mon+1, now->tm_mday, now->tm_hour, now->tm_min, now->tm_sec);
+            sprintf(fileNameBufferImu,"/home/tonnesfn/catkin_ws/customLogs/imuLogs/imu_%04u%02u%02u%02u%02u%02u.csv", now->tm_year+1900, now->tm_mon+1, now->tm_mday, now->tm_hour, now->tm_min, now->tm_sec);
             imuLog = fopen(fileNameBufferImu, "w");
+            fprintf(imuLog, "time (ms), msg->angular_velocity.x, msg->angular_velocity.y, msg->angular_velocity.z,"
+                            "msg->linear_acceleration.x, msg->linear_acceleration.y, msg->linear_acceleration.z,"
+                            "roll, pitch, yaw\n");
             char fileNameBufferMocap[100];
-            sprintf(fileNameBufferMocap,"mocapLogs/mocap_%04u%02u%02u%02u%02u%02u.csv", now->tm_year+1900, now->tm_mon+1, now->tm_mday, now->tm_hour, now->tm_min, now->tm_sec);
+            sprintf(fileNameBufferMocap,"/home/tonnesfn/catkin_ws/customLogs/mocapLogs/mocap_%04u%02u%02u%02u%02u%02u.csv", now->tm_year+1900, now->tm_mon+1, now->tm_mday, now->tm_hour, now->tm_min, now->tm_sec);
             mocapLog = fopen(fileNameBufferMocap, "w");
+            fprintf(mocapLog, "time (ms), "
+                              "msg->pose.position.x, "
+                              "msg->pose.position.y, "
+                              "msg->pose.position.z, "
+                              "msg->pose.orientation.w, "
+                              "msg->pose.orientation.x, "
+                              "msg->pose.orientation.y, "
+                              "msg->pose.orientation.z\n");
         }
 
         for (int i = 0; i < startPosition.size(); i++) startPosition[i] = currentPosition[i];
@@ -118,7 +129,7 @@ bool getGaitEvaluationService(dyret_common::GetGaitEvaluation::Request  &req,
         ROS_WARN("Sideways!\n");
       } else {
 
-        results.resize(6); // 0: speed, 1: sum(SD['angVel'], 2: sum(SD['linAcc']), 3: sum(SD*('orientation'), 4: current, 5: mocapDistance
+        results.resize(7); // 0: speed, 1: sum(SD['angVel'], 2: sum(SD['linAcc']), 3: sum(SD*('orientation'), 4: current, 5: mocapDistance, 3+2/50
 
         // Calculate IMU fitness values:
         std::vector<float> sums(imuData.size());
@@ -178,9 +189,10 @@ bool getGaitEvaluationService(dyret_common::GetGaitEvaluation::Request  &req,
         results[0] = calculatedInferredSpeed;            // Inferred speed in in m/min
         results[1] = - (SDs[0] + SDs[1] + SDs[2]);       // angVel
         results[2] = - (SDs[3] + SDs[4] + SDs[5]);       // linAcc
-        results[3] = - (SDs_z[6] + SDs_z[7]);            // Combined stability (roll + pitch)
+        results[3] = - (SDs_z[6] + SDs_z[7]);            // Combined angle stability (roll + pitch)
         results[4] = powerFitness;                       // Efficiency
         results[5] = mocapSpeed;                         // Inferred speed in m/min
+        results[6] = results[3] + (results[2] / 50.0);   // Combined IMU stability
       }
 
       break;
@@ -202,7 +214,14 @@ void mocapDataCallback(const geometry_msgs::PoseStamped::ConstPtr& msg){
 
       if (loggingEnabled == true){
           fprintf(mocapLog, "%lld, ", getMs() - startTime);
-          fprintf(mocapLog, "%f, %f, %f\n", msg->pose.position.x, msg->pose.position.y, msg->pose.position.z);
+          fprintf(mocapLog, "%f, %f, %f, %f, %f, %f, %f\n",
+                  msg->pose.position.x,
+                  msg->pose.position.y,
+                  msg->pose.position.z,
+                  msg->pose.orientation.w,
+                  msg->pose.orientation.x,
+                  msg->pose.orientation.y,
+                  msg->pose.orientation.z);
       }
   }
 }

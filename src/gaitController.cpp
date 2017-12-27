@@ -59,7 +59,7 @@ float groundHeight = -430.0;
 std::vector<double> legActuatorLengths = {0.0, 0.0};
 //double groundHeight = -562.0; // Tallest
 
-const float spreadAmount  =  50.0; // was 35
+const float spreadAmount  =  80.0; // was 50
 
 std::vector<int> pidParameters;
 

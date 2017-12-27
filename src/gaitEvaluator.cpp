@@ -136,14 +136,14 @@ bool getGaitEvaluationService(dyret_common::GetGaitEvaluation::Request  &req,
         std::vector<float> means(imuData.size());
         std::vector<float> sq_sums(imuData.size());
         std::vector<float> SDs(imuData.size());
-        std::vector<float> SDs_z(imuData.size());
+        //std::vector<float> SDs_z(imuData.size());
 
         for (int i = 0; i < imuData.size(); i++){
           sums[i] = std::accumulate(imuData[i].begin(), imuData[i].end(), 0.0);
           means[i] = sums[i] / imuData[i].size();
           sq_sums[i] = std::inner_product(imuData[i].begin(), imuData[i].end(), imuData[i].begin(), 0.0);
           SDs[i] = std::sqrt(sq_sums[i] / imuData[i].size() - means[i] * means[i]);
-          SDs_z[i] = std::sqrt(sq_sums[i] / imuData[i].size());
+          //SDs_z[i] = std::sqrt(sq_sums[i] / imuData[i].size());
         }
 
         // Calculate servo fitness value:
@@ -164,18 +164,6 @@ bool getGaitEvaluationService(dyret_common::GetGaitEvaluation::Request  &req,
         // Calculate speed fitness value:
         float calculatedInferredSpeed = (fabs(accPos) / 1000.0) / (((double) accTime / 1000.0) / 60); // speed in m/min
 
-        float margin = 0.20; // 20% error allowed
-
-/* Disabled check:
-        if (receivedCalculated > 0) {
-            float comparison = fabs((calculatedInferredSpeed / receivedCalculated)-1.0);
-            if (comparison > margin){
-                printf("N: %.1f / %.1f\n", calculatedInferredSpeed, receivedCalculated);
-                results.clear();
-                break;
-            }
-        }
-*/
         float mocapDist = sqrt(pow(startPosition[0] - lastSavedPosition[0],2) + pow(startPosition[1] - lastSavedPosition[1],2) + pow(startPosition[2] - lastSavedPosition[2],2));
         float mocapSpeed = mocapDist / (((double) accTime / 1000.0) / 60);
 
@@ -189,7 +177,7 @@ bool getGaitEvaluationService(dyret_common::GetGaitEvaluation::Request  &req,
         results[0] = calculatedInferredSpeed;            // Inferred speed in in m/min
         results[1] = - (SDs[0] + SDs[1] + SDs[2]);       // angVel
         results[2] = - (SDs[3] + SDs[4] + SDs[5]);       // linAcc
-        results[3] = - (SDs_z[6] + SDs_z[7]);            // Combined angle stability (roll + pitch)
+        results[3] = - (SDs[6] + SDs[7] + SDs[8]);       // Combined angle stability (roll + pitch)
         results[4] = powerFitness;                       // Efficiency
         results[5] = mocapSpeed;                         // Inferred speed in m/min
         results[6] = results[3] + (results[2] / 50.0);   // Combined IMU stability

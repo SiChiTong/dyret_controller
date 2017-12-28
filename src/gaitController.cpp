@@ -429,8 +429,7 @@ int main(int argc, char **argv)
             for (int i = 0; i < 4; i++){ // For each leg
             	dyret_common::CalculateInverseKinematics srv;
 
-                //vec3P localLegPosition = calculateLocalPosition(i, add(globalLegPositions[i], wag));
-                vec3P localLegPosition = calculateLocalPosition(i, globalLegPositions[i]);
+                vec3P localLegPosition = calculateLocalPosition(i, add(globalLegPositions[i], wag));
 
                 srv.request.point.x = localLegPosition.x();
                 srv.request.point.y = localLegPosition.y();

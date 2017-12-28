@@ -22,7 +22,8 @@ void BSplineGait::bSplineInit(std::vector<vec3P> givenPoints, float givenStepLen
 
   bSpline = new LoopingCubicHermiteSpline<Vector3>(gaitPoints, 0.5);
 
-  splineLength = bSpline->totalLength();
+  totalLength = bSpline->totalLength();
+  groundPercent = stepLength / bSpline->totalLength();
 
   // Set offsets:
   legPhaseOffset[0][0] = 0.00; // forwards
@@ -35,15 +36,23 @@ void BSplineGait::bSplineInit(std::vector<vec3P> givenPoints, float givenStepLen
   legPhaseOffset[3][1] = 0.50;
 
   // Write spline to file:
-  int numberOfPointsToGenerate = 1000;
+  float numberOfPointsToGenerate = 1000.0;
 
   FILE * fp;
   fp = fopen("/home/tonnesfn/catkin_ws/bSplineGaitOutput.csv", "w");
 
-  for (float i = 0; i < bSpline->totalLength(); i = i + (bSpline->totalLength() / numberOfPointsToGenerate)) {
-    Vector3 currentPoint = bSpline->getPosition(ArcLength::solveLengthCyclic(*bSpline, 0.0f, (float) i));
+  for (float i = 0; i < 1.0f; i = i + (1.0f / numberOfPointsToGenerate)) {
+    float scaled;
+
+    // Test ground scaling:
+    if (i < groundPercentGoal){
+      scaled = (i / groundPercentGoal) * stepLength;
+    } else {
+      scaled = stepLength + (totalLength - stepLength) * ((i - groundPercentGoal) * (1.0f / (1.0f - groundPercentGoal)));
+    }
+
+    Vector3 currentPoint = bSpline->getPosition(ArcLength::solveLengthCyclic(*bSpline, 0.0f, scaled));
     if (currentPoint[2] < groundHeight) currentPoint[2] = groundHeight; // Stop dips and loops below groundHeight
-    fprintf(fp, "%.2f, %.2f, %.2f\n", i, currentPoint[1], currentPoint[2]);
   }
 
   fclose(fp);
@@ -51,19 +60,16 @@ void BSplineGait::bSplineInit(std::vector<vec3P> givenPoints, float givenStepLen
 }
 
 std::vector<vec3P> BSplineGait::createBSplineGaitPoints(double stepHeight, double stepLength, double smoothing, double groundHeight){
+
+    // The two ground points has to be first for ground scaling to work properly
     std::vector<vec3P> result =
     {
+      { 0.0f, (float)               (stepLength/2.0f), (float)                       groundHeight }, // Front ground
+      { 0.0f, (float)              -(stepLength/2.0f), (float)                       groundHeight }, // Back ground
       { 0.0f, (float)            -((stepLength/2.0f)), (float) (groundHeight + (stepHeight/1.5f)) }, // Back smoothing
       { 0.0f,                                    0.0f, (float)        (groundHeight + stepHeight) }, // Top
       { 0.0f, (float) ((stepLength/2.0f) + smoothing), (float) (groundHeight + (stepHeight/4.0f)) }, // Front smoothing
-      { 0.0f, (float)               (stepLength/2.0f), (float)                        groundHeight}, // Front
-      { 0.0f, (float)              -(stepLength/2.0f), (float)                        groundHeight} // Back
     };
-
-    // from front to back
-    /*const int N = 22;
-    for (int i = 0; i < N; ++i)
-      result.emplace_back(0.0f, (stepLength/2.0) - 2.0f * (stepLength/2.0)*(i / (N-1.0f)), groundHeight);*/
 
     return result;
 }
@@ -97,18 +103,21 @@ std::vector<vec3P> BSplineGait::getPosition(double givenTime, bool walkingForwar
 
 		double relativeTime = fmod(currentTime, 1.0);
 
-		double scaledTime = relativeTime * splineLength;
+        float scaledTime = (relativeTime / groundPercentGoal) * stepLength;
+        if (relativeTime >= groundPercentGoal){
+          scaledTime = stepLength + (totalLength - stepLength) * ((relativeTime - groundPercentGoal) * (1.0f / (1.0f - groundPercentGoal)));
+        }
 
         Vector3 vecRet = bSpline->getPosition(ArcLength::solveLengthCyclic(*bSpline, 0.0f, (float) scaledTime));
 
-		// OffsetFront should always point forwards
+        // OffsetFront should always point forwards
 		if (walkingForwards) vecRet[1] = vecRet[1] + offsetFront; else vecRet[1] = vecRet[1] - offsetFront;
 
 		// Spread amount is always to the outside of the robot
 		if (i == 0 || i == 3){
-      vecRet[0] = vecRet[0] - spreadAmount;
+          vecRet[0] = vecRet[0] - spreadAmount;
 		} else {
-      vecRet[0] = vecRet[0] + spreadAmount;
+          vecRet[0] = vecRet[0] + spreadAmount;
 		}
 
 		// Cap spline to groundHeight

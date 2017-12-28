@@ -11,7 +11,9 @@ class BSplineGait : public Gait {
   private:
     LoopingCubicHermiteSpline<Vector3>* bSpline;
 
-    float splineLength;
+    float groundPercent;
+
+    static constexpr float groundPercentGoal = 0.8f; // 80% of the time spent on the ground (minimum 3/4 = 75&)
 
     std::vector<vec3P> createBSplineGaitPoints(double stepHeight, double stepLength, double smoothing, double groundHeight);
 

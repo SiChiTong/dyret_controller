@@ -79,10 +79,10 @@ void BSplineGait::bSplineInit(std::vector<vec3P> givenPoints, float givenStepLen
   legPhaseOffset[3][1] = 0.50;
 
   // Write spline to file:
-/*  int numberOfPointsToGenerate = 1000;
+  int numberOfPointsToGenerate = 1000;
 
   FILE * fp;
-  fp = fopen("bSplineGaitOutput.csv", "w");
+  fp = fopen("/home/tonnesfn/catkin_ws/bSplineGaitOutput.csv", "w");
 
   for (float i = 0; i < bSpline->getMaxT(); i = i + (bSpline->getMaxT() / numberOfPointsToGenerate)) {
     Vector3 currentPoint = bSpline->getPosition(i);
@@ -91,7 +91,7 @@ void BSplineGait::bSplineInit(std::vector<vec3P> givenPoints, float givenStepLen
   }
 
   fclose(fp);
-*/
+
 }
 
 std::vector<vec3P> BSplineGait::createBSplineGaitPoints(double stepHeight, double stepLength, double smoothing, double groundHeight){

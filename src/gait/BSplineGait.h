@@ -5,9 +5,7 @@
 #include "../kinematics/kinematicTypes.h"
 #include "gait.h"
 #include "../external/splineLibrary/spline.h"
-#include "../external/splineLibrary/basis/looping_uniform_cubic_bspline.h"
-#include "../external/splineLibrary/hermite/cubic/looping_uniform_cr_spline.h"
-#include "../external/splineLibrary/hermite/cubic/looping_cubic_hermite_spline.h"
+#include "../external/splineLibrary/splines/cubic_hermite_spline.h"
 
 class BSplineGait : public Gait {
 

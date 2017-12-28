@@ -19,15 +19,13 @@ void BSplineGait::bSplineInit(std::vector<vec3P> givenPoints, float givenStepLen
     gaitPoints[i] = Vector3({(float) givenPoints[i].x(), (float) givenPoints[i].y(), (float) givenPoints[i].z()});
   }
 
-  //bSpline = new LoopingUniformCubicBSpline<Vector3>(gaitPoints);
-  //bSpline = new LoopingUniformCRSpline<Vector3>(gaitPoints);
   bSpline = new LoopingCubicHermiteSpline<Vector3>(gaitPoints, 0.5);
 
   // Set max T and groundContactLine
   maxT = bSpline->getMaxT();
   groundContactLine.resize(2);
-  groundContactLine[0] = bSpline->getT(3);
-  groundContactLine[1] = bSpline->getT(gaitPoints.size()-1);
+  groundContactLine[0] = bSpline->segmentT(3);
+  groundContactLine[1] = bSpline->segmentT(gaitPoints.size()-1);
 
   // TODO: Clean up this code:
   float groundLength = bSpline->arcLength(groundContactLine[0], groundContactLine[1]);

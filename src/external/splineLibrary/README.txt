@@ -1,1 +1,0 @@
-22/04-16: Downloaded from https://github.com/ejmahler/SplineLibrary

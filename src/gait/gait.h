@@ -60,25 +60,26 @@ public:
 	void enableWag(float givenWagPhase, float givenWagAmplitude_x, float givenWagAmplitude_y);
 
 	void init(std::vector<vec3P> givenPoints){
+
 	  gaitPointVector = givenPoints;
-    numberOfPoints = givenPoints.size();
+      numberOfPoints = givenPoints.size();
 
-    // Add all segments:
-    gaitSegments.resize(gaitPointVector.size());
+      // Add all segments:
+      gaitSegments.resize(gaitPointVector.size());
 
-    for (int i = 0; i < numberOfPoints; i++) {
+	  for (int i = 0; i < numberOfPoints; i++) {
 
-      if (gaitPointVector[i].points[2] < groundHeight) groundHeight = gaitPointVector[i].points[2];
+	    if (gaitPointVector[i].points[2] < groundHeight) groundHeight = gaitPointVector[i].points[2];
 
-      gaitSegments[i].start = gaitPointVector[i];
-      if (i == (numberOfPoints-1)) {
-        gaitSegments[i].end = gaitPointVector[0];
-      } else {
-        gaitSegments[i].end = gaitPointVector[i + 1];
-      }
-    }
+	    gaitSegments[i].start = gaitPointVector[i];
+	    if (i == (numberOfPoints-1)) {
+	  	  gaitSegments[i].end = gaitPointVector[0];
+	    } else {
+		  gaitSegments[i].end = gaitPointVector[i + 1];
+	    }
+	  }
 
-    markGroundSegments();
+	  markGroundSegments();
 	}
 
 	void setSpread(float givenSpreadAmount){

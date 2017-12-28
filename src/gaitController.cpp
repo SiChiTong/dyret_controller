@@ -317,12 +317,11 @@ int main(int argc, char **argv)
               } else if (std::isnan(globalGaitFrequency) == true){
                   // Frequency has not been set => Calculate frequency from speed
 
-                  globalGaitFrequency = globalGaitSpeed / ( (bSplineGait.getStepLength() / bSplineGait.getGndContactPercent() ) * (60.0 / 1000.0));
-
-                  ROS_INFO("globalGaitFrequency set to %.2f\n", globalGaitFrequency);
+                  ROS_FATAL("std::isnan(globalGaitFrequency) == true\n");
+                  exit(-1);
               }
 
-              float calculatedSpeed = (bSplineGait.getStepLength() / bSplineGait.getGndContactPercent()) * globalGaitFrequency * (60.0/1000.0);
+              float calculatedSpeed = bSplineGait.getStepLength() * globalGaitFrequency * (60.0/1000.0);
 
               ROS_INFO("Calculated speed: %.2f\n", calculatedSpeed);
 

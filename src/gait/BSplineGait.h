@@ -8,28 +8,17 @@
 #include "../external/splineLibrary/splines/cubic_hermite_spline.h"
 
 class BSplineGait : public Gait {
+  private:
+    LoopingCubicHermiteSpline<Vector3>* bSpline;
 
-private:
-	//LoopingUniformCubicBSpline<Vector3>* bSpline;
-  //LoopingUniformCRSpline<Vector3>* bSpline;
-  LoopingCubicHermiteSpline<Vector3>* bSpline;
+    float splineLength;
 
-	float maxT;
+    std::vector<vec3P> createBSplineGaitPoints(double stepHeight, double stepLength, double smoothing, double groundHeight);
 
-	float gndStart, gndEnd, gndFactor, maxTime, gndContactPercent;
+    void bSplineInit(std::vector<vec3P> givenPoints, float stepLength);
 
-	std::vector<float> groundContactLine; // Contains T values of ground contact line
-	std::vector<float> lengths;		        // Used in getPosition to go from time to T value
-
-	std::vector<vec3P> createBSplineGaitPoints(double stepHeight, double stepLength, double smoothing, double groundHeight);
-
-	double applyGndTimeScaling(double givenTime);
-	void bSplineInit(std::vector<vec3P> givenPoints, float stepLength);
-
-public:
-	BSplineGait(double stepHeight, double stepLength, double smoothing, double groundHeight, double givenSpread, double givenOffsetFront, double givenOffsetLeft, double rearLegOffset);
-
-	vec3P getGaitWagPoint(double givenTime);
-	std::vector<vec3P> getPosition(double givenTime, bool walkingForwards);
-	float getGndContactPercent(){ return gndContactPercent; };
+  public:
+    BSplineGait(double stepHeight, double stepLength, double smoothing, double groundHeight, double givenSpread, double givenOffsetFront, double givenOffsetLeft, double rearLegOffset);
+    vec3P getGaitWagPoint(double givenTime);
+    std::vector<vec3P> getPosition(double givenTime, bool walkingForwards);
 };

@@ -13,14 +13,29 @@ class BSplineGait : public Gait {
 
     float groundPercent;
 
-    static constexpr float groundPercentGoal = 0.8f; // 80% of the time spent on the ground (minimum 3/4 = 75&)
+    float groundPercentGoal = 0.90f; //Time spent on the ground (minimum 3/4 = 75%)
 
-    std::vector<vec3P> createBSplineGaitPoints(double stepHeight, double stepLength, double smoothing, double groundHeight);
+    std::vector<vec3P> createBSplineGaitPoints(double stepHeight,
+                                               double stepLength,
+                                               double smoothing,
+                                               double groundHeight);
 
-    void bSplineInit(std::vector<vec3P> givenPoints, float stepLength);
+    void bSplineInit(std::vector<vec3P> givenPoints,
+                     float stepLength,
+                     float givenLiftDuration);
 
   public:
-    BSplineGait(double stepHeight, double stepLength, double smoothing, double groundHeight, double givenSpread, double givenOffsetFront, double givenOffsetLeft, double rearLegOffset);
+    BSplineGait(double stepHeight,
+                double stepLength,
+                double smoothing,
+                double groundHeight,
+                double givenSpread,
+                double givenOffsetFront,
+                double givenOffsetLeft,
+                double rearLegOffset,
+                double givenLiftDuration);
+
     vec3P getGaitWagPoint(double givenTime);
-    std::vector<vec3P> getPosition(double givenTime, bool walkingForwards);
+    std::vector<vec3P> getPosition(double givenTime,
+                                   bool walkingForwards);
 };

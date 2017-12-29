@@ -53,6 +53,7 @@ double globalGaitSpeed;
 double globalWagAmplitude_x;
 double globalWagAmplitude_y;
 double globalWagPhaseOffset;
+double globalLiftDuration;
 const double groundHeightOffset = -430;
 const double groundCorrectionFactor = 0.8;
 float groundHeight = -430.0;
@@ -107,14 +108,24 @@ void servoStatesCallback(const dyret_common::ServoStateArray::ConstPtr& msg){
 }
 
 void gaitControllerParamConfigCallback(robo_cont::gaitControllerParamsConfig &config, uint32_t level) {
-  ROS_INFO("Reconfigure Request: \n\tstepHeight: %.2f\n\tstepLength: %.2f\n\tsmoothing: %.2f\n\tspeed: %.2f\n\twagAmplitude_x: %.2f\n\twagAmplitude_y: %.2f\n\twagPhaseOffset: %.2f",
+  ROS_INFO("Reconfigure Request: \n\t"
+               "stepHeight: %.2f\n\t"
+               "stepLength: %.2f\n\t"
+               "smoothing: %.2f\n\t"
+               "speed: %.2f\n\t"
+               "wagAmplitude_x: %.2f\n\t"
+               "wagAmplitude_y: %.2f\n\t"
+               "wagPhaseOffset: %.2f\n\t"
+               "liftDuration: %.2f",
             config.stepHeight,
             config.stepLength,
             config.smoothing,
             config.gaitFrequency,
             config.wagAmplitude_x,
             config.wagAmplitude_y,
-            config.wagPhase);
+            config.wagPhase,
+            config.liftDuration);
+
   ROS_INFO("\n\tC: P%u I%u D%u\n\tF: P%u I%u D%u\n\tT: P%u I%u D%u\n\n",
             config.cP, config.cI, config.cD, config.fP, config.fI, config.fD, config.tP, config.tI, config.tD);
 
@@ -189,7 +200,6 @@ int main(int argc, char **argv)
   gaitControllerParamsConfigServer.setCallback(gaitControllerParamsConfigFunction);
 
   // Initialize bSplineGait
-
   globalStepLength     = 150.0;
   globalStepHeight     = 35.0;
   globalSmoothing      = 25.0;
@@ -197,12 +207,21 @@ int main(int argc, char **argv)
   globalWagAmplitude_x = 40.0;
   globalWagAmplitude_y = 20.0;
   globalWagPhaseOffset = 0.0;
+  globalLiftDuration   = 0.125;
 
   const float frontOffset   =  0.0;
   const float leftOffset    =   0.0;
   const float rearLegOffset = -30.0;
 
-  BSplineGait bSplineGait = BSplineGait(globalStepHeight, globalStepLength, globalSmoothing, groundHeight, spreadAmount, frontOffset, leftOffset, rearLegOffset);
+  BSplineGait bSplineGait = BSplineGait(globalStepHeight,
+                                        globalStepLength,
+                                        globalSmoothing,
+                                        groundHeight,
+                                        spreadAmount,
+                                        frontOffset,
+                                        leftOffset,
+                                        rearLegOffset,
+                                        globalLiftDuration);
   bSplineGait.enableWag(0.83f, 40.0f, 0.0f);
 
   IncPoseAdjuster bSplineInitAdjuster(false, add(bSplineGait.getPosition(0.0, true), bSplineGait.getGaitWagPoint(0.0)), &servoAnglesInRad, inverseKinematicsService_client, dynCommands_pub);
@@ -225,8 +244,7 @@ int main(int argc, char **argv)
   setServoSpeeds(0.08, servoConfig_pub);
 
   printf("P: %d, I: %d, D: %d\n", lastGaitControllerParamsConfigMessage.cP, lastGaitControllerParamsConfigMessage.cI, lastGaitControllerParamsConfigMessage.cD);
-  //pidParameters[0] = lastGaitControllerParamsConfigMessage.cP;
-  pidParameters[0] = 10;
+  pidParameters[0] = 10; // Set to 10 to stop coxa shaking before experiment begins
   pidParameters[1] = lastGaitControllerParamsConfigMessage.cI;
   pidParameters[2] = lastGaitControllerParamsConfigMessage.cD;
   pidParameters[3] = lastGaitControllerParamsConfigMessage.fP;
@@ -308,8 +326,18 @@ int main(int argc, char **argv)
               globalWagAmplitude_x = lastGaitControllerParamsConfigMessage.wagAmplitude_x;
               globalWagAmplitude_y = lastGaitControllerParamsConfigMessage.wagAmplitude_y;
               globalWagPhaseOffset = lastGaitControllerParamsConfigMessage.wagPhase;
+              globalLiftDuration   = lastGaitControllerParamsConfigMessage.liftDuration;
 
-              bSplineGait = BSplineGait(globalStepHeight, globalStepLength, globalSmoothing, groundHeight, spreadAmount, frontOffset, leftOffset, rearLegOffset);
+              bSplineGait = BSplineGait(globalStepHeight,
+                                        globalStepLength,
+                                        globalSmoothing,
+                                        groundHeight,
+                                        spreadAmount,
+                                        frontOffset,
+                                        leftOffset,
+                                        rearLegOffset,
+                                        globalLiftDuration);
+
               bSplineGait.enableWag(0.83f+globalWagPhaseOffset, globalWagAmplitude_x, globalWagAmplitude_y);
 
               if ((std::isnan(globalGaitSpeed) == true) && (std::isnan(globalGaitFrequency) == true)){

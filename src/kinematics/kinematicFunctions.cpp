@@ -76,8 +76,10 @@ std::vector<vec3P> add(std::vector<vec3P> firstOperand, vec3P secondOperand) {
 vec3P getWagPoint(double amplitude_x, double amplitude_y, double period, double time, double offset) {
 	// Time given in seconds
 
+	const double phaseOffset = 0.43f; // Offset to correct for front/back to side movement
+
 	double calculatedPoint_x = amplitude_x/2 * tanh(3*sin( (2*M_PI*(time+(offset*period))) / period));
-	double calculatedPoint_y = amplitude_y/2 * tanh(3*sin( (2*M_PI*(time+((offset-0.75)*(period/2)))) / (period/2)));
+	double calculatedPoint_y = amplitude_y/2 * tanh(3*sin( (2*M_PI*(time+((offset+phaseOffset)*(period/2)))) / (period/2)));
 
 	vec3P pointToReturn = vec3P(calculatedPoint_x, calculatedPoint_y, 0.0f);
 	pointToReturn.groundPoint = false;

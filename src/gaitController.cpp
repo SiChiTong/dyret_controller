@@ -60,6 +60,8 @@ float groundHeight = -430.0;
 std::vector<double> legActuatorLengths = {0.0, 0.0};
 //double groundHeight = -562.0; // Tallest
 
+const float bSplineGaitWagOffset = 0.91;
+
 const float spreadAmount  =  80.0; // was 50
 
 std::vector<int> pidParameters;
@@ -222,17 +224,18 @@ int main(int argc, char **argv)
                                         leftOffset,
                                         rearLegOffset,
                                         globalLiftDuration);
-  bSplineGait.enableWag(0.83f, 40.0f, 0.0f);
+
+  bSplineGait.enableWag(bSplineGaitWagOffset, 40.0f, 0.0f);
 
   IncPoseAdjuster bSplineInitAdjuster(false, add(bSplineGait.getPosition(0.0, true), bSplineGait.getGaitWagPoint(0.0)), &servoAnglesInRad, inverseKinematicsService_client, dynCommands_pub);
 
-  /*FILE * gaitLogGlobal;
-  gaitLogGlobal = fopen("gaitLogGlobal.csv", "w");
+  FILE * gaitLogGlobal;
+  gaitLogGlobal = fopen("/home/tonnesfn/catkin_ws/customLogs/gaitController/gaitLogGlobal.csv", "w");
 
   FILE * wagLog;
-  wagLog = fopen("wagLog.csv", "w");
+  wagLog = fopen("/home/tonnesfn/catkin_ws/customLogs/gaitController/wagLog.csv", "w");
   fprintf(wagLog,"L0z, L1z, L2z, L3_z, wag_commanded_x, wag_commanded_y, L0_x, L1_x, L2_x, L3_x\n");
-*/
+
 
   IncPoseAdjuster restPoseAdjuster(false, getRestPose(), &servoAnglesInRad, inverseKinematicsService_client, dynCommands_pub);
 
@@ -338,7 +341,7 @@ int main(int argc, char **argv)
                                         rearLegOffset,
                                         globalLiftDuration);
 
-              bSplineGait.enableWag(0.83f+globalWagPhaseOffset, globalWagAmplitude_x, globalWagAmplitude_y);
+              bSplineGait.enableWag(bSplineGaitWagOffset+globalWagPhaseOffset, globalWagAmplitude_x, globalWagAmplitude_y);
 
               if ((std::isnan(globalGaitSpeed) == true) && (std::isnan(globalGaitFrequency) == true)){
                   ROS_ERROR("GlobalGaitSpeed or globalGaitFrequency has to be set\n");
@@ -440,7 +443,7 @@ int main(int argc, char **argv)
             std::vector<vec3P> currentPositions = currentLegPositions(servoAnglesInRad, legActuatorLengths);
 
             // L0z, L1z, L2z, L3_z, wag_commanded_x, wag_commanded_y, L0_x, L1_x, L2_x, L3_x
-/*            fprintf(wagLog, "%.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f\n",
+            fprintf(wagLog, "%.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f\n",
                     currentPositions[0].points[2],
                     currentPositions[1].points[2],
                     currentPositions[2].points[2],
@@ -451,7 +454,6 @@ int main(int argc, char **argv)
                     currentPositions[1].points[0],
                     currentPositions[2].points[0],
                     currentPositions[3].points[0]);
-*/
 
             // Get IK solutions for each leg:
             for (int i = 0; i < 4; i++){ // For each leg
@@ -498,7 +500,7 @@ int main(int argc, char **argv)
 
         std::vector<vec3P> actual = currentLegPositions(servoAnglesInRad, legActuatorLengths);
 
-        /*
+
         fprintf(gaitLogGlobal,"%.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f\n",
                 currentRelativeTime,
                 globalLegPositions[0].x(), globalLegPositions[0].y(), globalLegPositions[0].z(),
@@ -510,7 +512,7 @@ int main(int argc, char **argv)
                 globalLegPositions[3].x(), globalLegPositions[3].y(), globalLegPositions[3].z(),
                 actual[3].x(), actual[3].y(), actual[3].z()
                );
-        */
+
 
         if (servoIds.size() != 0){
             msg.id = servoIds;
@@ -529,10 +531,10 @@ int main(int argc, char **argv)
 
   }
 
-  /*
+
   fclose(wagLog);
   fclose(gaitLogGlobal);
-  */
+
 
   ROS_INFO("Exiting gaitController");
 

@@ -35,7 +35,6 @@ class BSplineGait : public Gait {
                 double rearLegOffset,
                 double givenLiftDuration);
 
-    vec3P getGaitWagPoint(double givenTime);
-    std::vector<vec3P> getPosition(double givenTime,
-                                   bool walkingForwards);
+    vec3P getGaitWagPoint(double givenTime, bool walkingForwards);
+    std::vector<vec3P> getPosition(double givenTime, bool walkingForwards);
 };

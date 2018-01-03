@@ -227,7 +227,7 @@ int main(int argc, char **argv)
 
   bSplineGait.enableWag(bSplineGaitWagOffset, 40.0f, 0.0f);
 
-  IncPoseAdjuster bSplineInitAdjuster(false, add(bSplineGait.getPosition(0.0, true), bSplineGait.getGaitWagPoint(0.0)), &servoAnglesInRad, inverseKinematicsService_client, dynCommands_pub);
+  IncPoseAdjuster bSplineInitAdjuster(false, add(bSplineGait.getPosition(0.0, true), bSplineGait.getGaitWagPoint(0.0, true)), &servoAnglesInRad, inverseKinematicsService_client, dynCommands_pub);
 
   FILE * gaitLogGlobal;
   gaitLogGlobal = fopen("/home/tonnesfn/catkin_ws/customLogs/gaitController/gaitLogGlobal.csv", "w");
@@ -368,8 +368,7 @@ int main(int argc, char **argv)
                 movingForward = true;
               }
 
-              vec3P wagPoint = bSplineGait.getGaitWagPoint(0.0);
-              if (movingForward == false) wagPoint.points[0] = -wagPoint.points[0];
+              vec3P wagPoint = bSplineGait.getGaitWagPoint(0.0, movingForward);
 
               std::vector<vec3P> initPose = lockToZ(add(bSplineGait.getPosition(0.0, movingForward), wagPoint), groundHeight);
               bSplineInitAdjuster.setPoseAndActuatorLengths(initPose, legActuatorLengths);
@@ -433,12 +432,7 @@ int main(int argc, char **argv)
             std::vector<double> anglesInRad(12);
             int currentActuatorIndex = 0;
 
-            vec3P wag = bSplineGait.getGaitWagPoint(currentRelativeTime * globalGaitFrequency);
-
-            if (movingForward == false){
-                wag.points[0] = -wag.points[0];
-                wag.points[1] = -wag.points[1];
-            }
+            vec3P wag = bSplineGait.getGaitWagPoint(currentRelativeTime * globalGaitFrequency, movingForward);
 
             std::vector<vec3P> currentPositions = currentLegPositions(servoAnglesInRad, legActuatorLengths);
 
@@ -499,7 +493,6 @@ int main(int argc, char **argv)
         }
 
         std::vector<vec3P> actual = currentLegPositions(servoAnglesInRad, legActuatorLengths);
-
 
         fprintf(gaitLogGlobal,"%.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f\n",
                 currentRelativeTime,

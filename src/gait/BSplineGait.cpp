@@ -3,11 +3,20 @@
 #include "../external/splineLibrary/utils/arclength.h"
 #include "../kinematics/kinematicFunctions.h"
 
-vec3P BSplineGait::getGaitWagPoint(double givenTime){
-  return getWagPoint(getWagAmplitude_x(), getWagAmplitude_y(),
-                     1.0,
-                     givenTime/1000,
-                     getWagPhase());
+vec3P BSplineGait::getGaitWagPoint(double givenTime, bool walkingForwards){
+  vec3P wagPoint = getWagPoint(getWagAmplitude_x(),
+                               getWagAmplitude_y(),
+                               1.0,
+                               givenTime/1000,
+                               getWagPhase());
+
+  if (walkingForwards == false){
+    wagPoint.points[0] = -wagPoint.points[0];
+    wagPoint.points[1] = -wagPoint.points[1];
+  }
+
+  return wagPoint;
+
 }
 
 void BSplineGait::bSplineInit(std::vector<vec3P> givenPoints, float givenStepLength, float givenLiftDuration){
@@ -108,8 +117,8 @@ std::vector<vec3P> BSplineGait::getPosition(double givenTime, bool walkingForwar
 		float currentTime = givenTime / 1000;
 
 		// Use correct leg phase:
-    float currentLegPhaseOffset = legPhaseOffset[i][0];
-    if (walkingForwards == false) currentLegPhaseOffset = legPhaseOffset[i][1];
+        float currentLegPhaseOffset = legPhaseOffset[i][0];
+        if (walkingForwards == false) currentLegPhaseOffset = legPhaseOffset[i][1];
 
 		// Calculate with offset:
 		currentTime += currentLegPhaseOffset;

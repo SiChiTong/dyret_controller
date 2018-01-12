@@ -282,8 +282,8 @@ int main(int argc, char **argv) {
 
   ros::Subscriber imuData_sub = n.subscribe("/imu/data", 100, imuDataCallback);
   ros::Subscriber gaitInferredPos_sub = n.subscribe("gaitInferredPos", 1000, gaitInferredPos_Callback);
-  ros::ServiceServer service = n.advertiseService("get_gait_evaluation", getGaitEvaluationService);
-  ros::Subscriber servoStates_sub = n.subscribe("servoStates", 1, servoStatesCallback);
+  ros::ServiceServer gaitEvalService = n.advertiseService("get_gait_evaluation", getGaitEvaluationService);
+  ros::Subscriber servoStates_sub = n.subscribe("/dyret/servoStates", 1, servoStatesCallback);
   ros::Subscriber mocapData_sub = n.subscribe("/Robot_1/pose", 5, mocapDataCallback);
 
   //waitForRosInit(gaitInferredPos_sub, "gaitInferredPos");

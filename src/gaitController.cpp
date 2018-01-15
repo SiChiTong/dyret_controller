@@ -267,7 +267,8 @@ int main(int argc, char **argv)
 
   ros::Rate loop_rate(3);
 
-  long long startTime;
+  long long int startTime;
+  long long int lastTime = 0;
   bool activatedRecording = false;
   std::vector<vec3P> lastGlobalLegPositions;
 
@@ -351,7 +352,7 @@ int main(int argc, char **argv)
                   ROS_FATAL("std::isnan(globalGaitFrequency) == true\n");
                   exit(-1);
               }
-
+/*
               float calculatedSpeed = bSplineGait.getStepLength() * globalGaitFrequency * (60.0/1000.0);
 
               ROS_INFO("Calculated speed: %.2f\n", calculatedSpeed);
@@ -361,7 +362,7 @@ int main(int argc, char **argv)
                               posChangeMsg.msgType  = posChangeMsg.t_measurementCalculated;
                               posChangeMsg.angle    = 0.0f;
                               gaitInferredPos_pub.publish(posChangeMsg);
-
+*/
               if (fabs(lastActionMessage->direction - M_PI) < 0.1){
                 movingForward = false;
               } else {
@@ -372,6 +373,8 @@ int main(int argc, char **argv)
 
               std::vector<vec3P> initPose = lockToZ(add(bSplineGait.getPosition(0.0, movingForward), wagPoint), groundHeight);
               bSplineInitAdjuster.setPoseAndActuatorLengths(initPose, legActuatorLengths);
+
+              lastTime = 0;
 
           }
 
@@ -396,35 +399,25 @@ int main(int argc, char **argv)
 
             globalLegPositions = bSplineGait.getPosition(currentRelativeTime * globalGaitFrequency, movingForward);
 
-            if (lastGlobalLegPositions.size() == 0){
+            // Calculate posChangeMsg:
+            if (lastTime == 0){
                 // Not initialized
-                lastGlobalLegPositions.resize(4);
+                lastTime = getMs();
             } else {
                 // Initialized:
 
-                double groundContactHeight = round(fmin(fmin(globalLegPositions[0].z(), globalLegPositions[1].z()),fmin(globalLegPositions[2].z(), globalLegPositions[3].z())));
-
-                double distanceCovered = 0;
-                int    pointCounter = 0;
-
-                for (int i = 0; i < 4; i++){
-                    // Forward motion is given in the global Y axis:
-                    if ((abs(globalLegPositions[i].z() - groundContactHeight) < 0.1) && (abs(lastGlobalLegPositions[i].z() - groundContactHeight) < 0.1)){
-                        // Will fail if the loop is not quick enough (< quarter walk period)
-
-                        distanceCovered += globalLegPositions[i].y() - lastGlobalLegPositions[i].y();
-                        pointCounter++;
-                    }
-                }
+                double secondsPassed = getMs() - lastTime;
+                double distance = bSplineGait.getStepLength() * globalGaitFrequency * (secondsPassed / 1000.0f);
 
                 dyret_common::DistAng posChangeMsg;
-                if (pointCounter > 0) posChangeMsg.distance = float(-(distanceCovered/pointCounter)); else posChangeMsg.distance = 0.0f;
+                if (movingForward) posChangeMsg.distance = distance; else posChangeMsg.distance = -distance;
+
                 posChangeMsg.msgType = posChangeMsg.t_measurementInferred;
                 posChangeMsg.angle    = 0.0f;
                 gaitInferredPos_pub.publish(posChangeMsg);
             }
 
-            lastGlobalLegPositions = globalLegPositions;
+            lastTime = getMs();
 
             dyret_common::Pose msg;
 

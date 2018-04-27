@@ -18,7 +18,7 @@ double round(double originalNumber, int decimals) {
 	return numberToReturn;
 }
 
-vec3P calculateLocalPosition(int givenLegId, vec3P givenLegGlobalPosition) {
+/*vec3P calculateLocalPosition(int givenLegId, vec3P givenLegGlobalPosition) {
 	// Leg0/3: Lx = -Gx, Ly =  Gz, Lz = -Gy
 	// Leg1/2: Lx =  Gx, Ly = -Gz, Lz =  Gy
 
@@ -46,7 +46,7 @@ vec3P calculateLocalPosition(int givenLegId, vec3P givenLegGlobalPosition) {
 	calculatedLocalPosition.groundPoint = givenLegGlobalPosition.groundPoint;
 
 	return calculatedLocalPosition;
-}
+}*/
 
 vec3P add(vec3P firstOperand, vec3P secondOperand) {
 	double x = firstOperand.x() + secondOperand.x();
@@ -87,7 +87,7 @@ vec3P getWagPoint(double amplitude_x, double amplitude_y, double period, double 
 	return pointToReturn;
 }
 
-vec3P calculateGlobalPosition(int givenLegId, vec3P givenLegLocalPosition) {
+/*vec3P calculateGlobalPosition(int givenLegId, vec3P givenLegLocalPosition) {
 	double x, y, z;
 	
 	// Leg0: Gx = -Lx, Gy = -Lz, Gz = Ly
@@ -117,4 +117,4 @@ vec3P calculateGlobalPosition(int givenLegId, vec3P givenLegLocalPosition) {
 	calculatedGlobalPosition.groundPoint = givenLegLocalPosition.groundPoint;
 
 	return calculatedGlobalPosition;
-}
+}*/

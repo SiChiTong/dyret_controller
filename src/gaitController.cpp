@@ -244,7 +244,7 @@ int main(int argc, char **argv)
   int lastAction = dyret_common::ActionMessage::t_idle;
   currentAction  = dyret_common::ActionMessage::t_idle;
 
-  setServoSpeeds(0.08, servoConfig_pub);
+  setServoSpeeds(0.01, servoConfig_pub);
 
   printf("P: %d, I: %d, D: %d\n", lastGaitControllerParamsConfigMessage.cP, lastGaitControllerParamsConfigMessage.cI, lastGaitControllerParamsConfigMessage.cD);
   pidParameters[0] = 10; // Set to 10 to stop coxa shaking before experiment begins
@@ -278,7 +278,7 @@ int main(int argc, char **argv)
       } else if (currentAction == dyret_common::ActionMessage::t_idle){
           //loop_rate.sleep();
 
-          moveAllLegsToGlobal(getRestPose(), inverseKinematicsService_client, dynCommands_pub);
+          //moveAllLegsToGlobal(getRestPose(), inverseKinematicsService_client, dynCommands_pub);
 
       }else if (currentAction == dyret_common::ActionMessage::t_restPose){
 
@@ -446,15 +446,15 @@ int main(int argc, char **argv)
             for (int i = 0; i < 4; i++){ // For each leg
             	dyret_common::CalculateInverseKinematics srv;
 
-                vec3P localLegPosition = calculateLocalPosition(i, add(globalLegPositions[i], wag));
+                vec3P legPosition = add(globalLegPositions[i], wag);
 
-                srv.request.point.x = localLegPosition.x();
-                srv.request.point.y = localLegPosition.y();
-                srv.request.point.z = localLegPosition.z();
+                srv.request.point.x = legPosition.x();
+                srv.request.point.y = legPosition.y();
+                srv.request.point.z = legPosition.z();
 
                 if (inverseKinematicsService_client.call(srv)) {
                     // Handle invertions (ids 1, 5, 8, 10):
-                    if (i == 0 || i == 3){
+                    /*if (i == 0 || i == 3){
                         for (int j = 0; j < srv.response.solutions.size(); j++){
                             srv.response.solutions[j].anglesInRad[1] = -srv.response.solutions[j].anglesInRad[1];
                         }
@@ -462,7 +462,7 @@ int main(int argc, char **argv)
                         for (int j = 0; j < srv.response.solutions.size(); j++){
                             srv.response.solutions[j].anglesInRad[2] = -srv.response.solutions[j].anglesInRad[2];
                         }
-                    }
+                    }*/
 
               if (srv.response.solutions.size() != 0){
                 if (servoIds.size() == 0) servoIds.resize(12);

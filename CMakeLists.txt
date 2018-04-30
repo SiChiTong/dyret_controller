@@ -80,3 +80,10 @@ target_link_libraries(gaitEvaluator ${catkin_LIBRARIES})
 add_dependencies(gaitEvaluator 
 	${catkin_EXPORTED_TARGETS})
 
+add_executable(testKinematics
+               src/kinematics/testKinematics.cpp
+               src/kinematics/forwardKinematics.cpp
+              )
+target_link_libraries(testKinematics ${catkin_LIBRARIES})
+add_dependencies(testKinematics 
+	${catkin_EXPORTED_TARGETS})

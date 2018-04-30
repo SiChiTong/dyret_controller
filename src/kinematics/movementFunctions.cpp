@@ -182,7 +182,9 @@ bool interpolatingLegMoveOpenLoop(std::vector<vec3P> givenGoalPositions, std::ve
     srv.request.point.x = globalLegPosition.x();
     srv.request.point.y = globalLegPosition.y();
     srv.request.point.z = globalLegPosition.z();
-    if (givenInverseKinematicsServiceClient.call(srv)) {
+
+    givenInverseKinematicsServiceClient.call(srv);
+/*    if (givenInverseKinematicsServiceClient.call(srv)) {
       // Handle invertions (ids 1, 5, 8, 10):
       if (i == 0 || i == 3){
         for (int j = 0; j < srv.response.solutions.size(); j++){
@@ -193,7 +195,7 @@ bool interpolatingLegMoveOpenLoop(std::vector<vec3P> givenGoalPositions, std::ve
           srv.response.solutions[j].anglesInRad[2] = -srv.response.solutions[j].anglesInRad[2];
         }
       }
-    }
+    }*/
 
     // Successful in getting solution
     for (int j = 0; j < 3; j++){ // For each joint in the leg
@@ -245,6 +247,7 @@ bool interpolatingLegMoveClosedLoop(std::vector<vec3P> givenGoalPosition, double
     srv.request.point.y = legPosition.y();
     srv.request.point.z = legPosition.z();
 
+    givenInverseKinematicsServiceClient.call(srv);
     /*
     if (givenInverseKinematicsServiceClient.call(srv)) {
       // Handle invertions (ids 1, 5, 8, 10):
@@ -290,7 +293,9 @@ bool interpolatingLegMoveClosedLoop(int givenLegId, vec3P givenGoalPosition, dou
   srv.request.point.y = legPosition.y();
   srv.request.point.z = legPosition.z();
 
-  if (givenInverseKinematicsServiceClient.call(srv)) {
+  givenInverseKinematicsServiceClient.call(srv);
+
+  /*if (givenInverseKinematicsServiceClient.call(srv)) {
   // Handle invertions (ids 1, 5, 8, 10):
       if (givenLegId == 0 || givenLegId == 3){
           for (int j = 0; j < srv.response.solutions.size(); j++){
@@ -301,7 +306,7 @@ bool interpolatingLegMoveClosedLoop(int givenLegId, vec3P givenGoalPosition, dou
               srv.response.solutions[j].anglesInRad[2] = -srv.response.solutions[j].anglesInRad[2];
           }
       }
-  }
+  }*/
 
   std::vector<int> servoIds(3);
   std::vector<double> anglesInRad(3);
@@ -339,9 +344,10 @@ bool interpolatingLegMoveOpenLoop(int givenLegId, vec3P givenGoalPosition, vec3P
   srv.request.point.y = legPosition.y();
   srv.request.point.z = legPosition.z();
 
-  if (givenInverseKinematicsServiceClient.call(srv)) {
+  givenInverseKinematicsServiceClient.call(srv);
+  /*if (givenInverseKinematicsServiceClient.call(srv)) {
   // Handle invertions (ids 1, 5, 8, 10):
-  /*    if (givenLegId == 0 || givenLegId == 3){
+      if (givenLegId == 0 || givenLegId == 3){
           for (int j = 0; j < srv.response.solutions.size(); j++){
               srv.response.solutions[j].anglesInRad[1] = -srv.response.solutions[j].anglesInRad[1];
           }
@@ -349,8 +355,8 @@ bool interpolatingLegMoveOpenLoop(int givenLegId, vec3P givenGoalPosition, vec3P
           for (int j = 0; j < srv.response.solutions.size(); j++){
               srv.response.solutions[j].anglesInRad[2] = -srv.response.solutions[j].anglesInRad[2];
           }
-      }*/
-  }
+      }
+  }*/
 
   std::vector<int> servoIds(3);
   std::vector<double> anglesInRad(3);

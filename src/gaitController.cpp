@@ -101,11 +101,7 @@ void actionMessagesCallback(const dyret_common::ActionMessage::ConstPtr& msg){
 
 void servoStatesCallback(const dyret_common::ServoStateArray::ConstPtr& msg){
   for (int i = 0; i < 12; i++){
-      if (i == 1 || i == 5 || i == 8 || i == 10){ // Invert
-        servoAnglesInRad[i] = invRad(msg->servoStates[i].position);
-      } else {
-        servoAnglesInRad[i] = msg->servoStates[i].position;
-      }
+      servoAnglesInRad[i] = msg->servoStates[i].position;
   }
 }
 
@@ -258,12 +254,16 @@ int main(int argc, char **argv)
   pidParameters[8] = lastGaitControllerParamsConfigMessage.tD;
   setServoPIDs(pidParameters, servoConfig_pub);
 
+  std::vector<vec3P> restPose = getRestPose();
   moveAllLegsToGlobal(getRestPose(), inverseKinematicsService_client, dynCommands_pub);
-    ROS_ERROR("Moved all legs to global restpose");
+  ROS_ERROR("Moved all legs to global restpose:\n  %.2f, %.2f, %.2f\n  %.2f, %.2f, %.2f\n  %.2f, %.2f, %.2f\n  %.2f, %.2f, %.2f\n",
+            restPose[0].x(), restPose[0].y(), restPose[0].z(), restPose[1].x(), restPose[1].y(), restPose[1].z(),
+            restPose[2].x(), restPose[2].y(), restPose[2].z(), restPose[3].x(), restPose[3].y(), restPose[3].z());
+
   restPoseAdjuster.skip();
 
-  const double poseAdjustSpeed = 0.08;
-  const double gaitServoSpeed = 0.0; // max rpm
+  const double poseAdjustSpeed = 0.01; // Was 0.08
+  const double gaitServoSpeed = 0.01; // max rpm (was 0)
 
   ros::Rate loop_rate(3);
 
@@ -385,6 +385,8 @@ int main(int argc, char **argv)
 
               startTime = std::chrono::duration_cast< std::chrono::milliseconds > (system_clock::now().time_since_epoch()).count();
           } else {
+
+            ROS_ERROR("bSplineInitAdjuster done!"); // debug
 
             if (activatedRecording == false){
                 startGaitRecording(get_gait_evaluation_client);

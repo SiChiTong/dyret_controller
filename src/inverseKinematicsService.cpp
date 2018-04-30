@@ -47,7 +47,9 @@ bool calculateInverseKinematics(dyret_common::CalculateInverseKinematics::Reques
 {
   double point_x = req.point.x;
   double point_y = req.point.z;
-  double point_z = req.point.y;
+  double point_z = -req.point.y;
+
+//  ROS_ERROR("Inverse kinematics on %.2f, %.2f, %.2f", point_x, point_y, point_z);
 
   std::vector<dyret_common::InverseKinematicsSolution> solutions(4);
 
@@ -62,35 +64,35 @@ bool calculateInverseKinematics(dyret_common::CalculateInverseKinematics::Reques
   solutions[2].anglesInRad[0] = t1_2;
   solutions[3].anglesInRad[0] = t1_2;
 
- 	double p1_x_1 = round(cos(t1_1) * 72.0,10);
-	double p1_y_1 = round(sin(t1_1) * 72.0,10);
-	double p1_z_1 = 0.0;
+  double p1_x_1 = round(cos(t1_1) * 72.0,10);
+  double p1_y_1 = round(sin(t1_1) * 72.0,10);
+  double p1_z_1 = 0.0;
 
-	double p1_x_2 = round(cos(t1_2) * 72.0,10);
-	double p1_y_2 = round(sin(t1_2) * 72.0,10);
-	double p1_z_2 = 0.0;
+  double p1_x_2 = round(cos(t1_2) * 72.0,10);
+  double p1_y_2 = round(sin(t1_2) * 72.0,10);
+  double p1_z_2 = 0.0;
 
-	double L13_1 = sqrt(pow((point_x - p1_x_1), 2) + pow((point_y - p1_y_1), 2) + pow((point_z - p1_z_1), 2));
-	double L13_2 = sqrt(pow((point_x - p1_x_2), 2) + pow((point_y - p1_y_2), 2) + pow((point_z - p1_z_2), 2));
+  double L13_1 = sqrt(pow((point_x - p1_x_1), 2) + pow((point_y - p1_y_1), 2) + pow((point_z - p1_z_1), 2));
+  double L13_2 = sqrt(pow((point_x - p1_x_2), 2) + pow((point_y - p1_y_2), 2) + pow((point_z - p1_z_2), 2));
 
   // Calculate first two solutions
   solutions[0].anglesInRad[2] = M_PI - acos((pow(L12_corrected,2) + pow(L23_corrected,2) - pow(L13_1,2)) / (2 * L12_corrected*L23_corrected));
-	solutions[1].anglesInRad[2] = (2 * M_PI) - solutions[0].anglesInRad[2];
+  solutions[1].anglesInRad[2] = (2 * M_PI) - solutions[0].anglesInRad[2];
 
   vec2A t2Angles = calculateT2(point_x, p1_x_1, point_y, p1_y_1, point_z, L12_corrected, L13_1, L23_corrected);
-	solutions[0].anglesInRad[1] = t2Angles.angles[0];
-	solutions[1].anglesInRad[1] = t2Angles.angles[1];
+  solutions[0].anglesInRad[1] = t2Angles.angles[0];
+  solutions[1].anglesInRad[1] = t2Angles.angles[1];
   
   // Calculate second two solutions
   solutions[2].anglesInRad[2] = M_PI - acos((pow(L12_corrected,2) + pow(L23_corrected,2) - pow(L13_2,2)) / (2 * L12_corrected*L23_corrected));
-	solutions[3].anglesInRad[2] = (2 * M_PI) - solutions[2].anglesInRad[2];
+  solutions[3].anglesInRad[2] = (2 * M_PI) - solutions[2].anglesInRad[2];
 
-	t2Angles = calculateT2(point_x, p1_x_2, point_y, p1_y_2, point_z, L12_corrected, L13_2, L23_corrected);
+  t2Angles = calculateT2(point_x, p1_x_2, point_y, p1_y_2, point_z, L12_corrected, L13_2, L23_corrected);
   solutions[2].anglesInRad[1] = t2Angles.angles[0];
-	solutions[3].anglesInRad[1] = t2Angles.angles[1];
+  solutions[3].anglesInRad[1] = t2Angles.angles[1];
 
   // Delete invalid solutions
-	if ((L13_1 > L12_corrected + L23_corrected) || (L13_1 + L12_corrected < L23_corrected)){
+  if ((L13_1 > L12_corrected + L23_corrected) || (L13_1 + L12_corrected < L23_corrected)){
     // Delete first two solutions
     solutions.erase(solutions.begin()); 
     solutions.erase(solutions.begin()); 
@@ -100,20 +102,18 @@ bool calculateInverseKinematics(dyret_common::CalculateInverseKinematics::Reques
   solutions.erase(solutions.end());
 
   for (int i = 0; i < solutions.size(); i++){
-      for (int j = 0; j < 3; j++){
-          solutions[i].anglesInRad[j] = normalizeRad(solutions[i].anglesInRad[j]);
-      }
-      solutions[i].anglesInRad[0] = -(solutions[i].anglesInRad[0] + M_PI/2.0);
+    for (int j = 0; j < 3; j++){
+      solutions[i].anglesInRad[j] = normalizeRad(solutions[i].anglesInRad[j]);
+    }
+    solutions[i].anglesInRad[0] = -(solutions[i].anglesInRad[0] + M_PI/2.0);
   }
-
 
   res.solutions = solutions;
 
-  ROS_INFO("request: x=%.2f, y=%.2f, z=%.2f", point_x, point_y, point_z);
+/*  ROS_INFO("request: x=%.2f, y=%.2f, z=%.2f", point_x, point_y, point_z);
   for (int i = 0; i < solutions.size(); i++){
     ROS_INFO("%.2f, %.2f, %.2f", solutions[i].anglesInRad[0], solutions[i].anglesInRad[1], solutions[i].anglesInRad[2]);
-  }
-
+  }*/
 
   return true;
 }

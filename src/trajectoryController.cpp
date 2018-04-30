@@ -165,7 +165,7 @@ int main(int argc, char **argv)
         if ( (directionForward ==  true && (distanceGoal[currentSegment] - accPos) < 0) ||
              (directionForward == false && (distanceGoal[currentSegment] - accPos) > 0) ){
                 // Goal reached
-                ROS_INFO("WALKING -> SETUP_WALK (seg%u done)\n", currentSegment);
+                ROS_INFO("WALKING -> SETUP_WALK (seg%u done at %.2f of %.2f)\n", currentSegment, accPos, distanceGoal[currentSegment]);
                 currentSegment++;
                 currentState = SETUP_WALK;
         }

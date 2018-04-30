@@ -96,7 +96,7 @@ std::vector<double> getInverseSolution(int legId, vec3P givenPoint, ros::Service
     }
   }
 
-  ROS_ERROR("Leg %d:\n%.2f, %.2f, %.2f", legId, anglesInRad[0],  anglesInRad[1],  anglesInRad[2]);
+  //ROS_ERROR("Leg %d:\n%.2f, %.2f, %.2f", legId, anglesInRad[0],  anglesInRad[1],  anglesInRad[2]);
 
   return anglesInRad;
 }

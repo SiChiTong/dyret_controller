@@ -25,31 +25,11 @@ bool IncPoseAdjuster::Spin(){
           // Startpositions has not been initialized:
           startPositions = currentLegPositions(*servoAnglesInRad, legActuatorLengths);
 
-          printf("Angles (in rad):\n");
-
-          for (int i = 0; i < servoAnglesInRad->size(); i++){
-            printf("  %.2f\n", servoAnglesInRad[0][i]);
-          }
-
-          printf("Startpositions (raw):");
-
-          for (int i = 0; i < 4; i++){
-            printf("\n  %.2f, %.2f, %.2f", startPositions[i].x(), startPositions[i].y(), startPositions[i].z());
-          }
-          printf("\n");
-
           groundHeight = fmin(fmin(goalPose[0].points[2], goalPose[1].points[2]),fmin(goalPose[2].points[2], goalPose[3].points[2]));
 
           // Set goal positions:
           positionArray = startPositions;
           for (int i = 0; i < 4; i++) positionArray[i].points[2] = groundHeight;
-
-          printf("Startpositions (fixed):");
-
-          for (int i = 0; i < 4; i++){
-            printf("  %.2f, %.2f, %.2f", positionArray[i].x(), positionArray[i].y(), positionArray[i].z());
-          }
-          printf("\n");
 
           currentProgress = 0.0;
 
@@ -63,7 +43,7 @@ bool IncPoseAdjuster::Spin(){
               for (int i = 0; i < 4; i++){
                   currentPoseStates[i] = LEAN_GENERATE;
               }
-              fprintf(stderr,"L* -> Lean Generate\n");
+              printf("L* -> Lean Generate\n");
               sleep(stateTransitionDelay);
           }
       }

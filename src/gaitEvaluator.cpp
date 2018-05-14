@@ -16,8 +16,8 @@
 #include "dyret_common/GetGaitControllerStatus.h"
 #include "dyret_common/DistAng.h"
 
-#include "dyret_utils/wait_for_ros.h"
-#include "dyret_utils/timeHandling.h"
+#include "dyret_common/wait_for_ros.h"
+#include "dyret_common/timeHandling.h"
 
 bool enableCapture;
 
@@ -250,7 +250,7 @@ void imuDataCallback(const sensor_msgs::Imu::ConstPtr& msg){
 void servoStatesCallback(const dyret_common::ServoStateArray::ConstPtr& msg){
   if (enableCapture){
       for(int i = 0; i < 12; i++){
-          currentData[i].push_back(msg->servoStates[i].current);
+          currentData[i].push_back(msg->revolute[i].current);
       }
   }
 }

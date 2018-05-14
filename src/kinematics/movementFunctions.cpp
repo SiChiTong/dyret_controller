@@ -7,15 +7,14 @@
 #include "dyret_common/Pose.h"
 #include "dyret_common/ServoConfig.h"
 #include "dyret_common/ServoConfigArray.h"
-
-#include "dyret_utils/angleConv.h"
+#include "dyret_common/angleConv.h"
+#include "dyret_common/wait_for_ros.h"
 
 #include "movementFunctions.h"
 #include "interpolation.h"
 #include "kinematicTypes.h"
 #include "kinematicFunctions.h"
 #include "forwardKinematics.h"
-#include "dyret_utils/wait_for_ros.h"
 
 bool legIsAtPos(int legId, vec3P givenGoalPosition, std::vector<double> servoAnglesInRad, double resolutionInMM, std::vector<double> legActuatorLengths){
 
@@ -101,7 +100,7 @@ std::vector<double> getInverseSolution(int legId, vec3P givenPoint, ros::Service
   return anglesInRad;
 }
 
-void moveLegToGlobal(int givenLegId, vec3P givenPoint, ros::ServiceClient givenInverseKinematicsServiceClient, ros::Publisher givenDynCommands_pub){
+/*void moveLegToGlobal(int givenLegId, vec3P givenPoint, ros::ServiceClient givenInverseKinematicsServiceClient, ros::Publisher givenDynCommands_pub){
 
   std::vector<int> servoIds {givenLegId*3, (givenLegId*3)+1, (givenLegId*3)+2};
   std::vector<double> anglesInRad(3);
@@ -109,18 +108,19 @@ void moveLegToGlobal(int givenLegId, vec3P givenPoint, ros::ServiceClient givenI
   anglesInRad = getInverseSolution(givenLegId, givenPoint, givenInverseKinematicsServiceClient);
 
   dyret_common::Pose poseMsg;
+
   poseMsg.id = servoIds;
-  poseMsg.angle = anglesInRad;
+  poseMsg.angles = anglesInRad;
   givenDynCommands_pub.publish(poseMsg);
 
-}
+}*/
 
 void moveAllLegsToGlobal(vec3P givenPoint, ros::ServiceClient givenInverseKinematicsServiceClient, ros::Publisher givenDynCommands_pub){
 
   std::vector<int> servoIds(12);
   for (int i = 0; i < 12; i++) servoIds[i] = i;
 
-  std::vector<double> anglesInRad;
+  std::vector<float> anglesInRad;
 
   for (int i = 0; i < 4; i++){
       std::vector<double> inverseReturn = getInverseSolution(i, givenPoint, givenInverseKinematicsServiceClient);
@@ -128,8 +128,7 @@ void moveAllLegsToGlobal(vec3P givenPoint, ros::ServiceClient givenInverseKinema
   }
 
   dyret_common::Pose poseMsg;
-  poseMsg.id = servoIds;
-  poseMsg.angle = anglesInRad;
+  poseMsg.revolute = anglesInRad;
   givenDynCommands_pub.publish(poseMsg);
 
 }
@@ -139,7 +138,7 @@ void moveAllLegsToGlobal(std::vector<vec3P> givenPoints, ros::ServiceClient give
   std::vector<int> servoIds(12);
   for (int i = 0; i < 12; i++) servoIds[i] = i;
 
-  std::vector<double> anglesInRad;
+  std::vector<float> anglesInRad;
 
   for (int i = 0; i < 4; i++){
       std::vector<double> inverseReturn = getInverseSolution(i, givenPoints[i], givenInverseKinematicsServiceClient);
@@ -147,8 +146,7 @@ void moveAllLegsToGlobal(std::vector<vec3P> givenPoints, ros::ServiceClient give
   }
 
   dyret_common::Pose poseMsg;
-  poseMsg.id = servoIds;
-  poseMsg.angle = anglesInRad;
+  poseMsg.revolute = anglesInRad;
   waitForRosInit(givenDynCommands_pub, "dynCommands");
   givenDynCommands_pub.publish(poseMsg);
 
@@ -170,7 +168,7 @@ bool interpolatingLegMoveOpenLoop(std::vector<vec3P> givenGoalPositions, std::ve
 
   int currentServoId = 0;
   std::vector<int> servoIds(12);
-  std::vector<double> anglesInRad(12);
+  std::vector<float> anglesInRad(12);
 
   for (int i = 0; i < 12; i++) servoIds[i] = i;
 
@@ -208,8 +206,7 @@ bool interpolatingLegMoveOpenLoop(std::vector<vec3P> givenGoalPositions, std::ve
   }
 
   dyret_common::Pose poseMsg;
-  poseMsg.id = servoIds;
-  poseMsg.angle = anglesInRad;
+  poseMsg.revolute = anglesInRad;
   givenDynCommands_pub.publish(poseMsg);
 
   return false;
@@ -231,10 +228,7 @@ bool interpolatingLegMoveClosedLoop(std::vector<vec3P> givenGoalPosition, double
 
   // Do interpolation:
   int currentServoId = 0;
-  std::vector<int> servoIds(12);
-  std::vector<double> anglesInRad(12);
-
-  for (int j = 0; j < 12; j++) servoIds[j] = j;
+  std::vector<float> anglesInRad(12);
 
   for (int j = 0; j < 4; j++){
 	  dyret_common::CalculateInverseKinematics srv;
@@ -274,60 +268,61 @@ bool interpolatingLegMoveClosedLoop(std::vector<vec3P> givenGoalPosition, double
   }
 
   dyret_common::Pose poseMsg;
-  poseMsg.id = servoIds;
-  poseMsg.angle = anglesInRad;
+  poseMsg.revolute = anglesInRad;
   givenDynCommands_pub.publish(poseMsg);
 
   return false;
 }
 
 // Closed loop interpolation move of 1 leg
-bool interpolatingLegMoveClosedLoop(int givenLegId, vec3P givenGoalPosition, double givenInterpolationIncrement, double givenGoalMargin, std::vector<double> servoAnglesInRad, ros::ServiceClient givenInverseKinematicsServiceClient, ros::Publisher givenDynCommands_pub, std::vector<double> legActuatorLengths){
-  vec3P legPos = currentLegPos(givenLegId, servoAnglesInRad, legActuatorLengths);
-
-  vec3P legPosition = incInterpolation(legPos, givenGoalPosition, givenInterpolationIncrement);
-
-  dyret_common::CalculateInverseKinematics srv;
-
-  srv.request.point.x = legPosition.x();
-  srv.request.point.y = legPosition.y();
-  srv.request.point.z = legPosition.z();
-
-  givenInverseKinematicsServiceClient.call(srv);
-
-  /*if (givenInverseKinematicsServiceClient.call(srv)) {
-  // Handle invertions (ids 1, 5, 8, 10):
-      if (givenLegId == 0 || givenLegId == 3){
-          for (int j = 0; j < srv.response.solutions.size(); j++){
-              srv.response.solutions[j].anglesInRad[1] = -srv.response.solutions[j].anglesInRad[1];
-          }
-      }else if (givenLegId == 1 || givenLegId == 2){
-          for (int j = 0; j < srv.response.solutions.size(); j++){
-              srv.response.solutions[j].anglesInRad[2] = -srv.response.solutions[j].anglesInRad[2];
-          }
-      }
-  }*/
-
-  std::vector<int> servoIds(3);
-  std::vector<double> anglesInRad(3);
-
-  // Successful in getting solution
-  for (int j = 0; j < 3; j++){ // For each joint in the leg
-      servoIds[j] = j + (givenLegId * 3); // Set ids
-      if (givenLegId == 0 || givenLegId == 1){
-          anglesInRad[j] = srv.response.solutions[1].anglesInRad[j];
-      }else{
-          anglesInRad[j] = srv.response.solutions[0].anglesInRad[j];
-      }
-  }
-
-  dyret_common::Pose poseMsg;
-  poseMsg.id = servoIds;
-  poseMsg.angle = anglesInRad;
-  givenDynCommands_pub.publish(poseMsg);
-
-  return true;
-}
+//bool interpolatingLegMoveClosedLoop(int givenLegId, vec3P givenGoalPosition, double givenInterpolationIncrement, double givenGoalMargin, std::vector<double> servoAnglesInRad, ros::ServiceClient givenInverseKinematicsServiceClient, ros::Publisher givenDynCommands_pub, std::vector<double> legActuatorLengths){
+//  vec3P legPos = currentLegPos(givenLegId, servoAnglesInRad, legActuatorLengths);
+//
+//  vec3P legPosition = incInterpolation(legPos, givenGoalPosition, givenInterpolationIncrement);
+//
+//  dyret_common::CalculateInverseKinematics srv;
+//
+//  srv.request.point.x = legPosition.x();
+//  srv.request.point.y = legPosition.y();
+//  srv.request.point.z = legPosition.z();
+//
+//  givenInverseKinematicsServiceClient.call(srv);
+//
+//  /*if (givenInverseKinematicsServiceClient.call(srv)) {
+//  // Handle invertions (ids 1, 5, 8, 10):
+//      if (givenLegId == 0 || givenLegId == 3){
+//          for (int j = 0; j < srv.response.solutions.size(); j++){
+//              srv.response.solutions[j].anglesInRad[1] = -srv.response.solutions[j].anglesInRad[1];
+//          }
+//      }else if (givenLegId == 1 || givenLegId == 2){
+//          for (int j = 0; j < srv.response.solutions.size(); j++){
+//              srv.response.solutions[j].anglesInRad[2] = -srv.response.solutions[j].anglesInRad[2];
+//          }
+//      }
+//  }*/
+//
+//  std::vector<int> servoIds(3);
+//  std::vector<double> anglesInRad(3);
+//
+//  // Successful in getting solution
+//  for (int j = 0; j < 3; j++){ // For each joint in the leg
+//      servoIds[j] = j + (givenLegId * 3); // Set ids
+//      if (givenLegId == 0 || givenLegId == 1){
+//          anglesInRad[j] = srv.response.solutions[1].anglesInRad[j];
+//      }else{
+//          anglesInRad[j] = srv.response.solutions[0].anglesInRad[j];
+//      }
+//  }
+//
+//  dyret_common::Pose poseMsg;
+//  poseMsg.id = servoIds;
+//  poseMsg.angle = anglesInRad;
+//  givenDynCommands_pub.publish(poseMsg);
+//
+//
+//
+//  return true;
+//}
 
 // Open loop interpolation move of 1 leg
 bool interpolatingLegMoveOpenLoop(int givenLegId, vec3P givenGoalPosition, vec3P givenStartPosition, double givenProgress, std::vector<double> servoAnglesInRad, ros::ServiceClient givenInverseKinematicsServiceClient, ros::Publisher givenDynCommands_pub){
@@ -345,35 +340,33 @@ bool interpolatingLegMoveOpenLoop(int givenLegId, vec3P givenGoalPosition, vec3P
   srv.request.point.z = legPosition.z();
 
   givenInverseKinematicsServiceClient.call(srv);
-  /*if (givenInverseKinematicsServiceClient.call(srv)) {
-  // Handle invertions (ids 1, 5, 8, 10):
-      if (givenLegId == 0 || givenLegId == 3){
-          for (int j = 0; j < srv.response.solutions.size(); j++){
-              srv.response.solutions[j].anglesInRad[1] = -srv.response.solutions[j].anglesInRad[1];
-          }
-      }else if (givenLegId == 1 || givenLegId == 2){
-          for (int j = 0; j < srv.response.solutions.size(); j++){
-              srv.response.solutions[j].anglesInRad[2] = -srv.response.solutions[j].anglesInRad[2];
-          }
-      }
-  }*/
 
-  std::vector<int> servoIds(3);
-  std::vector<double> anglesInRad(3);
+  std::vector<float> anglesInRad(12);
+
+  for (int i = 0; i < anglesInRad.size(); i++) anglesInRad[i] = float(servoAnglesInRad[i]);
 
   // Successful in getting solution
+//  for (int j = 0; j < 3; j++){ // For each joint in the leg
+//      servoIds[j] = j + (givenLegId * 3); // Set ids
+//      if (givenLegId == 0 || givenLegId == 1){
+//          anglesInRad[j] = srv.response.solutions[1].anglesInRad[j];
+//      }else{
+//          anglesInRad[j] = srv.response.solutions[0].anglesInRad[j];
+//      }
+//  }
+
   for (int j = 0; j < 3; j++){ // For each joint in the leg
-      servoIds[j] = j + (givenLegId * 3); // Set ids
-      if (givenLegId == 0 || givenLegId == 1){
-          anglesInRad[j] = srv.response.solutions[1].anglesInRad[j];
-      }else{
-          anglesInRad[j] = srv.response.solutions[0].anglesInRad[j];
-      }
+    if (givenLegId == 0 || givenLegId == 1){
+      anglesInRad[j + (givenLegId * 3)] = float(srv.response.solutions[1].anglesInRad[j]);
+    }else{
+      anglesInRad[j + (givenLegId * 3)] = float(srv.response.solutions[0].anglesInRad[j]);
+    }
   }
 
+  //TODO: Test this
+
   dyret_common::Pose poseMsg;
-  poseMsg.id = servoIds;
-  poseMsg.angle = anglesInRad;
+  poseMsg.revolute = anglesInRad;
   givenDynCommands_pub.publish(poseMsg);
 
   return false;
@@ -397,21 +390,20 @@ void moveAllLegsToGlobalZ(double givenHeight, std::vector<double> servoAnglesInR
   moveAllLegsToGlobal(legPositions, givenInverseKinematicsServiceClient, givenDynCommands_pub);
 }
 
-void moveLegToGlobalZ(int givenLegId, double givenHeight, std::vector<double> servoAnglesInRad, ros::ServiceClient givenInverseKinematicsServiceClient, ros::Publisher givenDynCommands_pub, std::vector<double> legActuatorLengths){
+/*void moveLegToGlobalZ(int givenLegId, double givenHeight, std::vector<double> servoAnglesInRad, ros::ServiceClient givenInverseKinematicsServiceClient, ros::Publisher givenDynCommands_pub, std::vector<double> legActuatorLengths){
   vec3P legPos = currentLegPos(givenLegId, servoAnglesInRad, legActuatorLengths);
   vec3P newLegPosition = legPos;
   newLegPosition.points[2] = givenHeight;
 
   moveLegToGlobal(givenLegId, newLegPosition, givenInverseKinematicsServiceClient, givenDynCommands_pub);
-}
+}*/
 
 void setServoPIDs(std::vector<int> givenPIDs, ros::Publisher givenServoConfigPublisher){
 	dyret_common::ServoConfigArray msg;
   std::vector<dyret_common::ServoConfig> msgContents(12);
 
   for (int i = 0; i < 12; i++){
-      msgContents[i].servoId = i;
-      msgContents[i].configType = dyret_common::ServoConfig::t_setPID;
+      msgContents[i].type = dyret_common::ServoConfig::TYPE_SET_PID;
       msgContents[i].parameters.resize(3);
 
       if (i == 0 || i == 3 || i == 6 || i == 9){
@@ -443,10 +435,10 @@ void setServoSpeeds(double givenSpeed, ros::Publisher givenServoConfigPublisher)
   std::vector<dyret_common::ServoConfig> msgContents(12);
 
   for (int i = 0; i < 12; i++){
-      msgContents[i].servoId = i;
-      msgContents[i].configType = dyret_common::ServoConfig::t_setSpeed;
-      msgContents[i].parameters.resize(1);
-      msgContents[i].parameters[0] = givenSpeed;
+    msgContents[i].id = i;
+    msgContents[i].type = dyret_common::ServoConfig::TYPE_SET_SPEED;
+    msgContents[i].parameters.resize(1);
+    msgContents[i].parameters[0] = givenSpeed;
   }
 
   msg.servoConfigs = msgContents;
@@ -460,9 +452,9 @@ void setServoLog(bool enable, ros::Publisher givenServoConfigPublisher){
   std::vector<dyret_common::ServoConfig> msgContents(1);
 
   if (enable == true){
-      msgContents[0].configType = dyret_common::ServoConfig::t_enableLog;
+      msgContents[0].type = dyret_common::ServoConfig::TYPE_ENABLE_LOG;
   } else {
-      msgContents[0].configType = dyret_common::ServoConfig::t_disableLog;
+      msgContents[0].type = dyret_common::ServoConfig::TYPE_DISABLE_LOG;
   }
 
   msg.servoConfigs = msgContents;

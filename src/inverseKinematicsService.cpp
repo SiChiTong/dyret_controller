@@ -6,7 +6,7 @@
 #include "dyret_common/dimensions.h"
 #include "dyret_common/Configuration.h"
 
-#include "dyret_utils/angleConv.h"
+#include "dyret_common/angleConv.h"
 
 double femurActuatorLength, tibiaActuatorLength;
 

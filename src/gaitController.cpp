@@ -3,7 +3,7 @@
 #include <chrono>
 #include <iostream>
 
-#include "dyret_utils/angleConv.h"
+#include "dyret_common/angleConv.h"
 
 #include "ros/ros.h"
 #include <ros/console.h>
@@ -35,8 +35,8 @@
 
 #include "kinematics/IncPoseAdjuster.h"
 
-#include "dyret_utils/wait_for_ros.h"
-#include "dyret_utils/timeHandling.h"
+#include "dyret_common/wait_for_ros.h"
+#include "dyret_common/timeHandling.h"
 
 using namespace std::chrono;
 
@@ -101,7 +101,7 @@ void actionMessagesCallback(const dyret_common::ActionMessage::ConstPtr& msg){
 
 void servoStatesCallback(const dyret_common::ServoStateArray::ConstPtr& msg){
   for (int i = 0; i < 12; i++){
-      servoAnglesInRad[i] = msg->servoStates[i].position;
+      servoAnglesInRad[i] = msg->revolute[i].position;
   }
 }
 
@@ -422,7 +422,7 @@ int main(int argc, char **argv)
             dyret_common::Pose msg;
 
             std::vector<int> servoIds(12);
-            std::vector<double> anglesInRad(12);
+            std::vector<float> anglesInRad(12);
             int currentActuatorIndex = 0;
 
             vec3P wag = bSplineGait.getGaitWagPoint(currentRelativeTime * globalGaitFrequency, movingForward);
@@ -501,8 +501,7 @@ int main(int argc, char **argv)
 */
 
         if (servoIds.size() != 0){
-            msg.id = servoIds;
-            msg.angle = anglesInRad;
+            msg.revolute = anglesInRad;
             dynCommands_pub.publish(msg);
         } else {
             ROS_WARN("Did not send invalid dyn commands!\n");

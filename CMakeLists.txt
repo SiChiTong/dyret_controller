@@ -19,7 +19,6 @@ find_package(catkin REQUIRED COMPONENTS
   genmsg
   dynamic_reconfigure
   dyret_common
-  dyret_utils
   dyret_hardware
 )
 

@@ -2,6 +2,7 @@
 #include <chrono>
 #include <signal.h>
 #include <math.h>
+#include <numeric>
 
 #include "ros/ros.h"
 #include "sensor_msgs/Imu.h"

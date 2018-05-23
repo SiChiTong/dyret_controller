@@ -442,7 +442,7 @@ void setServoSpeeds(double givenSpeed, ros::Publisher givenServoConfigPublisher)
   }
 
   msg.servoConfigs = msgContents;
-  waitForRosInit(givenServoConfigPublisher, "servoConfigPublisher");
+  //waitForRosInit(givenServoConfigPublisher, "servoConfigPublisher");
   givenServoConfigPublisher.publish(msg);
 
 }

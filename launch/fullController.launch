@@ -1,0 +1,6 @@
+<launch>
+  <node pkg="dyret_controller" name="gaitController" type="gaitController" />
+  <node pkg="dyret_controller" name="gaitEvaluator" type="gaitEvaluator" />
+  <node pkg="dyret_controller" name="trajectoryController" type="trajectoryController" />
+  <node pkg="dyret_controller" name="inverseKinematicsService" type="inverseKinematicsService" />
+</launch>

@@ -183,7 +183,7 @@ int main(int argc, char **argv)
   ros::Subscriber actionMessages_sub = n.subscribe("actionMessages", 100, actionMessagesCallback);
   ros::Subscriber servoStates_sub = n.subscribe("/dyret/servoStates", 1, servoStatesCallback);
   ros::Subscriber gaitInferredPos_sub = n.subscribe("actuatorStates", 1000, actuatorState_Callback);
-  ros::Publisher  dynCommands_pub = n.advertise<dyret_common::Pose>("/dyret/dynCommands", 3);
+  ros::Publisher  poseCommand_pub = n.advertise<dyret_common::Pose>("/dyret/pose_command", 3);
   ros::Publisher  gaitInferredPos_pub = n.advertise<dyret_common::DistAng>("gaitInferredPos", 1000);
   ros::ServiceClient servoConfigClient = n.serviceClient<dyret_common::ConfigureServos>("/dyret/configure_servos");
 
@@ -224,7 +224,7 @@ int main(int argc, char **argv)
 
   bSplineGait.enableWag(bSplineGaitWagOffset, 40.0f, 0.0f);
 
-  IncPoseAdjuster bSplineInitAdjuster(false, add(bSplineGait.getPosition(0.0, true), bSplineGait.getGaitWagPoint(0.0, true)), &servoAnglesInRad, inverseKinematicsService_client, dynCommands_pub);
+  IncPoseAdjuster bSplineInitAdjuster(false, add(bSplineGait.getPosition(0.0, true), bSplineGait.getGaitWagPoint(0.0, true)), &servoAnglesInRad, inverseKinematicsService_client, poseCommand_pub);
 /*
   FILE * gaitLogGlobal;
   gaitLogGlobal = fopen("/home/tonnesfn/catkin_ws/customLogs/gaitController/gaitLogGlobal.csv", "w");
@@ -234,7 +234,7 @@ int main(int argc, char **argv)
   fprintf(wagLog,"L0z, L1z, L2z, L3_z, wag_commanded_x, wag_commanded_y, L0_x, L1_x, L2_x, L3_x\n");
 */
 
-  IncPoseAdjuster restPoseAdjuster(false, getRestPose(), &servoAnglesInRad, inverseKinematicsService_client, dynCommands_pub);
+  IncPoseAdjuster restPoseAdjuster(false, getRestPose(), &servoAnglesInRad, inverseKinematicsService_client, poseCommand_pub);
 
   bool printedPos = false; // DEBUG
 
@@ -256,7 +256,7 @@ int main(int argc, char **argv)
   setServoPIDs(pidParameters, servoConfigClient);
 
   std::vector<vec3P> restPose = getRestPose();
-  moveAllLegsToGlobal(getRestPose(), inverseKinematicsService_client, dynCommands_pub);
+  moveAllLegsToGlobal(getRestPose(), inverseKinematicsService_client, poseCommand_pub);
 /*  ROS_ERROR("Moved all legs to global restpose:\n  %.2f, %.2f, %.2f\n  %.2f, %.2f, %.2f\n  %.2f, %.2f, %.2f\n  %.2f, %.2f, %.2f\n",
             restPose[0].x(), restPose[0].y(), restPose[0].z(), restPose[1].x(), restPose[1].y(), restPose[1].z(),
             restPose[2].x(), restPose[2].y(), restPose[2].z(), restPose[3].x(), restPose[3].y(), restPose[3].z());*/
@@ -279,7 +279,7 @@ int main(int argc, char **argv)
       } else if (currentAction == dyret_common::ActionMessage::t_idle){
           //loop_rate.sleep();
 
-          //moveAllLegsToGlobal(getRestPose(), inverseKinematicsService_client, dynCommands_pub);
+          //moveAllLegsToGlobal(getRestPose(), inverseKinematicsService_client, poseCommand_pub);
 
       }else if (currentAction == dyret_common::ActionMessage::t_restPose){
 
@@ -503,7 +503,7 @@ int main(int argc, char **argv)
 
         if (servoIds.size() != 0){
             msg.revolute = anglesInRad;
-            dynCommands_pub.publish(msg);
+            poseCommand_pub.publish(msg);
         } else {
             ROS_WARN("Did not send invalid dyn commands!\n");
         }

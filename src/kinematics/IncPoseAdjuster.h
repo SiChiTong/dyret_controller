@@ -12,7 +12,7 @@ class IncPoseAdjuster{
   std::vector<double>* servoAnglesInRad;
 
   ros::ServiceClient inverseKinematicsService_client;
-  ros::Publisher dynCommands_pub;
+  ros::Publisher poseCommand_pub;
 
   t_poseAdjustState currentPoseStates[4];
   std::vector<vec3P> goalPose;
@@ -42,7 +42,7 @@ public:
                   std::vector<vec3P> givenGoalPose,
                   std::vector<double>* givenServoAnglesInRad,
                   ros::ServiceClient givenInverseKinematicsService_client,
-                  ros::Publisher givenDynCommands_pub){
+                  ros::Publisher givenPoseCommand_pub){
 
     currentProgress = 0.0;
     closedLoop = givenClosedLoop;
@@ -50,7 +50,7 @@ public:
     servoAnglesInRad = givenServoAnglesInRad;
     goalPose = givenGoalPose;
     inverseKinematicsService_client = givenInverseKinematicsService_client;
-    dynCommands_pub = givenDynCommands_pub;
+    poseCommand_pub = givenPoseCommand_pub;
     for (int i = 0; i < 4; i++) currentPoseStates[i] = INIT_STEPDOWN;
 
     reachedPose = false;

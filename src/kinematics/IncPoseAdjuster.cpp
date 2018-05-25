@@ -11,7 +11,7 @@ bool IncPoseAdjuster::Spin(){
       currentPoseStates[2] == FINISHED &&
       currentPoseStates[3] == FINISHED){
 
-      moveAllLegsToGlobal(goalPose, inverseKinematicsService_client, dynCommands_pub);
+      moveAllLegsToGlobal(goalPose, inverseKinematicsService_client, poseCommand_pub);
 
       reachedPose = true;
       return true;
@@ -37,7 +37,7 @@ bool IncPoseAdjuster::Spin(){
 
           currentProgress += stepDownSpeed;
 
-          if (interpolatingLegMoveOpenLoop(positionArray, startPositions, currentProgress, inverseKinematicsService_client, dynCommands_pub) == true){
+          if (interpolatingLegMoveOpenLoop(positionArray, startPositions, currentProgress, inverseKinematicsService_client, poseCommand_pub) == true){
 
               startPositions.clear();
               for (int i = 0; i < 4; i++){
@@ -100,7 +100,7 @@ bool IncPoseAdjuster::Spin(){
                  if (interpolatingLegMoveOpenLoop(add(positionArray, vec3P(currentLean[0], currentLean[1], 0.0)),
                                                   positionArray,
                                                   currentProgress,
-                                                  inverseKinematicsService_client, dynCommands_pub) == true){
+                                                  inverseKinematicsService_client, poseCommand_pub) == true){
                      currentPoseStates[legId] = LIFT;
                      printf("L%u: -> lift\n", legId);
                      currentProgress = 0.0;
@@ -125,7 +125,7 @@ bool IncPoseAdjuster::Spin(){
                     currentProgress += liftSpeed;
                 }
 
-                if (interpolatingLegMoveOpenLoop(legId, tmpLegPoseVar, startPositions[0], currentProgress, *servoAnglesInRad, inverseKinematicsService_client, dynCommands_pub) == true){
+                if (interpolatingLegMoveOpenLoop(legId, tmpLegPoseVar, startPositions[0], currentProgress, *servoAnglesInRad, inverseKinematicsService_client, poseCommand_pub) == true){
                     startPositions.clear();
                     currentPoseStates[legId] = LINE_INTERPOLATE;
                     currentProgress = 0.0;
@@ -142,7 +142,7 @@ bool IncPoseAdjuster::Spin(){
                 vec3P raisedLegPose = add(goalPose[legId], vec3P(currentLean[0], currentLean[1], 0.0)); // Incorporate lean into new positions
                 raisedLegPose.points[2] = raisedLegPose.points[2] + stepHeight; // Raise leg by stepHeight
 
-                if (interpolatingLegMoveOpenLoop(legId, raisedLegPose, tmpLegPoseVar, currentProgress, *servoAnglesInRad, inverseKinematicsService_client, dynCommands_pub) == true){
+                if (interpolatingLegMoveOpenLoop(legId, raisedLegPose, tmpLegPoseVar, currentProgress, *servoAnglesInRad, inverseKinematicsService_client, poseCommand_pub) == true){
                     currentPoseStates[legId] = STEPDOWN;
                     printf("L%u: -> stepDown\n", legId);
                     sleep(stateTransitionDelay);
@@ -164,7 +164,7 @@ bool IncPoseAdjuster::Spin(){
                     currentProgress += stepDownSpeed;
                   }
 
-                  if (interpolatingLegMoveOpenLoop(legId, add(goalPose[legId], vec3P(currentLean[0], currentLean[1], 0.0)), startPositions[0], currentProgress, *servoAnglesInRad, inverseKinematicsService_client, dynCommands_pub) == true){
+                  if (interpolatingLegMoveOpenLoop(legId, add(goalPose[legId], vec3P(currentLean[0], currentLean[1], 0.0)), startPositions[0], currentProgress, *servoAnglesInRad, inverseKinematicsService_client, poseCommand_pub) == true){
                     startPositions.clear();
                     currentPoseStates[legId] = LEAN_BACK;
                     positionArray[legId] = goalPose[legId];
@@ -184,7 +184,7 @@ bool IncPoseAdjuster::Spin(){
                     currentProgress += leanSpeed;
                 }
 
-                if (interpolatingLegMoveOpenLoop(positionArray, startPositions, currentProgress, inverseKinematicsService_client, dynCommands_pub) == true){
+                if (interpolatingLegMoveOpenLoop(positionArray, startPositions, currentProgress, inverseKinematicsService_client, poseCommand_pub) == true){
                     startPositions.clear();
                     currentProgress = 0.0;
                     currentPoseStates[legId] = FINISHED;

@@ -14,8 +14,7 @@
 
 #include "dyret_common/ServoState.h"
 #include "dyret_common/ServoStateArray.h"
-#include "dyret_common/ServoConfig.h"
-#include "dyret_common/ServoConfigArray.h"
+#include "dyret_common/ServoConfigs.h"
 #include "dyret_common/Pose.h"
 #include "dyret_common/ActionMessage.h"
 #include "dyret_common/DistAng.h"
@@ -37,6 +36,8 @@
 
 #include "dyret_common/wait_for_ros.h"
 #include "dyret_common/timeHandling.h"
+
+#include "dyret_common/ConfigureServos.h"
 
 using namespace std::chrono;
 
@@ -184,7 +185,7 @@ int main(int argc, char **argv)
   ros::Subscriber gaitInferredPos_sub = n.subscribe("actuatorStates", 1000, actuatorState_Callback);
   ros::Publisher  dynCommands_pub = n.advertise<dyret_common::Pose>("/dyret/dynCommands", 3);
   ros::Publisher  gaitInferredPos_pub = n.advertise<dyret_common::DistAng>("gaitInferredPos", 1000);
-  ros::Publisher  servoConfig_pub = n.advertise<dyret_common::ServoConfigArray>("/dyret/servoConfigs", 1);
+  ros::ServiceClient servoConfigClient = n.serviceClient<dyret_common::ConfigureServos>("/dyret/configure_servos");
 
   waitForRosInit(get_gait_evaluation_client, "get_gait_evaluation");
   waitForRosInit(inverseKinematicsService_client, "inverseKinematicsService");
@@ -240,7 +241,7 @@ int main(int argc, char **argv)
   int lastAction = dyret_common::ActionMessage::t_idle;
   currentAction  = dyret_common::ActionMessage::t_idle;
 
-  setServoSpeeds(0.01, servoConfig_pub);
+  setServoSpeeds(0.01, servoConfigClient);
 
   printf("P: %d, I: %d, D: %d\n", lastGaitControllerParamsConfigMessage.cP, lastGaitControllerParamsConfigMessage.cI, lastGaitControllerParamsConfigMessage.cD);
   pidParameters[0] = 10; // Set to 10 to stop coxa shaking before experiment begins
@@ -252,7 +253,7 @@ int main(int argc, char **argv)
   pidParameters[6] = lastGaitControllerParamsConfigMessage.tP;
   pidParameters[7] = lastGaitControllerParamsConfigMessage.tI;
   pidParameters[8] = lastGaitControllerParamsConfigMessage.tD;
-  setServoPIDs(pidParameters, servoConfig_pub);
+  setServoPIDs(pidParameters, servoConfigClient);
 
   std::vector<vec3P> restPose = getRestPose();
   moveAllLegsToGlobal(getRestPose(), inverseKinematicsService_client, dynCommands_pub);
@@ -285,12 +286,12 @@ int main(int argc, char **argv)
           // Check for transition
           if (lastAction == dyret_common::ActionMessage::t_contGait){
 
-              setServoLog(false, servoConfig_pub);
+              setServoLog(false, servoConfigClient);
               pauseGaitRecording(get_gait_evaluation_client);
 
               activatedRecording = false;
 
-              setServoSpeeds(poseAdjustSpeed, servoConfig_pub);
+              setServoSpeeds(poseAdjustSpeed, servoConfigClient);
 
               restPoseAdjuster.setPoseAndActuatorLengths(getRestPose(), legActuatorLengths);
               restPoseAdjuster.reset();
@@ -306,7 +307,7 @@ int main(int argc, char **argv)
 
           // Check for transition
           if (lastAction != dyret_common::ActionMessage::t_contGait){
-              setServoSpeeds(poseAdjustSpeed, servoConfig_pub);
+              setServoSpeeds(poseAdjustSpeed, servoConfigClient);
               bSplineInitAdjuster.reset();
 
               // PID:
@@ -319,7 +320,7 @@ int main(int argc, char **argv)
               pidParameters[6] = lastGaitControllerParamsConfigMessage.tP;
               pidParameters[7] = lastGaitControllerParamsConfigMessage.tI;
               pidParameters[8] = lastGaitControllerParamsConfigMessage.tD;
-              setServoPIDs(pidParameters, servoConfig_pub);
+              setServoPIDs(pidParameters, servoConfigClient);
 
               // Gait params:
               globalStepHeight     = lastGaitControllerParamsConfigMessage.stepHeight;
@@ -380,7 +381,7 @@ int main(int argc, char **argv)
 
           if (bSplineInitAdjuster.done() == false){
               if (bSplineInitAdjuster.Spin() == true){
-                  setServoSpeeds(gaitServoSpeed, servoConfig_pub);
+                  setServoSpeeds(gaitServoSpeed, servoConfigClient);
               }
 
               startTime = std::chrono::duration_cast< std::chrono::milliseconds > (system_clock::now().time_since_epoch()).count();
@@ -388,7 +389,7 @@ int main(int argc, char **argv)
 
             if (activatedRecording == false){
                 startGaitRecording(get_gait_evaluation_client);
-                setServoLog(true, servoConfig_pub);
+                setServoLog(true, servoConfigClient);
                 activatedRecording = true;
             }
 

@@ -5,10 +5,10 @@
 
 #include "dyret_common/CalculateInverseKinematics.h"
 #include "dyret_common/Pose.h"
-#include "dyret_common/ServoConfig.h"
-#include "dyret_common/ServoConfigArray.h"
+#include "dyret_common/ServoConfigs.h"
 #include "dyret_common/angleConv.h"
 #include "dyret_common/wait_for_ros.h"
+#include "dyret_common/ConfigureServos.h"
 
 #include "movementFunctions.h"
 #include "interpolation.h"
@@ -398,8 +398,8 @@ void moveAllLegsToGlobalZ(double givenHeight, std::vector<double> servoAnglesInR
   moveLegToGlobal(givenLegId, newLegPosition, givenInverseKinematicsServiceClient, givenDynCommands_pub);
 }*/
 
-void setServoPIDs(std::vector<int> givenPIDs, ros::Publisher givenServoConfigPublisher){
-	dyret_common::ServoConfigArray msg;
+bool setServoPIDs(std::vector<int> givenPIDs, ros::ServiceClient givenServoConfigService){
+	/*dyret_common::ServoConfigArray msg;
   std::vector<dyret_common::ServoConfig> msgContents(12);
 
   for (int i = 0; i < 12; i++){
@@ -425,40 +425,65 @@ void setServoPIDs(std::vector<int> givenPIDs, ros::Publisher givenServoConfigPub
   }
 
   msg.servoConfigs = msgContents;
-  givenServoConfigPublisher.publish(msg);
+  givenServoConfigPublisher.publish(msg);*/
+
+	ROS_ERROR("Setting PID not yet implemented");
+
+}
+
+bool callServoConfigService(dyret_common::ConfigureServos givenCall, ros::ServiceClient givenServoConfigService){
+  if (givenServoConfigService.call(givenCall))  {
+    switch(givenCall.response.status){
+      case dyret_common::ConfigureServos::Response::STATUS_NOERROR:
+        ROS_INFO("Configure servo service returned no error");
+        break;
+      case dyret_common::ConfigureServos::Response::STATUS_STATE:
+        ROS_ERROR("State error from configure servo response");
+        break;
+      case dyret_common::ConfigureServos::Response::STATUS_PARAMETER:
+        ROS_ERROR("Parameter error from configure servo response");
+        break;
+      default:
+        ROS_ERROR("Unknown error from configure servo response");
+        break;
+    }
+
+    if (givenCall.response.status == givenCall.response.STATUS_NOERROR) return true;
+
+  } else {
+    ROS_ERROR("Failed to call servo config service");
+    return false;
+  }
 
 }
 
 // givenSpeed is a double 0->1
-void setServoSpeeds(double givenSpeed, ros::Publisher givenServoConfigPublisher){
-  dyret_common::ServoConfigArray msg;
-  std::vector<dyret_common::ServoConfig> msgContents(12);
+bool setServoSpeeds(double givenSpeed, ros::ServiceClient givenServoConfigService){
+  dyret_common::ConfigureServos srv;
+
+  srv.request.configurations.type =dyret_common::ServoConfigs::TYPE_SET_SPEED;
+  srv.request.configurations.ids.resize(12);
+  srv.request.configurations.parameters.resize(12);
 
   for (int i = 0; i < 12; i++){
-    msgContents[i].id = i;
-    msgContents[i].type = dyret_common::ServoConfig::TYPE_SET_SPEED;
-    msgContents[i].parameters.resize(1);
-    msgContents[i].parameters[0] = givenSpeed;
+    srv.request.configurations.ids[i] = i;
+    srv.request.configurations.parameters[i] = givenSpeed;
   }
 
-  msg.servoConfigs = msgContents;
-  //waitForRosInit(givenServoConfigPublisher, "servoConfigPublisher");
-  givenServoConfigPublisher.publish(msg);
+  return callServoConfigService(srv, givenServoConfigService);
 
 }
 
-void setServoLog(bool enable, ros::Publisher givenServoConfigPublisher){
-  dyret_common::ServoConfigArray msg;
-  std::vector<dyret_common::ServoConfig> msgContents(1);
+bool setServoLog(bool enable, ros::ServiceClient givenServoConfigService){
+  dyret_common::ConfigureServos srv;
 
   if (enable == true){
-      msgContents[0].type = dyret_common::ServoConfig::TYPE_ENABLE_LOG;
+    srv.request.configurations.type =dyret_common::ServoConfigs::TYPE_ENABLE_LOG;
   } else {
-      msgContents[0].type = dyret_common::ServoConfig::TYPE_DISABLE_LOG;
+    srv.request.configurations.type =dyret_common::ServoConfigs::TYPE_DISABLE_LOG;
   }
 
-  msg.servoConfigs = msgContents;
-  givenServoConfigPublisher.publish(msg);
+  return callServoConfigService(srv, givenServoConfigService);
 }
 
 vec3P lockToZ(vec3P givenPosition, double givenZValue){

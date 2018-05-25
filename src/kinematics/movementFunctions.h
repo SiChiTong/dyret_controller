@@ -23,10 +23,10 @@ void moveLegToGlobalZ(int givenLegId, double givenHeight, std::vector<double> se
 void moveAllLegsToGlobalZ(double givenHeight, std::vector<double> servoAnglesInRad, ros::ServiceClient givenInverseKinematicsServiceClient, ros::Publisher givenDynCommands_pub, std::vector<double> legActuatorLengths);
 
 // Config
-void setServoSpeeds(double givenSpeed, ros::Publisher givenServoConfigPublisher);
-void setServoPIDs(std::vector<int> givenPIDs, ros::Publisher givenServoConfigPublisher);
-void setServoTorques(int givenTorque, ros::Publisher givenServoConfigPublisher);
-void setServoLog(bool enable, ros::Publisher givenServoConfigPublisher);
+bool setServoSpeeds(double givenSpeed, ros::ServiceClient givenServoConfigService);
+bool setServoPIDs(std::vector<int> givenPIDs, ros::ServiceClient givenServoConfigService);
+bool setServoTorques(int givenTorque, ros::ServiceClient givenServoConfigService);
+bool setServoLog(bool enable, ros::ServiceClient givenServoConfigService);
 
 // Utility
 vec3P lockToZ(vec3P givenPosition, double givenZValue);

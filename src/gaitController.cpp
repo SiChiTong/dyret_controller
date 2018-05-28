@@ -11,6 +11,7 @@
 #include "std_msgs/String.h"
 #include <unistd.h>
 #include <dynamic_reconfigure/server.h>
+#include <dyret_common/ActuatorStates.h>
 
 #include "dyret_common/ServoState.h"
 #include "dyret_common/ServoStateArray.h"
@@ -19,7 +20,6 @@
 #include "dyret_common/ActionMessage.h"
 #include "dyret_common/DistAng.h"
 #include "dyret_common/GetGaitEvaluation.h"
-#include "dyret_common/Configuration.h"
 
 #include "dyret_controller/gaitControllerParamsConfig.h"
 #include "dyret_common/GetGaitControllerStatus.h"
@@ -69,11 +69,11 @@ std::vector<int> pidParameters;
 
 std::vector<double> servoAnglesInRad(12);
 
-void actuatorState_Callback(const dyret_common::Configuration::ConstPtr& msg){
+void actuatorState_Callback(const dyret_common::ActuatorStates::ConstPtr& msg){
 
-    if (msg->id.size() == 8 && msg->distance.size() == 8) {
-        float femurActuatorLength = (msg->distance[0] + msg->distance[2] + msg->distance[4] + msg->distance[6]) / 4.0;
-        float tibiaActuatorLength = (msg->distance[1] + msg->distance[3] + msg->distance[5] + msg->distance[7]) / 4.0;
+    if (msg->position.size() == 8) {
+        float femurActuatorLength = (msg->position[0] + msg->position[2] + msg->position[4] + msg->position[6]) / 4.0;
+        float tibiaActuatorLength = (msg->position[1] + msg->position[3] + msg->position[5] + msg->position[7]) / 4.0;
 
         legActuatorLengths[0] = femurActuatorLength;
         legActuatorLengths[1] = tibiaActuatorLength;

@@ -7,15 +7,12 @@
 
 #include "ros/ros.h"
 #include <ros/console.h>
-#include "dyret_common/CalculateInverseKinematics.h"
 #include "std_msgs/String.h"
 #include <unistd.h>
 #include <dynamic_reconfigure/server.h>
-#include <dyret_common/ActuatorStates.h>
+#include <dyret_common/ActuatorBoardState.h>
 
-#include "dyret_common/ServoState.h"
-#include "dyret_common/ServoStateArray.h"
-#include "dyret_common/ServoConfigs.h"
+#include "dyret_common/State.h"
 #include "dyret_common/Pose.h"
 #include "dyret_common/ActionMessage.h"
 #include "dyret_common/DistAng.h"
@@ -30,6 +27,7 @@
 #include "kinematics/movementFunctions.h"
 #include "kinematics/kinematicFunctions.h"
 #include "kinematics/forwardKinematics.h"
+#include "kinematics/inverseKinematics.h"
 #include "kinematics/interpolation.h"
 
 #include "kinematics/IncPoseAdjuster.h"
@@ -37,7 +35,7 @@
 #include "dyret_common/wait_for_ros.h"
 #include "dyret_common/timeHandling.h"
 
-#include "dyret_common/ConfigureServos.h"
+#include "dyret_common/Configure.h"
 
 using namespace std::chrono;
 
@@ -57,9 +55,8 @@ double globalWagPhaseOffset;
 double globalLiftDuration;
 const double groundHeightOffset = -430;
 const double groundCorrectionFactor = 0.8;
-float groundHeight = -430.0;
+float groundHeight = -430.0f;
 std::vector<double> legActuatorLengths = {0.0, 0.0};
-//double groundHeight = -562.0; // Tallest
 
 const float bSplineGaitWagOffset = 0.91;
 
@@ -68,12 +65,15 @@ const float spreadAmount  =  80.0; // was 50
 std::vector<int> pidParameters;
 
 std::vector<double> servoAnglesInRad(12);
+std::vector<double> prismaticPositions(8);
+float femurActuatorLength = 0.0;
+float tibiaActuatorLength = 0.0;
 
-void actuatorState_Callback(const dyret_common::ActuatorStates::ConstPtr& msg){
+void actuatorState_Callback(const dyret_common::ActuatorBoardState::ConstPtr& msg){
 
     if (msg->position.size() == 8) {
-        float femurActuatorLength = (msg->position[0] + msg->position[2] + msg->position[4] + msg->position[6]) / 4.0;
-        float tibiaActuatorLength = (msg->position[1] + msg->position[3] + msg->position[5] + msg->position[7]) / 4.0;
+        float femurActuatorLength = (msg->position[0] + msg->position[2] + msg->position[4] + msg->position[6]) / 4.0f;
+        float tibiaActuatorLength = (msg->position[1] + msg->position[3] + msg->position[5] + msg->position[7]) / 4.0f;
 
         legActuatorLengths[0] = femurActuatorLength;
         legActuatorLengths[1] = tibiaActuatorLength;
@@ -100,9 +100,16 @@ void actionMessagesCallback(const dyret_common::ActionMessage::ConstPtr& msg){
   ROS_INFO("Direction is %.2f (%.2f)", lastActionMessage->direction, msg->direction);
 }
 
-void servoStatesCallback(const dyret_common::ServoStateArray::ConstPtr& msg){
+void servoStatesCallback(const dyret_common::State::ConstPtr& msg){
   for (int i = 0; i < 12; i++){
       servoAnglesInRad[i] = msg->revolute[i].position;
+  }
+  if (msg->revolute.size() == prismaticPositions.size()){
+    for (int i = 0; i < prismaticPositions.size(); i++){
+      prismaticPositions[i] = msg->prismatic[i].position;
+    }
+    femurActuatorLength = (prismaticPositions[0] + prismaticPositions[2] + prismaticPositions[4] + prismaticPositions[6]) / 4.0f;
+    tibiaActuatorLength = (prismaticPositions[1] + prismaticPositions[3] + prismaticPositions[5] + prismaticPositions[7]) / 4.0f;
   }
 }
 
@@ -177,19 +184,17 @@ int main(int argc, char **argv)
 
   // Initialize services
   ros::ServiceClient get_gait_evaluation_client = n.serviceClient<dyret_common::GetGaitEvaluation>("get_gait_evaluation");
-  ros::ServiceClient inverseKinematicsService_client = n.serviceClient<dyret_common::CalculateInverseKinematics>("calculate_inverse_kinematics");
   ros::ServiceServer gaitControllerStatusService_server = n.advertiseService("get_gait_controller_status", getGaitControllerStatusService);
   // Initialize topics
-  ros::Subscriber actionMessages_sub = n.subscribe("actionMessages", 100, actionMessagesCallback);
-  ros::Subscriber servoStates_sub = n.subscribe("/dyret/servoStates", 1, servoStatesCallback);
-  ros::Subscriber gaitInferredPos_sub = n.subscribe("actuatorStates", 1000, actuatorState_Callback);
-  ros::Publisher  poseCommand_pub = n.advertise<dyret_common::Pose>("/dyret/pose_command", 3);
-  ros::Publisher  gaitInferredPos_pub = n.advertise<dyret_common::DistAng>("gaitInferredPos", 1000);
-  ros::ServiceClient servoConfigClient = n.serviceClient<dyret_common::ConfigureServos>("/dyret/configure_servos");
+  ros::Subscriber actionMessages_sub = n.subscribe("/dyret/gaitcontroller/actionMessages", 100, actionMessagesCallback);
+  ros::Subscriber servoStates_sub = n.subscribe("/dyret/state", 1, servoStatesCallback);
+  ros::Subscriber gaitInferredPos_sub = n.subscribe("/dyret/actuator_board/state", 1000, actuatorState_Callback);
+  ros::Publisher  poseCommand_pub = n.advertise<dyret_common::Pose>("/dyret/command", 3);
+  ros::Publisher  gaitInferredPos_pub = n.advertise<dyret_common::DistAng>("/dyret/gaitController/gaitInferredPos", 1000);
+  ros::ServiceClient servoConfigClient = n.serviceClient<dyret_common::Configure>("/dyret/configuration");
 
   waitForRosInit(get_gait_evaluation_client, "get_gait_evaluation");
-  waitForRosInit(inverseKinematicsService_client, "inverseKinematicsService");
-  waitForRosInit(actionMessages_sub, "actionMessages");
+  waitForRosInit(actionMessages_sub, "/dyret/gaitcontroller/actionMessages");
   waitForRosInit(servoStates_sub, "servoStates");
 
   // Initialize dynamic reconfiguration:
@@ -208,9 +213,9 @@ int main(int argc, char **argv)
   globalWagPhaseOffset = 0.0;
   globalLiftDuration   = 0.125;
 
-  const float frontOffset   =  0.0;
-  const float leftOffset    =   0.0;
-  const float rearLegOffset = -30.0;
+  const float frontOffset   =   0.0f;
+  const float leftOffset    =   0.0f;
+  const float rearLegOffset = -30.0f;
 
   BSplineGait bSplineGait = BSplineGait(globalStepHeight,
                                         globalStepLength,
@@ -224,19 +229,18 @@ int main(int argc, char **argv)
 
   bSplineGait.enableWag(bSplineGaitWagOffset, 40.0f, 0.0f);
 
-  IncPoseAdjuster bSplineInitAdjuster(false, add(bSplineGait.getPosition(0.0, true), bSplineGait.getGaitWagPoint(0.0, true)), &servoAnglesInRad, inverseKinematicsService_client, poseCommand_pub);
-/*
-  FILE * gaitLogGlobal;
-  gaitLogGlobal = fopen("/home/tonnesfn/catkin_ws/customLogs/gaitController/gaitLogGlobal.csv", "w");
+  IncPoseAdjuster bSplineInitAdjuster(false,
+                                      add(bSplineGait.getPosition(0.0, true), bSplineGait.getGaitWagPoint(0.0, true)),
+                                      &servoAnglesInRad,
+                                      &femurActuatorLength,
+                                      &tibiaActuatorLength,
+                                      poseCommand_pub);
 
-  FILE * wagLog;
-  wagLog = fopen("/home/tonnesfn/catkin_ws/customLogs/gaitController/wagLog.csv", "w");
-  fprintf(wagLog,"L0z, L1z, L2z, L3_z, wag_commanded_x, wag_commanded_y, L0_x, L1_x, L2_x, L3_x\n");
-*/
-
-  IncPoseAdjuster restPoseAdjuster(false, getRestPose(), &servoAnglesInRad, inverseKinematicsService_client, poseCommand_pub);
-
-  bool printedPos = false; // DEBUG
+  IncPoseAdjuster restPoseAdjuster(false, getRestPose(),
+                                   &servoAnglesInRad,
+                                   &femurActuatorLength,
+                                   &tibiaActuatorLength,
+                                   poseCommand_pub);
 
   int lastAction = dyret_common::ActionMessage::t_idle;
   currentAction  = dyret_common::ActionMessage::t_idle;
@@ -256,10 +260,7 @@ int main(int argc, char **argv)
   setServoPIDs(pidParameters, servoConfigClient);
 
   std::vector<vec3P> restPose = getRestPose();
-  moveAllLegsToGlobal(getRestPose(), inverseKinematicsService_client, poseCommand_pub);
-/*  ROS_ERROR("Moved all legs to global restpose:\n  %.2f, %.2f, %.2f\n  %.2f, %.2f, %.2f\n  %.2f, %.2f, %.2f\n  %.2f, %.2f, %.2f\n",
-            restPose[0].x(), restPose[0].y(), restPose[0].z(), restPose[1].x(), restPose[1].y(), restPose[1].z(),
-            restPose[2].x(), restPose[2].y(), restPose[2].z(), restPose[3].x(), restPose[3].y(), restPose[3].z());*/
+  moveAllLegsToGlobal(getRestPose(), femurActuatorLength, tibiaActuatorLength, poseCommand_pub);
 
   restPoseAdjuster.skip();
 
@@ -279,7 +280,7 @@ int main(int argc, char **argv)
       } else if (currentAction == dyret_common::ActionMessage::t_idle){
           //loop_rate.sleep();
 
-          //moveAllLegsToGlobal(getRestPose(), inverseKinematicsService_client, poseCommand_pub);
+          //moveAllLegsToGlobal(getRestPose(), ..., poseCommand_pub);
 
       }else if (currentAction == dyret_common::ActionMessage::t_restPose){
 
@@ -353,17 +354,7 @@ int main(int argc, char **argv)
                   ROS_FATAL("std::isnan(globalGaitFrequency) == true\n");
                   exit(-1);
               }
-/*
-              float calculatedSpeed = bSplineGait.getStepLength() * globalGaitFrequency * (60.0/1000.0);
 
-              ROS_INFO("Calculated speed: %.2f\n", calculatedSpeed);
-
-              dyret_common::DistAng posChangeMsg;
-                              posChangeMsg.distance = calculatedSpeed;
-                              posChangeMsg.msgType  = posChangeMsg.t_measurementCalculated;
-                              posChangeMsg.angle    = 0.0f;
-                              gaitInferredPos_pub.publish(posChangeMsg);
-*/
               if (fabs(lastActionMessage->direction - M_PI) < 0.1){
                 movingForward = false;
               } else {
@@ -423,7 +414,9 @@ int main(int argc, char **argv)
             dyret_common::Pose msg;
 
             std::vector<int> servoIds(12);
-            std::vector<float> anglesInRad(12);
+            for (int i = 0; i < servoIds.size(); i++) servoIds[i] = i;
+
+            std::vector<float> anglesInRad;
             int currentActuatorIndex = 0;
 
             vec3P wag = bSplineGait.getGaitWagPoint(currentRelativeTime * globalGaitFrequency, movingForward);
@@ -445,49 +438,23 @@ int main(int argc, char **argv)
 */
             // Get IK solutions for each leg:
             for (int i = 0; i < 4; i++){ // For each leg
-            	dyret_common::CalculateInverseKinematics srv;
 
-                vec3P legPosition = add(globalLegPositions[i], wag);
+              vec3P legPosition = add(globalLegPositions[i], wag);
 
-                srv.request.point.x = legPosition.x();
-                srv.request.point.y = legPosition.y();
-                srv.request.point.z = legPosition.z();
-
-                if (inverseKinematicsService_client.call(srv)) {
-                    // Handle invertions (ids 1, 5, 8, 10):
-                    /*if (i == 0 || i == 3){
-                        for (int j = 0; j < srv.response.solutions.size(); j++){
-                            srv.response.solutions[j].anglesInRad[1] = -srv.response.solutions[j].anglesInRad[1];
-                        }
-                    }else if (i == 1 || i == 2){
-                        for (int j = 0; j < srv.response.solutions.size(); j++){
-                            srv.response.solutions[j].anglesInRad[2] = -srv.response.solutions[j].anglesInRad[2];
-                        }
-                    }*/
-
-              if (srv.response.solutions.size() != 0){
-                if (servoIds.size() == 0) servoIds.resize(12);
-
-                // Successful in getting solution
-                for (int j = 0; j < 3; j++){ // For each joint in the leg
-                  servoIds[currentActuatorIndex] = currentActuatorIndex; // Set ids
-                  if (i == 0 || i == 1){
-                      anglesInRad[currentActuatorIndex++] = normalizeRad(srv.response.solutions[1].anglesInRad[j]);
-                  }else{
-                      anglesInRad[currentActuatorIndex++] = normalizeRad(srv.response.solutions[0].anglesInRad[j]);
-                  }
-                }
-              } else {
-                servoIds.clear();
+              std::vector<double> inverseReturn = inverseKinematics::calculateInverseKinematics(legPosition.x(),
+                                                                                                legPosition.y(),
+                                                                                                legPosition.z(),
+                                                                                                i,
+                                                                                                femurActuatorLength,
+                                                                                                tibiaActuatorLength);
+              for (int j = 0; j < 3; j++){
+                anglesInRad.push_back(inverseReturn[j]);
               }
 
-            } else {
-              ROS_ERROR("Failed to call inverse kinematics service");
             }
-        }
 
-        std::vector<vec3P> actual = currentLegPositions(servoAnglesInRad, legActuatorLengths);
-/*
+/*        std::vector<vec3P> actual = currentLegPositions(servoAnglesInRad, legActuatorLengths);
+
         fprintf(gaitLogGlobal,"%.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f\n",
                 currentRelativeTime,
                 globalLegPositions[0].x(), globalLegPositions[0].y(), globalLegPositions[0].z(),

@@ -8,7 +8,6 @@
 #include "forwardKinematics.h"
 #include "interpolation.h"
 
-#include "dyret_common/CalculateInverseKinematics.h"
 #include "dyret_common/Pose.h"
 
 double round(double originalNumber, int decimals) {

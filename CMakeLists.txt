@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(dyret_controller)
 
+set(ROS_BUILD_TYPE Debug)
+
 set(CMAKE_CXX_FLAGS "-std=c++11 ${CMAKE_CXX_FLAGS} -ltbb -D SFERES_XML_WRITE")
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}")
 
@@ -44,12 +46,6 @@ include_directories(include
   ${TBB_INCLUDE_DIRS}
 )
 
-add_executable(inverseKinematicsService src/inverseKinematicsService.cpp)
-target_link_libraries(inverseKinematicsService 
-	${catkin_LIBRARIES})
-add_dependencies(inverseKinematicsService 
-	${catkin_EXPORTED_TARGETS})
-
 add_executable(gaitController 
                src/gaitController.cpp 
                src/gait/gait.cpp
@@ -57,6 +53,7 @@ add_executable(gaitController
                src/gait/BSplineGait.cpp
                src/kinematics/kinematicFunctions.cpp
                src/kinematics/forwardKinematics.cpp
+               src/kinematics/inverseKinematics.cpp
                src/kinematics/interpolation.cpp
                src/kinematics/IncPoseAdjuster.cpp
                src/kinematics/movementFunctions.cpp
@@ -79,10 +76,3 @@ target_link_libraries(gaitEvaluator ${catkin_LIBRARIES})
 add_dependencies(gaitEvaluator 
 	${catkin_EXPORTED_TARGETS})
 
-add_executable(testKinematics
-               src/kinematics/testKinematics.cpp
-               src/kinematics/forwardKinematics.cpp
-              )
-target_link_libraries(testKinematics ${catkin_LIBRARIES})
-add_dependencies(testKinematics 
-	${catkin_EXPORTED_TARGETS})

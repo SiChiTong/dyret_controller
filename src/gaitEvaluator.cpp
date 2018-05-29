@@ -11,8 +11,7 @@
 #include "tf/transform_datatypes.h"
 #include "tf/LinearMath/Matrix3x3.h"
 
-#include "dyret_common/ServoState.h"
-#include "dyret_common/ServoStateArray.h"
+#include "dyret_common/State.h"
 #include "dyret_common/GetGaitEvaluation.h"
 #include "dyret_common/GetGaitControllerStatus.h"
 #include "dyret_common/DistAng.h"
@@ -248,7 +247,7 @@ void imuDataCallback(const sensor_msgs::Imu::ConstPtr& msg){
   linAcc_z = msg->linear_acceleration.z;
 }
 
-void servoStatesCallback(const dyret_common::ServoStateArray::ConstPtr& msg){
+void servoStatesCallback(const dyret_common::State::ConstPtr& msg){
   if (enableCapture){
       for(int i = 0; i < 12; i++){
           currentData[i].push_back(msg->revolute[i].current);
@@ -282,9 +281,9 @@ int main(int argc, char **argv) {
   ros::NodeHandle n;
 
   ros::Subscriber imuData_sub = n.subscribe("/imu/data", 100, imuDataCallback);
-  ros::Subscriber gaitInferredPos_sub = n.subscribe("gaitInferredPos", 1000, gaitInferredPos_Callback);
+  ros::Subscriber gaitInferredPos_sub = n.subscribe("/dyret/gaitController/gaitInferredPos", 1000, gaitInferredPos_Callback);
   ros::ServiceServer gaitEvalService = n.advertiseService("get_gait_evaluation", getGaitEvaluationService);
-  ros::Subscriber servoStates_sub = n.subscribe("/dyret/servoStates", 1, servoStatesCallback);
+  ros::Subscriber servoStates_sub = n.subscribe("/dyret/state", 1, servoStatesCallback);
   ros::Subscriber mocapData_sub = n.subscribe("/Robot_1/pose", 5, mocapDataCallback);
 
   //waitForRosInit(gaitInferredPos_sub, "gaitInferredPos");

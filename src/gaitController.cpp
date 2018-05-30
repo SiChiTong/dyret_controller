@@ -36,6 +36,7 @@
 #include "dyret_common/timeHandling.h"
 
 #include "dyret_common/Configure.h"
+#include "dyret_common/PositionCommand.h"
 
 using namespace std::chrono;
 
@@ -192,6 +193,7 @@ int main(int argc, char **argv)
   ros::Publisher  poseCommand_pub = n.advertise<dyret_common::Pose>("/dyret/command", 3);
   ros::Publisher  gaitInferredPos_pub = n.advertise<dyret_common::DistAng>("/dyret/gaitController/gaitInferredPos", 1000);
   ros::ServiceClient servoConfigClient = n.serviceClient<dyret_common::Configure>("/dyret/configuration");
+  ros::Publisher positionCommand_pub = n.advertise<dyret_common::PositionCommand>("/dyret/dyret_controller/positionCommand", 1);;
 
   waitForRosInit(get_gait_evaluation_client, "get_gait_evaluation");
   waitForRosInit(actionMessages_sub, "/dyret/gaitcontroller/actionMessages");
@@ -234,13 +236,13 @@ int main(int argc, char **argv)
                                       &servoAnglesInRad,
                                       &femurActuatorLength,
                                       &tibiaActuatorLength,
-                                      poseCommand_pub);
+                                      positionCommand_pub);
 
   IncPoseAdjuster restPoseAdjuster(false, getRestPose(),
                                    &servoAnglesInRad,
                                    &femurActuatorLength,
                                    &tibiaActuatorLength,
-                                   poseCommand_pub);
+                                   positionCommand_pub);
 
   int lastAction = dyret_common::ActionMessage::t_idle;
   currentAction  = dyret_common::ActionMessage::t_idle;
@@ -260,7 +262,7 @@ int main(int argc, char **argv)
   setServoPIDs(pidParameters, servoConfigClient);
 
   std::vector<vec3P> restPose = getRestPose();
-  moveAllLegsToGlobal(getRestPose(), femurActuatorLength, tibiaActuatorLength, poseCommand_pub);
+  moveAllLegsToGlobalPosition(getRestPose(), positionCommand_pub);
 
   restPoseAdjuster.skip();
 

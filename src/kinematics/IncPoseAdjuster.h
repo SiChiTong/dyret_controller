@@ -13,7 +13,7 @@ class IncPoseAdjuster{
   float* femurActuatorLength;
   float* tibiaActuatorLength;
 
-  ros::Publisher poseCommand_pub;
+  ros::Publisher positionCommand_pub;
 
   t_poseAdjustState currentPoseStates[4];
   std::vector<vec3P> goalPose;
@@ -44,7 +44,7 @@ public:
                   std::vector<double>* givenServoAnglesInRad,
                   float* givenFemurActuatorLength,
                   float* givenTibiaActuatorLength,
-                  ros::Publisher givenPoseCommand_pub){
+                  ros::Publisher givenPositionCommand_pub){
     currentProgress = 0.0;
     closedLoop = givenClosedLoop;
     positionArray.resize(4); // Set size 4
@@ -52,7 +52,7 @@ public:
     femurActuatorLength = givenFemurActuatorLength;
     tibiaActuatorLength = givenTibiaActuatorLength;
     goalPose = givenGoalPose;
-    poseCommand_pub = givenPoseCommand_pub;
+    positionCommand_pub = givenPositionCommand_pub;
     for (int i = 0; i < 4; i++) currentPoseStates[i] = INIT_STEPDOWN;
 
     reachedPose = false;

@@ -23,7 +23,7 @@ class IncPoseAdjuster{
 
   std::vector<double> legActuatorLengths = {0.0, 0.0};
 
-  static constexpr float stateTransitionDelay = 0.0f;
+  static constexpr int stateTransitionDelay = 5;
 
   bool reachedPose;
   vec3P tmpLegPoseVar;

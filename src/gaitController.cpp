@@ -264,8 +264,8 @@ int main(int argc, char **argv)
 
   restPoseAdjuster.skip();
 
-  const double poseAdjustSpeed = 0.08; // Was 0.08
-  const double gaitServoSpeed = 0.0; // max rpm (was 0)
+  const double poseAdjustSpeed = 0.08;
+  const double gaitServoSpeed = 0.0;
 
   ros::Rate loop_rate(3);
 
@@ -273,6 +273,7 @@ int main(int argc, char **argv)
   long long int lastTime = 0;
   bool activatedRecording = false;
   std::vector<vec3P> lastGlobalLegPositions;
+  ros::Rate poseAdjusterRate(50);
 
   while ( ros::ok() ) {
       if (currentAction == dyret_common::ActionMessage::t_sleep){
@@ -300,6 +301,8 @@ int main(int argc, char **argv)
 
           if (restPoseAdjuster.done() == false){
               restPoseAdjuster.Spin();
+              poseAdjusterRate.sleep();
+
           } else {
               currentAction = dyret_common::ActionMessage::t_idle;
           }
@@ -374,6 +377,7 @@ int main(int argc, char **argv)
               if (bSplineInitAdjuster.Spin() == true){
                   setServoSpeeds(gaitServoSpeed, servoConfigClient);
               }
+              poseAdjusterRate.sleep();
 
               startTime = std::chrono::duration_cast< std::chrono::milliseconds > (system_clock::now().time_since_epoch()).count();
           } else {

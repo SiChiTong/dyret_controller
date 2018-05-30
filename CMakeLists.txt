@@ -76,3 +76,11 @@ target_link_libraries(gaitEvaluator ${catkin_LIBRARIES})
 add_dependencies(gaitEvaluator 
 	${catkin_EXPORTED_TARGETS})
 
+add_executable(inverseKinematicsAdapter
+	src/inverseKinematicsAdapter.cpp
+	src/kinematics/inverseKinematics.cpp
+)
+target_link_libraries(inverseKinematicsAdapter ${catkin_LIBRARIES})
+add_dependencies(inverseKinematicsAdapter 
+	${catkin_EXPORTED_TARGETS})
+

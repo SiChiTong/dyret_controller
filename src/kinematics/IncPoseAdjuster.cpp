@@ -5,6 +5,16 @@
 #include "kinematicFunctions.h"
 #include "movementFunctions.h"
 
+void printPosition(std::vector<vec3P> givenPosition, std::string givenDescription){
+  fprintf(stderr, "%s:\n\t%.2f, %.2f, %.2f\n\t%.2f, %.2f, %.2f\n\t%.2f, %.2f, %.2f\n\t%.2f, %.2f, %.2f\n",
+          givenDescription.c_str(),
+          givenPosition[0].x(), givenPosition[0].y(), givenPosition[0].z(),
+          givenPosition[1].x(), givenPosition[1].y(), givenPosition[1].z(),
+          givenPosition[2].x(), givenPosition[2].y(), givenPosition[2].z(),
+          givenPosition[3].x(), givenPosition[3].y(), givenPosition[3].z());
+
+}
+
 bool IncPoseAdjuster::Spin(){
   if (currentPoseStates[0] == FINISHED &&
       currentPoseStates[1] == FINISHED &&
@@ -16,20 +26,26 @@ bool IncPoseAdjuster::Spin(){
       reachedPose = true;
       return true;
 
-  } else if (currentPoseStates[0] == INIT_STEPDOWN){ // Global
+  } else if (currentPoseStates[0] == INIT_STEPDOWN){
+      // In this state, we make sure every leg is on the ground
 
-      if (startPositions.size() == 0){
+      if (startPositions.size() == 0){ // First loop of INIT_STEPDOWN
 
           printf("INIT_STEPDOWN\n");
 
-          // Startpositions has not been initialized:
+          // Initialize startPositions with current leg positions:
           startPositions = currentLegPositions(*servoAnglesInRad, legActuatorLengths);
 
-          groundHeight = fmin(fmin(goalPose[0].points[2], goalPose[1].points[2]),fmin(goalPose[2].points[2], goalPose[3].points[2]));
+          //printPosition(startPositions, "StartPosition");
+
+          // groundHeight is set as the minimum
+          groundHeight = (float) fmin(fmin(goalPose[0].z(), goalPose[1].z()),fmin(goalPose[2].z(), goalPose[3].z()));
 
           // Set goal positions:
           positionArray = startPositions;
           for (int i = 0; i < 4; i++) positionArray[i].points[2] = groundHeight;
+
+          //printPosition(positionArray, "positionArray");
 
           currentProgress = 0.0;
 
@@ -93,6 +109,8 @@ bool IncPoseAdjuster::Spin(){
                 if (startPositions.size() == 0){
                   // Startpositions has not been initialized:
                   startPositions = currentLegPositions(*servoAnglesInRad, legActuatorLengths);
+                  printPosition(startPositions, "startPositions");
+                  printPosition(add(positionArray, vec3P(currentLean[0], currentLean[1], 0.0)), "leanGoal");
                   currentProgress = 0.0;
                 } else {
                  currentProgress += leanSpeed;

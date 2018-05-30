@@ -5,8 +5,7 @@
 
 namespace inverseKinematics {
 
-std::vector<double> calculateInverseKinematics(double x, double y, double z, int legId, double femurActuatorLength,
-                                               double tibiaActuatorLength);
+std::vector<double> calculateInverseKinematics(double x, double y, double z, int legId, double femurActuatorLength, double tibiaActuatorLength);
 
 }
 #endif

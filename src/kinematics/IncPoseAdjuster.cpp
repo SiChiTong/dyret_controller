@@ -26,36 +26,29 @@ bool IncPoseAdjuster::Spin(){
       reachedPose = true;
       return true;
 
-  } else if (currentPoseStates[0] == INIT_STEPDOWN){
+
+  } else if (currentPoseStates[0] == INIT_STEPDOWN){ // Global state INIT_STEPDOWN
       // In this state, we make sure every leg is on the ground
 
-      if (startPositions.size() == 0){ // First loop of INIT_STEPDOWN
+      if (currentProgress == 0.0){ // First loop of INIT_STEPDOWN
 
           printf("INIT_STEPDOWN\n");
 
-          // Initialize startPositions with current leg positions:
-          startPositions = currentLegPositions(*servoAnglesInRad, legActuatorLengths);
-
-          //printPosition(startPositions, "StartPosition");
-
-          // groundHeight is set as the minimum
+          // groundHeight is set as the minimum of goalPose leg heights
           groundHeight = (float) fmin(fmin(goalPose[0].z(), goalPose[1].z()),fmin(goalPose[2].z(), goalPose[3].z()));
 
           // Set goal positions:
-          positionArray = startPositions;
-          for (int i = 0; i < 4; i++) positionArray[i].points[2] = groundHeight;
+          positionArray = currentLegPositions(*servoAnglesInRad, legActuatorLengths);;
 
-          //printPosition(positionArray, "positionArray");
+      } else { // Actually doing the stepping down
 
-          currentProgress = 0.0;
+          std::vector<vec3P> tmpPosition = positionArray;
+          for (int i = 0; i < 4; i++) tmpPosition[i].points[2] = groundHeight;
 
-      } else {
+          if (interpolatingLegMoveOpenLoop(tmpPosition, positionArray, currentProgress, positionCommand_pub) == true){
 
-          currentProgress += stepDownSpeed;
+              positionArray = tmpPosition; // We have now reached the new position
 
-          if (interpolatingLegMoveOpenLoop(positionArray, startPositions, currentProgress, positionCommand_pub) == true){
-
-              startPositions.clear();
               for (int i = 0; i < 4; i++){
                   currentPoseStates[i] = LEAN_GENERATE;
               }
@@ -64,6 +57,9 @@ bool IncPoseAdjuster::Spin(){
           }
       }
 
+      currentProgress += stepDownSpeed;
+
+  // Non-global states:
   } else {
 
       for (int i = 0; i < 4; i++){ // For all legs
@@ -88,7 +84,7 @@ bool IncPoseAdjuster::Spin(){
           if (currentPoseStates[legId] == FINISHED) continue; // Done -> next leg
 
           switch(currentPoseStates[legId]){
-            case LEAN_GENERATE:
+            case LEAN_GENERATE: // Calculate where to lean based on which leg we are going to move
               {
                 std::vector<vec3P> currentPositions(4);
                 double leanAmount = 35.0;
@@ -100,55 +96,40 @@ bool IncPoseAdjuster::Spin(){
 
                 currentPoseStates[legId] = LEAN_INTERPOLATE;
                 printf("L%u: -> leanInterpolate\n", legId);
+                currentProgress = 0.0;
                 sleep(stateTransitionDelay);
 
                 break;
               }
-            case LEAN_INTERPOLATE: // leanInterpolate
+            case LEAN_INTERPOLATE: // Move all four legs to lean in the generated direction
               {
-                if (startPositions.size() == 0){
-                  // Startpositions has not been initialized:
-                  startPositions = currentLegPositions(*servoAnglesInRad, legActuatorLengths);
-                  printPosition(startPositions, "startPositions");
-                  printPosition(add(positionArray, vec3P(currentLean[0], currentLean[1], 0.0)), "leanGoal");
-                  currentProgress = 0.0;
-                } else {
-                 currentProgress += leanSpeed;
+               currentProgress += leanSpeed;
 
-                 if (interpolatingLegMoveOpenLoop(add(positionArray, vec3P(currentLean[0], currentLean[1], 0.0)),
-                                                  positionArray,
-                                                  currentProgress,
-                                                  positionCommand_pub) == true){
-                     currentPoseStates[legId] = LIFT;
-                     printf("L%u: -> lift\n", legId);
-                     currentProgress = 0.0;
-                     startPositions.clear();
-                     sleep(stateTransitionDelay);
-                 }
-                }
+               if (interpolatingLegMoveOpenLoop(add(positionArray, vec3P(currentLean[0], currentLean[1], 0.0)),
+                                                positionArray,
+                                                currentProgress,
+                                                positionCommand_pub) == true){
+                   currentPoseStates[legId] = LIFT;
+                   printf("L%u: -> lift\n", legId);
+                   currentProgress = 0.0;
+                   sleep(stateTransitionDelay);
+               }
+
 
                 break;
               }
-            case LIFT:
+            case LIFT: // Lift the one leg that is now being moved to the new correct position
               {
-                if (startPositions.size() == 0){
-                  // Startpositions has not been initialized:
-                    startPositions.resize(1);
-                    startPositions[0] = currentLegPos(legId, *servoAnglesInRad, legActuatorLengths);
+                currentProgress += liftSpeed;
 
-                    tmpLegPoseVar = startPositions[0];
-                    tmpLegPoseVar.points[2] = goalPose[legId].points[2] + stepHeight; // LegLiftHight
-                    currentProgress = 0.0;
-                } else{
-                    currentProgress += liftSpeed;
-                }
+                std::vector<vec3P> tmpStartPosition = add(positionArray, vec3P(currentLean[0], currentLean[1], 0.0));
+                std::vector<vec3P> tmpEndPosition = tmpStartPosition;
+                tmpEndPosition[legId].points[2] = goalPose[legId].points[2] + stepHeight;
 
-                if (interpolatingLegMoveOpenLoop(legId,
-                                                 tmpLegPoseVar,
-                                                 startPositions[0],
+                if (interpolatingLegMoveOpenLoop(tmpEndPosition,
+                                                 tmpStartPosition,
                                                  currentProgress,
                                                  positionCommand_pub) == true){
-                    startPositions.clear();
                     currentPoseStates[legId] = LINE_INTERPOLATE;
                     currentProgress = 0.0;
                     printf("L%u: -> LineInterpolate\n", legId);
@@ -159,18 +140,22 @@ bool IncPoseAdjuster::Spin(){
                 break;
 
               }
-            case LINE_INTERPOLATE: // lineInterpolate
+            case LINE_INTERPOLATE: // Move the one lifted leg to the correct position (still lifted)
               {
-                vec3P raisedLegPose = add(goalPose[legId], vec3P(currentLean[0], currentLean[1], 0.0)); // Incorporate lean into new positions
-                raisedLegPose.points[2] = raisedLegPose.points[2] + stepHeight; // Raise leg by stepHeight
+                std::vector<vec3P> tmpStartPosition = add(positionArray, vec3P(currentLean[0], currentLean[1], 0.0));
+                tmpStartPosition[legId].points[2] = goalPose[legId].points[2] + stepHeight;
 
-                if (interpolatingLegMoveOpenLoop(legId,
-                                                 raisedLegPose,
-                                                 tmpLegPoseVar,
+                std::vector<vec3P> tmpEndPosition = tmpStartPosition;
+                tmpEndPosition[legId] = add(goalPose[legId], vec3P(currentLean[0], currentLean[1], stepHeight)); // Incorporate lean into new position
+
+                if (interpolatingLegMoveOpenLoop(tmpEndPosition,
+                                                 tmpStartPosition,
                                                  currentProgress,
                                                  positionCommand_pub) == true){
                     currentPoseStates[legId] = STEPDOWN;
+                    positionArray[legId] = goalPose[legId]; // This leg is now in the correct position
                     printf("L%u: -> stepDown\n", legId);
+                    currentProgress = 0.0;
                     sleep(stateTransitionDelay);
                 }
 
@@ -178,47 +163,40 @@ bool IncPoseAdjuster::Spin(){
 
                 break;
               }
-            case STEPDOWN: // stepdown
+            case STEPDOWN: // Step down with the leg that just moved to the correct position
               {
 
-                if (startPositions.size() == 0){
-                    // Startpositions has not been initialized:
-                    startPositions.resize(1);
-                    startPositions[0] = currentLegPos(legId, *servoAnglesInRad, legActuatorLengths);
-                    currentProgress = 0.0;
-                  } else{
-                    currentProgress += stepDownSpeed;
-                  }
+                std::vector<vec3P> tmpEndPosition = add(positionArray, vec3P(currentLean[0], currentLean[1], 0.0));
 
-                  if (interpolatingLegMoveOpenLoop(legId,
-                                                   add(goalPose[legId], vec3P(currentLean[0], currentLean[1], 0.0)),
-                                                   startPositions[0],
-                                                   currentProgress,
-                                                   positionCommand_pub) == true){
-                    startPositions.clear();
-                    currentPoseStates[legId] = LEAN_BACK;
-                    positionArray[legId] = goalPose[legId];
-                    printf("L%u: -> LEAN_BACK\n",legId);
-                    sleep(stateTransitionDelay);
-                  }
+                std::vector<vec3P> tmpStartPosition = tmpEndPosition;
+                tmpStartPosition[legId].points[2] = tmpStartPosition[legId].points[2] + stepHeight;
 
-                  break;
-            }
-            case LEAN_BACK:
-            {
-                if (startPositions.size() == 0){
-                    // Startpositions has not been initialized:
-                    startPositions = currentLegPositions(*servoAnglesInRad, legActuatorLengths);
-                    currentProgress = 0.0;
-                } else {
-                    currentProgress += leanSpeed;
-                }
 
-                if (interpolatingLegMoveOpenLoop(positionArray,
-                                                 startPositions,
+                currentProgress += stepDownSpeed;
+
+                if (interpolatingLegMoveOpenLoop(tmpEndPosition,
+                                                 tmpStartPosition,
                                                  currentProgress,
                                                  positionCommand_pub) == true){
-                    startPositions.clear();
+                  currentProgress = 0.0;
+                  currentPoseStates[legId] = LEAN_BACK;
+                  positionArray[legId] = goalPose[legId];
+                  printf("L%u: -> LEAN_BACK\n",legId);
+                  sleep(stateTransitionDelay);
+                }
+
+                break;
+            }
+            case LEAN_BACK: // Lean back to the center and repeat for the rest of the legs
+            {
+                currentProgress += leanSpeed;
+
+                std::vector<vec3P> tmpStartPosition = add(positionArray, vec3P(currentLean[0], currentLean[1], 0.0));
+
+                if (interpolatingLegMoveOpenLoop(positionArray,
+                                                 tmpStartPosition,
+                                                 currentProgress,
+                                                 positionCommand_pub) == true){
                     currentProgress = 0.0;
                     currentPoseStates[legId] = FINISHED;
                     printf("L%u: -> FINISHED\n", legId);

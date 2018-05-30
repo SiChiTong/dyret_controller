@@ -5,13 +5,9 @@
 
 class IncPoseAdjuster{
 
-  bool closedLoop;
   float currentProgress;
-  std::vector<vec3P> startPositions;
 
   std::vector<double>* servoAnglesInRad;
-  float* femurActuatorLength;
-  float* tibiaActuatorLength;
 
   ros::Publisher positionCommand_pub;
 
@@ -23,37 +19,31 @@ class IncPoseAdjuster{
 
   std::vector<double> legActuatorLengths = {0.0, 0.0};
 
-  static constexpr int stateTransitionDelay = 5;
+  static constexpr int stateTransitionDelay = 0;
 
   bool reachedPose;
-  vec3P tmpLegPoseVar;
 
   // Parameters for movement:
   const float stepHeight = 40.0;
-  const float leanSpeed = 0.2;
-  const float legMoveSpeed = 0.2;
-  const float stepDownSpeed = 0.1;
-  const float liftSpeed = 1.0;
+  const float leanSpeed = 1.0;
+  const float legMoveSpeed = 3.0;
+  const float stepDownSpeed = 0.5;
+  const float liftSpeed = 2.0;
 
   float groundHeight;
 
 public:
 
-  IncPoseAdjuster(bool givenClosedLoop,
-                  std::vector<vec3P> givenGoalPose,
+  IncPoseAdjuster(std::vector<vec3P> givenGoalPose,
                   std::vector<double>* givenServoAnglesInRad,
-                  float* givenFemurActuatorLength,
-                  float* givenTibiaActuatorLength,
                   ros::Publisher givenPositionCommand_pub){
     currentProgress = 0.0;
-    closedLoop = givenClosedLoop;
     positionArray.resize(4); // Set size 4
     servoAnglesInRad = givenServoAnglesInRad;
-    femurActuatorLength = givenFemurActuatorLength;
-    tibiaActuatorLength = givenTibiaActuatorLength;
     goalPose = givenGoalPose;
     positionCommand_pub = givenPositionCommand_pub;
     for (int i = 0; i < 4; i++) currentPoseStates[i] = INIT_STEPDOWN;
+    currentProgress = 0.0;
 
     reachedPose = false;
   }
@@ -66,8 +56,8 @@ public:
   bool Spin();
   void reset(){
     for (int i = 0; i < 4; i++) currentPoseStates[i] = INIT_STEPDOWN;
+    currentProgress = 0.0;
     reachedPose = false;
-    startPositions.clear();
   }
 
   void skip(){

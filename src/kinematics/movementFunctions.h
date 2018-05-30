@@ -7,13 +7,6 @@ vec3P currentLegPos(int legId, std::vector<double> servoAnglesInRad, std::vector
 std::vector<vec3P> currentLegPositions(std::vector<double> servoAnglesInRad, std::vector<double> legLengths);
 
 
-// Open loop interpolation move of one leg
-bool interpolatingLegMoveOpenLoop(int givenLegId,
-                                  vec3P givenGoalPosition,
-                                  vec3P givenStartPosition,
-                                  double givenProgress,
-                                  ros::Publisher givenPositionCommand_pub);
-
 // Open loop interpolation move of all four legs
 bool interpolatingLegMoveOpenLoop(std::vector<vec3P> givenGoalPositions,
                                   std::vector<vec3P> givenStartPositions,

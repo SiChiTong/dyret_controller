@@ -5,8 +5,9 @@
 #include "ros/console.h"
 
 #include "dyret_common/Pose.h"
-#include "dyret_common/PositionCommand.h"
 #include "dyret_common/State.h"
+
+#include "dyret_controller/PositionCommand.h"
 
 #include "kinematics/inverseKinematics.h"
 
@@ -17,14 +18,11 @@ std::vector<float> currentLegAngles(12);
 double femurActuatorLength = 0.0;
 double tibiaActuatorLength = 0.0;
 
-void positionCommandCallback(const dyret_common::PositionCommand::ConstPtr& msg){
-  std::vector<float> legAngles(12);
+void positionCommandCallback(const dyret_controller::PositionCommand::ConstPtr& msg){
 
-  for (int i = 0; i < 12; i++){
-    legAngles[i] = currentLegAngles[i];
-  }
+  std::vector<float> legAngles;
 
-  for (int i = 0; i < msg->id.size(); i++){
+  for (int i = 0; i < 4; i++){
     // Get inverse kinematics solution for current leg
     std::vector<double> inverseKinematicsReturn = inverseKinematics::calculateInverseKinematics(msg->legPosition[i].x,
                                                                                                 msg->legPosition[i].y,
@@ -32,17 +30,14 @@ void positionCommandCallback(const dyret_common::PositionCommand::ConstPtr& msg)
                                                                                                 i,
                                                                                                 femurActuatorLength,
                                                                                                 tibiaActuatorLength);
-
-    legAngles[msg->id[i]*3]     = (float) inverseKinematicsReturn[0];
-    legAngles[(msg->id[i]*3)+1] = (float) inverseKinematicsReturn[1];
-    legAngles[(msg->id[i]*3)+2] = (float) inverseKinematicsReturn[2];
+    legAngles.insert(legAngles.end(), inverseKinematicsReturn.begin(), inverseKinematicsReturn.end());
 
   }
 
   std::ostringstream rosStringStream;
 
-  for (int i = 0; i < msg->id.size(); i++){
-    rosStringStream << "\n\tId " << msg->id[i] << ": " << msg->legPosition[i].x << ", " << msg->legPosition[i].y << ", " << msg->legPosition[i].z;
+  for (int i = 0; i < 4; i++){
+    rosStringStream << "\n\tId " << i << ": " << msg->legPosition[i].x << ", " << msg->legPosition[i].y << ", " << msg->legPosition[i].z;
   }
 
   ROS_INFO("%s\nCalculated angles:\n\t%.2f, %.2f, %.2f\n\t%.2f, %.2f, %.2f\n\t%.2f, %.2f, %.2f\n\t%.2f, %.2f, %.2f\n\t",

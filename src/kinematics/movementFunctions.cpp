@@ -8,7 +8,8 @@
 #include "dyret_common/angleConv.h"
 #include "dyret_common/wait_for_ros.h"
 #include "dyret_common/Configure.h"
-#include "dyret_common/PositionCommand.h"
+
+#include "dyret_controller/PositionCommand.h"
 
 #include "movementFunctions.h"
 #include "interpolation.h"
@@ -41,10 +42,7 @@ std::vector<double> getInverseSolution(int legId, vec3P givenPoint, double femur
 }
 
 void moveAllLegsToGlobalPosition(std::vector<vec3P> givenPoints, ros::Publisher givenPositionCommand_pub){
-  dyret_common::PositionCommand msg;
-
-  msg.id = {0,1,2,3};
-  msg.legPosition.resize(4);
+  dyret_controller::PositionCommand msg;
 
   for (int i = 0; i < msg.legPosition.size(); i++){
     msg.legPosition[i].x = givenPoints[i].x();
@@ -61,10 +59,7 @@ bool interpolatingLegMoveOpenLoop(std::vector<vec3P> givenGoalPositions,
                                   float givenProgress,
                                   ros::Publisher givenPositionCommand_pub){
 
-  dyret_common::PositionCommand msg;
-
-  msg.id = {0,1,2,3};
-  msg.legPosition.resize(4);
+  dyret_controller::PositionCommand msg;
 
   // Check to see which legs have reached their positions
   bool reachedPositions = true;
@@ -85,34 +80,6 @@ bool interpolatingLegMoveOpenLoop(std::vector<vec3P> givenGoalPositions,
     msg.legPosition[i].y = legPosition.y();
     msg.legPosition[i].z = legPosition.z();
   }
-
-  givenPositionCommand_pub.publish(msg);
-
-  return false;
-}
-
-// Open loop interpolation move of 1 leg
-bool interpolatingLegMoveOpenLoop(int givenLegId,
-                                  vec3P givenGoalPosition,
-                                  vec3P givenStartPosition,
-                                  double givenProgress,
-                                  ros::Publisher givenPositionCommand_pub){
-
-
-  if (givenProgress >= getInterpolatedLength(givenStartPosition, givenGoalPosition)){
-    return true;
-  }
-
-  vec3P legPosition = lineInterpolation(givenStartPosition, givenGoalPosition, (float) givenProgress);
-
-  dyret_common::PositionCommand msg;
-
-  msg.id = {givenLegId};
-  msg.legPosition.resize(1);
-
-  msg.legPosition[0].x = legPosition.x();
-  msg.legPosition[0].y = legPosition.y();
-  msg.legPosition[0].z = legPosition.z();
 
   givenPositionCommand_pub.publish(msg);
 

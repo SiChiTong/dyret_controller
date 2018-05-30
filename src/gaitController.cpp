@@ -36,7 +36,8 @@
 #include "dyret_common/timeHandling.h"
 
 #include "dyret_common/Configure.h"
-#include "dyret_common/PositionCommand.h"
+
+#include "dyret_controller/PositionCommand.h"
 
 using namespace std::chrono;
 
@@ -193,7 +194,7 @@ int main(int argc, char **argv)
   ros::Publisher  poseCommand_pub = n.advertise<dyret_common::Pose>("/dyret/command", 3);
   ros::Publisher  gaitInferredPos_pub = n.advertise<dyret_common::DistAng>("/dyret/gaitController/gaitInferredPos", 1000);
   ros::ServiceClient servoConfigClient = n.serviceClient<dyret_common::Configure>("/dyret/configuration");
-  ros::Publisher positionCommand_pub = n.advertise<dyret_common::PositionCommand>("/dyret/dyret_controller/positionCommand", 1);;
+  ros::Publisher positionCommand_pub = n.advertise<dyret_controller::PositionCommand>("/dyret/dyret_controller/positionCommand", 1);;
 
   waitForRosInit(get_gait_evaluation_client, "get_gait_evaluation");
   waitForRosInit(actionMessages_sub, "/dyret/gaitcontroller/actionMessages");
@@ -231,17 +232,12 @@ int main(int argc, char **argv)
 
   bSplineGait.enableWag(bSplineGaitWagOffset, 40.0f, 0.0f);
 
-  IncPoseAdjuster bSplineInitAdjuster(false,
-                                      add(bSplineGait.getPosition(0.0, true), bSplineGait.getGaitWagPoint(0.0, true)),
+  IncPoseAdjuster bSplineInitAdjuster(add(bSplineGait.getPosition(0.0, true), bSplineGait.getGaitWagPoint(0.0, true)),
                                       &servoAnglesInRad,
-                                      &femurActuatorLength,
-                                      &tibiaActuatorLength,
                                       positionCommand_pub);
 
-  IncPoseAdjuster restPoseAdjuster(false, getRestPose(),
+  IncPoseAdjuster restPoseAdjuster(getRestPose(),
                                    &servoAnglesInRad,
-                                   &femurActuatorLength,
-                                   &tibiaActuatorLength,
                                    positionCommand_pub);
 
   int lastAction = dyret_common::ActionMessage::t_idle;

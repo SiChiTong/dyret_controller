@@ -10,8 +10,6 @@ set(Boost_USE_STATIC_LIBS OFF)
 set(Boost_USE_MULTITHREADED ON)  
 set(Boost_USE_STATIC_RUNTIME OFF)
 
-find_package(message_generation)
-
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   std_msgs
@@ -24,6 +22,12 @@ find_package(catkin REQUIRED COMPONENTS
   dyret_hardware
 )
 
+add_message_files(
+  DIRECTORY msg
+  FILES
+  PositionCommand.msg
+)
+
 find_package(Boost REQUIRED COMPONENTS 
   program_options
   serialization
@@ -34,6 +38,11 @@ find_package(TBB REQUIRED)
 
 generate_dynamic_reconfigure_options(
   cfg/gaitControllerParams.cfg
+)
+
+generate_messages(
+  DEPENDENCIES
+  geometry_msgs
 )
 
 catkin_package(

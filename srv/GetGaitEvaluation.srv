@@ -1,0 +1,9 @@
+# Enumerated types
+uint8 t_resetStatistics=0
+uint8 t_start=1
+uint8 t_pause=2
+uint8 t_getResults=3
+
+uint8 givenCommand
+---
+float32[] results

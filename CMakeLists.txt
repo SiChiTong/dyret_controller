@@ -26,6 +26,25 @@ add_message_files(
   DIRECTORY msg
   FILES
   PositionCommand.msg
+  ActionMessage.msg
+  DistAng.msg
+  Trajectory.msg
+  GaitControllerStatus.msg
+)
+
+add_service_files(
+  FILES
+  GetGaitControllerStatus.srv
+  GetGaitEvaluation.srv
+)
+
+generate_messages(
+  DEPENDENCIES
+  geometry_msgs
+)
+
+generate_dynamic_reconfigure_options(
+  cfg/gaitControllerParams.cfg
 )
 
 find_package(Boost REQUIRED COMPONENTS 
@@ -35,15 +54,6 @@ find_package(Boost REQUIRED COMPONENTS
 )
 
 find_package(TBB REQUIRED)
-
-generate_dynamic_reconfigure_options(
-  cfg/gaitControllerParams.cfg
-)
-
-generate_messages(
-  DEPENDENCIES
-  geometry_msgs
-)
 
 catkin_package(
   CATKIN_DEPENDS message_runtime
@@ -68,22 +78,25 @@ add_executable(gaitController
                src/kinematics/movementFunctions.cpp
               )
 target_link_libraries(gaitController ${catkin_LIBRARIES})
-add_dependencies(gaitController 
-  ${catkin_EXPORTED_TARGETS})
+add_dependencies(gaitController
+                 ${catkin_EXPORTED_TARGETS}
+                 dyret_controller_generate_messages_cpp)
 
 add_executable(trajectoryController
                src/trajectoryController.cpp
               )
 target_link_libraries(trajectoryController ${catkin_LIBRARIES})
-add_dependencies(trajectoryController 
-	${catkin_EXPORTED_TARGETS})
+add_dependencies(trajectoryController
+                 ${catkin_EXPORTED_TARGETS}
+                 dyret_controller_generate_messages_cpp)
 
 add_executable(gaitEvaluator
                src/gaitEvaluator.cpp
               )
 target_link_libraries(gaitEvaluator ${catkin_LIBRARIES})
 add_dependencies(gaitEvaluator 
-	${catkin_EXPORTED_TARGETS})
+                 ${catkin_EXPORTED_TARGETS}
+                 dyret_controller_generate_messages_cpp)
 
 add_executable(inverseKinematicsAdapter
 	src/inverseKinematicsAdapter.cpp
@@ -91,5 +104,6 @@ add_executable(inverseKinematicsAdapter
 )
 target_link_libraries(inverseKinematicsAdapter ${catkin_LIBRARIES})
 add_dependencies(inverseKinematicsAdapter 
-	${catkin_EXPORTED_TARGETS})
+                 ${catkin_EXPORTED_TARGETS}
+                 dyret_controller_generate_messages_cpp)
 

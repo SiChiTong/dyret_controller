@@ -10,16 +10,9 @@
 #include "std_msgs/String.h"
 #include <unistd.h>
 #include <dynamic_reconfigure/server.h>
-#include <dyret_common/ActuatorBoardState.h>
 
 #include "dyret_common/State.h"
 #include "dyret_common/Pose.h"
-#include "dyret_common/ActionMessage.h"
-#include "dyret_common/DistAng.h"
-#include "dyret_common/GetGaitEvaluation.h"
-
-#include "dyret_controller/gaitControllerParamsConfig.h"
-#include "dyret_common/GetGaitControllerStatus.h"
 
 #include "gait/gait.h"
 #include "gait/BSplineGait.h"
@@ -38,11 +31,20 @@
 #include "dyret_common/Configure.h"
 
 #include "dyret_controller/PositionCommand.h"
+#include "dyret_controller/ActionMessage.h"
+#include "dyret_controller/DistAng.h"
+
+#include "dyret_controller/GetGaitControllerStatus.h"
+#include "dyret_controller/GetGaitEvaluation.h"
+
+#include "dyret_controller/gaitControllerParamsConfig.h"
+
+#include <dyret_hardware/ActuatorBoardState.h>
 
 using namespace std::chrono;
 
 int currentAction;
-dyret_common::ActionMessage::ConstPtr lastActionMessage;
+dyret_controller::ActionMessage::ConstPtr lastActionMessage;
 robo_cont::gaitControllerParamsConfig lastGaitControllerParamsConfigMessage;
 
 bool movingForward;
@@ -71,7 +73,7 @@ std::vector<double> prismaticPositions(8);
 float femurActuatorLength = 0.0;
 float tibiaActuatorLength = 0.0;
 
-void actuatorState_Callback(const dyret_common::ActuatorBoardState::ConstPtr& msg){
+void actuatorState_Callback(const dyret_hardware::ActuatorBoardState::ConstPtr& msg){
 
     if (msg->position.size() == 8) {
         float femurActuatorLength = (msg->position[0] + msg->position[2] + msg->position[4] + msg->position[6]) / 4.0f;
@@ -87,14 +89,14 @@ void actuatorState_Callback(const dyret_common::ActuatorBoardState::ConstPtr& ms
 
 }
 
-bool getGaitControllerStatusService(dyret_common::GetGaitControllerStatus::Request  &req,
-		dyret_common::GetGaitControllerStatus::Response &res){
+bool getGaitControllerStatusService(dyret_controller::GetGaitControllerStatus::Request  &req,
+                                    dyret_controller::GetGaitControllerStatus::Response &res){
   res.gaitControllerStatus.actionType = currentAction;
 
   return true;
 }
 
-void actionMessagesCallback(const dyret_common::ActionMessage::ConstPtr& msg){
+void actionMessagesCallback(const dyret_controller::ActionMessage::ConstPtr& msg){
   ROS_INFO("Switching currentAction from %u to %u", currentAction, msg->actionType);
   lastActionMessage = msg;
   currentAction = msg->actionType;
@@ -143,9 +145,9 @@ void gaitControllerParamConfigCallback(robo_cont::gaitControllerParamsConfig &co
 
 void startGaitRecording(ros::ServiceClient get_gait_evaluation_client){
 
-  dyret_common::GetGaitEvaluation srv;
+  dyret_controller::GetGaitEvaluation srv;
 
-  srv.request.givenCommand = dyret_common::GetGaitEvaluation::Request::t_start;
+  srv.request.givenCommand = dyret_controller::GetGaitEvaluation::Request::t_start;
 
   if (get_gait_evaluation_client.call(srv)) {
     ROS_INFO("Called startGaitRecording service\n");
@@ -155,9 +157,9 @@ void startGaitRecording(ros::ServiceClient get_gait_evaluation_client){
 
 void pauseGaitRecording(ros::ServiceClient get_gait_evaluation_client){
 
-  dyret_common::GetGaitEvaluation srv;
+  dyret_controller::GetGaitEvaluation srv;
 
-  srv.request.givenCommand = dyret_common::GetGaitEvaluation::Request::t_pause;
+  srv.request.givenCommand = dyret_controller::GetGaitEvaluation::Request::t_pause;
 
   if (get_gait_evaluation_client.call(srv)) {
     ROS_INFO("Called pauseGaitRecording service\n");
@@ -185,14 +187,14 @@ int main(int argc, char **argv)
   ros::NodeHandle n;
 
   // Initialize services
-  ros::ServiceClient get_gait_evaluation_client = n.serviceClient<dyret_common::GetGaitEvaluation>("get_gait_evaluation");
+  ros::ServiceClient get_gait_evaluation_client = n.serviceClient<dyret_controller::GetGaitEvaluation>("get_gait_evaluation");
   ros::ServiceServer gaitControllerStatusService_server = n.advertiseService("get_gait_controller_status", getGaitControllerStatusService);
   // Initialize topics
   ros::Subscriber actionMessages_sub = n.subscribe("/dyret/gaitcontroller/actionMessages", 100, actionMessagesCallback);
   ros::Subscriber servoStates_sub = n.subscribe("/dyret/state", 1, servoStatesCallback);
   ros::Subscriber gaitInferredPos_sub = n.subscribe("/dyret/actuator_board/state", 1000, actuatorState_Callback);
   ros::Publisher  poseCommand_pub = n.advertise<dyret_common::Pose>("/dyret/command", 3);
-  ros::Publisher  gaitInferredPos_pub = n.advertise<dyret_common::DistAng>("/dyret/gaitController/gaitInferredPos", 1000);
+  ros::Publisher  gaitInferredPos_pub = n.advertise<dyret_controller::DistAng>("/dyret/gaitController/gaitInferredPos", 1000);
   ros::ServiceClient servoConfigClient = n.serviceClient<dyret_common::Configure>("/dyret/configuration");
   ros::Publisher positionCommand_pub = n.advertise<dyret_controller::PositionCommand>("/dyret/dyret_controller/positionCommand", 1);;
 
@@ -240,8 +242,8 @@ int main(int argc, char **argv)
                                    &servoAnglesInRad,
                                    positionCommand_pub);
 
-  int lastAction = dyret_common::ActionMessage::t_idle;
-  currentAction  = dyret_common::ActionMessage::t_idle;
+  int lastAction = dyret_controller::ActionMessage::t_idle;
+  currentAction  = dyret_controller::ActionMessage::t_idle;
 
   setServoSpeeds(0.01, servoConfigClient);
 
@@ -274,17 +276,17 @@ int main(int argc, char **argv)
   ros::Rate poseAdjusterRate(50);
 
   while ( ros::ok() ) {
-      if (currentAction == dyret_common::ActionMessage::t_sleep){
+      if (currentAction == dyret_controller::ActionMessage::t_sleep){
 
-      } else if (currentAction == dyret_common::ActionMessage::t_idle){
+      } else if (currentAction == dyret_controller::ActionMessage::t_idle){
           //loop_rate.sleep();
 
           //moveAllLegsToGlobal(getRestPose(), ..., poseCommand_pub);
 
-      }else if (currentAction == dyret_common::ActionMessage::t_restPose){
+      }else if (currentAction == dyret_controller::ActionMessage::t_restPose){
 
           // Check for transition
-          if (lastAction == dyret_common::ActionMessage::t_contGait){
+          if (lastAction == dyret_controller::ActionMessage::t_contGait){
 
               setServoLog(false, servoConfigClient);
               pauseGaitRecording(get_gait_evaluation_client);
@@ -302,13 +304,13 @@ int main(int argc, char **argv)
               poseAdjusterRate.sleep();
 
           } else {
-              currentAction = dyret_common::ActionMessage::t_idle;
+              currentAction = dyret_controller::ActionMessage::t_idle;
           }
 
-      }else if (currentAction == dyret_common::ActionMessage::t_contGait){
+      }else if (currentAction == dyret_controller::ActionMessage::t_contGait){
 
           // Check for transition
-          if (lastAction != dyret_common::ActionMessage::t_contGait){
+          if (lastAction != dyret_controller::ActionMessage::t_contGait){
               setServoSpeeds(poseAdjustSpeed, servoConfigClient);
               bSplineInitAdjuster.reset();
 
@@ -403,7 +405,7 @@ int main(int argc, char **argv)
                 double secondsPassed = getMs() - lastTime;
                 double distance = bSplineGait.getStepLength() * globalGaitFrequency * (secondsPassed / 1000.0f);
 
-                dyret_common::DistAng posChangeMsg;
+                dyret_controller::DistAng posChangeMsg;
                 if (movingForward) posChangeMsg.distance = distance; else posChangeMsg.distance = -distance;
 
                 posChangeMsg.msgType = posChangeMsg.t_measurementInferred;

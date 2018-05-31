@@ -12,12 +12,13 @@
 #include "tf/LinearMath/Matrix3x3.h"
 
 #include "dyret_common/State.h"
-#include "dyret_common/GetGaitEvaluation.h"
-#include "dyret_common/GetGaitControllerStatus.h"
-#include "dyret_common/DistAng.h"
 
 #include "dyret_common/wait_for_ros.h"
 #include "dyret_common/timeHandling.h"
+
+#include "dyret_controller/DistAng.h"
+#include "dyret_controller/GetGaitControllerStatus.h"
+#include "dyret_controller/GetGaitEvaluation.h"
 
 bool enableCapture;
 
@@ -44,8 +45,8 @@ void discardFunction(int sig){
   discardSolution = 1;
 }
 
-bool getGaitEvaluationService(dyret_common::GetGaitEvaluation::Request  &req,
-		dyret_common::GetGaitEvaluation::Response &res){
+bool getGaitEvaluationService(dyret_controller::GetGaitEvaluation::Request  &req,
+                              dyret_controller::GetGaitEvaluation::Response &res){
 
   std::vector<float> results;
 
@@ -255,7 +256,7 @@ void servoStatesCallback(const dyret_common::State::ConstPtr& msg){
   }
 }
 
-void gaitInferredPos_Callback(const dyret_common::DistAng::ConstPtr& msg)
+void gaitInferredPos_Callback(const dyret_controller::DistAng::ConstPtr& msg)
 {
   if (msg->msgType == msg->t_measurementInferred){
       accPos += msg->distance;

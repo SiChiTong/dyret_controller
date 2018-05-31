@@ -190,16 +190,16 @@ int main(int argc, char **argv)
   ros::ServiceClient get_gait_evaluation_client = n.serviceClient<dyret_controller::GetGaitEvaluation>("get_gait_evaluation");
   ros::ServiceServer gaitControllerStatusService_server = n.advertiseService("get_gait_controller_status", getGaitControllerStatusService);
   // Initialize topics
-  ros::Subscriber actionMessages_sub = n.subscribe("/dyret/gaitcontroller/actionMessages", 100, actionMessagesCallback);
+  ros::Subscriber actionMessages_sub = n.subscribe("/dyret/dyret_controller/actionMessages", 100, actionMessagesCallback);
   ros::Subscriber servoStates_sub = n.subscribe("/dyret/state", 1, servoStatesCallback);
   ros::Subscriber gaitInferredPos_sub = n.subscribe("/dyret/actuator_board/state", 1000, actuatorState_Callback);
   ros::Publisher  poseCommand_pub = n.advertise<dyret_common::Pose>("/dyret/command", 3);
-  ros::Publisher  gaitInferredPos_pub = n.advertise<dyret_controller::DistAng>("/dyret/gaitController/gaitInferredPos", 1000);
+  ros::Publisher  gaitInferredPos_pub = n.advertise<dyret_controller::DistAng>("/dyret/dyret_controller/gaitInferredPos", 1000);
   ros::ServiceClient servoConfigClient = n.serviceClient<dyret_common::Configure>("/dyret/configuration");
   ros::Publisher positionCommand_pub = n.advertise<dyret_controller::PositionCommand>("/dyret/dyret_controller/positionCommand", 1);;
 
   waitForRosInit(get_gait_evaluation_client, "get_gait_evaluation");
-  waitForRosInit(actionMessages_sub, "/dyret/gaitcontroller/actionMessages");
+  waitForRosInit(actionMessages_sub, "/dyret/dyret_controller/actionMessages");
   waitForRosInit(servoStates_sub, "servoStates");
 
   // Initialize dynamic reconfiguration:

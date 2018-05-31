@@ -104,9 +104,9 @@ int main(int argc, char **argv)
   ros::init(argc, argv, "trajectoryController");
   ros::NodeHandle n;
 
-  ros::Subscriber gaitInferredPos_sub = n.subscribe("/dyret/gaitController/gaitInferredPos", 1000, gaitInferredPos_Callback);
-  ros::Subscriber trajectoryMessages_sub = n.subscribe("/dyret/gaitController/trajectoryMessages", 1000, trajectoryMessages_Callback);
-  ros::Publisher  actionMessages_pub = n.advertise<dyret_controller::ActionMessage>("/dyret/gaitcontroller/actionMessages", 10);
+  ros::Subscriber gaitInferredPos_sub = n.subscribe("/dyret/dyret_controller/gaitInferredPos", 1000, gaitInferredPos_Callback);
+  ros::Subscriber trajectoryMessages_sub = n.subscribe("/dyret/dyret_controller/trajectoryMessages", 1000, trajectoryMessages_Callback);
+  ros::Publisher  actionMessages_pub = n.advertise<dyret_controller::ActionMessage>("/dyret/dyret_controller/actionMessages", 10);
   ros::AsyncSpinner spinner(4); // Use 4 threads
 
   sleep(1);

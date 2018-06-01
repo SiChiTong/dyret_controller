@@ -66,7 +66,7 @@ const float bSplineGaitWagOffset = 0.91;
 
 const float spreadAmount  =  80.0; // was 50
 
-std::vector<int> pidParameters;
+std::vector<double> pidParameters;
 
 std::vector<double> servoAnglesInRad(12);
 std::vector<double> prismaticPositions(8);
@@ -136,7 +136,7 @@ void gaitControllerParamConfigCallback(robo_cont::gaitControllerParamsConfig &co
             config.wagPhase,
             config.liftDuration);
 
-  ROS_INFO("\n\tC: P%u I%u D%u\n\tF: P%u I%u D%u\n\tT: P%u I%u D%u\n\n",
+  ROS_INFO("\n\tC: P%.2f I%.2f D%.2f\n\tF: P%.2f I%.2f D%.2f\n\tT: P%.2f I%.2f D%.2f\n\n",
             config.cP, config.cI, config.cD, config.fP, config.fI, config.fD, config.tP, config.tI, config.tD);
 
   lastGaitControllerParamsConfigMessage = config;
@@ -247,8 +247,8 @@ int main(int argc, char **argv)
 
   setServoSpeeds(0.01, servoConfigClient);
 
-  printf("P: %d, I: %d, D: %d\n", lastGaitControllerParamsConfigMessage.cP, lastGaitControllerParamsConfigMessage.cI, lastGaitControllerParamsConfigMessage.cD);
-  pidParameters[0] = 10; // Set to 10 to stop coxa shaking before experiment begins
+  printf("P: %.2f, I: %.2f, D: %.2f\n", lastGaitControllerParamsConfigMessage.cP, lastGaitControllerParamsConfigMessage.cI, lastGaitControllerParamsConfigMessage.cD);
+  pidParameters[0] = 2.0; // Set to 2 to stop coxa shaking before experiment begins
   pidParameters[1] = lastGaitControllerParamsConfigMessage.cI;
   pidParameters[2] = lastGaitControllerParamsConfigMessage.cD;
   pidParameters[3] = lastGaitControllerParamsConfigMessage.fP;

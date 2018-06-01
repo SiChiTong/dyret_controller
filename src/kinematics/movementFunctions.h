@@ -17,7 +17,7 @@ void moveAllLegsToGlobalPosition(std::vector<vec3P> givenPoints, ros::Publisher 
 
 // Config
 bool setServoSpeeds(double givenSpeed, ros::ServiceClient givenServoConfigService);
-bool setServoPIDs(std::vector<int> givenPIDs, ros::ServiceClient givenServoConfigService);
+bool setServoPIDs(std::vector<double> givenPIDs, ros::ServiceClient givenServoConfigService);
 bool setServoLog(bool enable, ros::ServiceClient givenServoConfigService);
 
 // Utility

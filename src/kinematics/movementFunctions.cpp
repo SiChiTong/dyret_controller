@@ -86,62 +86,60 @@ bool interpolatingLegMoveOpenLoop(std::vector<vec3P> givenGoalPositions,
   return false;
 }
 
-bool setServoPIDs(std::vector<int> givenPIDs, ros::ServiceClient givenServoConfigService){
-	/*dyret_common::ServoConfigArray msg;
-  std::vector<dyret_common::ServoConfig> msgContents(12);
 
-  for (int i = 0; i < 12; i++){
-      msgContents[i].type = dyret_common::ServoConfig::TYPE_SET_PID;
-      msgContents[i].parameters.resize(3);
-
-      if (i == 0 || i == 3 || i == 6 || i == 9){
-        // Coxa
-        msgContents[i].parameters[0] = (double) givenPIDs[0];
-        msgContents[i].parameters[1] = (double) givenPIDs[1];
-        msgContents[i].parameters[2] = (double) givenPIDs[2];
-      } else if (i == 1 || i == 4 || i == 7 || i == 10){
-        // Femur
-        msgContents[i].parameters[0] = (double) givenPIDs[3];
-        msgContents[i].parameters[1] = (double) givenPIDs[4];
-        msgContents[i].parameters[2] = (double) givenPIDs[5];
-      } else {
-        // Tibia
-        msgContents[i].parameters[0] = (double) givenPIDs[6];
-        msgContents[i].parameters[1] = (double) givenPIDs[7];
-        msgContents[i].parameters[2] = (double) givenPIDs[8];
-      }
-  }
-
-  msg.servoConfigs = msgContents;
-  givenServoConfigPublisher.publish(msg);*/
-
-	ROS_ERROR("Setting PID not yet implemented");
-
-}
-
-bool callServoConfigService(dyret_common::Configure givenCall, ros::ServiceClient givenServoConfigService){
+bool callConfigurationService(dyret_common::Configure givenCall, ros::ServiceClient givenServoConfigService){
   if (givenServoConfigService.call(givenCall))  {
     switch(givenCall.response.status){
       case dyret_common::Configure::Response::STATUS_NOERROR:
-        ROS_INFO("Configure servo service returned no error");
+        ROS_INFO("Configuration service returned no error");
         break;
       case dyret_common::Configure::Response::STATUS_STATE:
-        ROS_ERROR("State error from configure servo response");
+        ROS_ERROR("State error from configuration service response");
         break;
       case dyret_common::Configure::Response::STATUS_PARAMETER:
-        ROS_ERROR("Parameter error from configure servo response");
+        ROS_ERROR("Parameter error from configuration service response");
         break;
       default:
-        ROS_ERROR("Unknown error from configure servo response");
+        ROS_ERROR("Unknown error from configuration service response");
         break;
     }
 
     if (givenCall.response.status == givenCall.response.STATUS_NOERROR) return true;
 
   } else {
-    ROS_ERROR("Failed to call servo config service");
+    ROS_ERROR("Failed to call configuration service");
     return false;
   }
+
+}
+
+bool setServoPIDs(std::vector<double> givenPIDs, ros::ServiceClient givenConfigurationService){
+	dyret_common::Configure msg;
+
+  msg.request.configuration.revolute.ids = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11}; // Set all servos
+  msg.request.configuration.revolute.type = msg.request.configuration.revolute.TYPE_SET_PID;
+
+  for (int i = 0; i < 12; i++){
+
+      if (i == 0 || i == 3 || i == 6 || i == 9){
+        // Coxa
+        msg.request.configuration.revolute.parameters.push_back(givenPIDs[0]);
+        msg.request.configuration.revolute.parameters.push_back(givenPIDs[1]);
+        msg.request.configuration.revolute.parameters.push_back(givenPIDs[2]);
+      } else if (i == 1 || i == 4 || i == 7 || i == 10){
+        // Femur
+        msg.request.configuration.revolute.parameters.push_back(givenPIDs[3]);
+        msg.request.configuration.revolute.parameters.push_back(givenPIDs[4]);
+        msg.request.configuration.revolute.parameters.push_back(givenPIDs[5]);
+      } else {
+        // Tibia
+        msg.request.configuration.revolute.parameters.push_back(givenPIDs[6]);
+        msg.request.configuration.revolute.parameters.push_back(givenPIDs[7]);
+        msg.request.configuration.revolute.parameters.push_back(givenPIDs[8]);
+      }
+  }
+
+  callConfigurationService(msg, givenConfigurationService);
 
 }
 
@@ -158,7 +156,7 @@ bool setServoSpeeds(double givenSpeed, ros::ServiceClient givenServoConfigServic
     srv.request.configuration.revolute.parameters[i] = givenSpeed;
   }
 
-  return callServoConfigService(srv, givenServoConfigService);
+  return callConfigurationService(srv, givenServoConfigService);
 
 }
 
@@ -167,7 +165,7 @@ bool setServoLog(bool enable, ros::ServiceClient givenServoConfigService){
 
   ROS_ERROR("Set servo log not implemented!");
 
-  return callServoConfigService(srv, givenServoConfigService);
+  return callConfigurationService(srv, givenServoConfigService);
 }
 
 vec3P lockToZ(vec3P givenPosition, double givenZValue){

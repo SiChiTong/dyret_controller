@@ -281,11 +281,11 @@ int main(int argc, char **argv) {
   ros::init(argc, argv, "gaitEvaluator");
   ros::NodeHandle n;
 
-  ros::Subscriber imuData_sub = n.subscribe("/imu/data", 100, imuDataCallback);
+  ros::Subscriber imuData_sub = n.subscribe("/dyret/sensor/imu", 100, imuDataCallback);
   ros::Subscriber gaitInferredPos_sub = n.subscribe("/dyret/dyret_controller/gaitInferredPos", 1000, gaitInferredPos_Callback);
   ros::ServiceServer gaitEvalService = n.advertiseService("get_gait_evaluation", getGaitEvaluationService);
   ros::Subscriber servoStates_sub = n.subscribe("/dyret/state", 1, servoStatesCallback);
-  ros::Subscriber mocapData_sub = n.subscribe("/Robot_1/pose", 5, mocapDataCallback);
+  ros::Subscriber mocapData_sub = n.subscribe("/dyret/sensor/pose", 5, mocapDataCallback);
 
   //waitForRosInit(gaitInferredPos_sub, "gaitInferredPos");
   //waitForRosInit(imuData_sub, "imuData");

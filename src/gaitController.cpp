@@ -231,7 +231,9 @@ int main(int argc, char **argv)
   int lastAction = dyret_controller::ActionMessage::t_idle;
   currentAction  = dyret_controller::ActionMessage::t_idle;
 
-  setServoSpeeds(0.01, servoConfigClient);
+  if (ros::Time::isSystemTime()){ // do not set speed in simulation
+    setServoSpeeds(0.01, servoConfigClient);
+  }
 
   printf("P: %.2f, I: %.2f, D: %.2f\n", lastGaitControllerParamsConfigMessage.cP, lastGaitControllerParamsConfigMessage.cI, lastGaitControllerParamsConfigMessage.cD);
   pidParameters[0] = 2.0; // Set to 2 to stop coxa shaking before experiment begins
@@ -243,7 +245,9 @@ int main(int argc, char **argv)
   pidParameters[6] = lastGaitControllerParamsConfigMessage.tP;
   pidParameters[7] = lastGaitControllerParamsConfigMessage.tI;
   pidParameters[8] = lastGaitControllerParamsConfigMessage.tD;
-  setServoPIDs(pidParameters, servoConfigClient);
+  if (ros::Time::isSystemTime()){ // do not set pid in simulation
+    setServoPIDs(pidParameters, servoConfigClient);
+  }
 
   std::vector<vec3P> restPose = getRestPose();
   moveAllLegsToGlobalPosition(getRestPose(), positionCommand_pub);
@@ -279,7 +283,9 @@ int main(int argc, char **argv)
 
               activatedRecording = false;
 
-              setServoSpeeds(poseAdjustSpeed, servoConfigClient);
+              if (ros::Time::isSystemTime()) { // do not set servo speed in simulation
+                setServoSpeeds(poseAdjustSpeed, servoConfigClient);
+              }
 
               restPoseAdjuster.setPoseAndActuatorLengths(getRestPose());
               restPoseAdjuster.reset();
@@ -297,7 +303,9 @@ int main(int argc, char **argv)
 
           // Check for transition
           if (lastAction != dyret_controller::ActionMessage::t_contGait){
-              setServoSpeeds(poseAdjustSpeed, servoConfigClient);
+              if (ros::Time::isSystemTime()){ // do not set speed in simulation
+                setServoSpeeds(poseAdjustSpeed, servoConfigClient);
+              }
               bSplineInitAdjuster.reset();
 
               // PID:
@@ -310,7 +318,9 @@ int main(int argc, char **argv)
               pidParameters[6] = lastGaitControllerParamsConfigMessage.tP;
               pidParameters[7] = lastGaitControllerParamsConfigMessage.tI;
               pidParameters[8] = lastGaitControllerParamsConfigMessage.tD;
-              setServoPIDs(pidParameters, servoConfigClient);
+              if (ros::Time::isSystemTime()) { // do not set pid in simulation
+                setServoPIDs(pidParameters, servoConfigClient);
+              }
 
               // Gait params:
               globalStepHeight     = lastGaitControllerParamsConfigMessage.stepHeight;
@@ -362,7 +372,9 @@ int main(int argc, char **argv)
           if (bSplineInitAdjuster.done() == false){
               printf("gaitController l1: %.2f, l2: %.2f\n", legActuatorLengths[0], legActuatorLengths[1]);
               if (bSplineInitAdjuster.Spin() == true){
+                if (ros::Time::isSystemTime()){ // do not set speed in simulation
                   setServoSpeeds(gaitServoSpeed, servoConfigClient);
+                }
               }
               poseAdjusterRate.sleep();
 

@@ -34,13 +34,6 @@ std::vector<vec3P> currentLegPositions(std::vector<double> servoAnglesInRad, std
   return vectorToReturn;
 }
 
-std::vector<double> getInverseSolution(int legId, vec3P givenPoint, double femurActuatorLength, double tibiaActuatorLength){
-
-  std::vector<double> angleInRad = inverseKinematics::calculateInverseKinematics(givenPoint.x(), givenPoint.y(), givenPoint.z(), legId, femurActuatorLength, tibiaActuatorLength);
-
-  return angleInRad;
-}
-
 void moveAllLegsToGlobalPosition(std::vector<vec3P> givenPoints, ros::Publisher givenPositionCommand_pub){
   dyret_controller::PositionCommand msg;
 
@@ -85,7 +78,6 @@ bool interpolatingLegMoveOpenLoop(std::vector<vec3P> givenGoalPositions,
 
   return false;
 }
-
 
 bool callConfigurationService(dyret_common::Configure givenCall, ros::ServiceClient givenServoConfigService){
   if (givenServoConfigService.call(givenCall))  {
@@ -157,7 +149,6 @@ bool setServoSpeeds(double givenSpeed, ros::ServiceClient givenServoConfigServic
   }
 
   return callConfigurationService(srv, givenServoConfigService);
-
 }
 
 bool setServoLog(bool enable, ros::ServiceClient givenServoConfigService){

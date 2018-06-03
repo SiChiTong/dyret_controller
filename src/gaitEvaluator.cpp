@@ -26,24 +26,18 @@ std::vector<std::vector<float>> imuData;
 std::vector<std::vector<float>> currentData;
 
 FILE * imuLog;
-FILE * mocapLog;
+FILE * sensorPoseLog;
 bool loggingEnabled = true;
 
 long long int startTime;
 long long int accTime;
 float accPos;
 float linAcc_z;
-float receivedCalculated;
-std::vector<float> startPosition;
-std::vector<float> currentPosition;
-std::vector<float> lastSavedPosition;
+std::vector<double> startPosition;
+std::vector<double> currentPosition;
+std::vector<double> lastSavedPosition;
 
 volatile sig_atomic_t discardSolution = 0;
-
-void discardFunction(int sig){
-  ROS_WARN(" Discarding solution\n");
-  discardSolution = 1;
-}
 
 bool getGaitEvaluationService(dyret_controller::GetGaitEvaluation::Request  &req,
                               dyret_controller::GetGaitEvaluation::Response &res){
@@ -51,7 +45,7 @@ bool getGaitEvaluationService(dyret_controller::GetGaitEvaluation::Request  &req
   std::vector<float> results;
 
   switch (req.givenCommand){
-    case (req.t_start):
+    case (dyret_controller::GetGaitEvaluationRequest::t_start):
     {
         ROS_INFO("req.t_start received\n");
         enableCapture = true;
@@ -61,54 +55,64 @@ bool getGaitEvaluationService(dyret_controller::GetGaitEvaluation::Request  &req
         struct tm * now = localtime( & t );
 
         if (loggingEnabled == true){
-            char fileNameBufferImu[100];
-            sprintf(fileNameBufferImu,"/home/tonnesfn/catkin_ws/customLogs/imuLogs/imu_%04u%02u%02u%02u%02u%02u.csv", now->tm_year+1900, now->tm_mon+1, now->tm_mday, now->tm_hour, now->tm_min, now->tm_sec);
-            imuLog = fopen(fileNameBufferImu, "w");
-            fprintf(imuLog, "time (ms), msg->angular_velocity.x, msg->angular_velocity.y, msg->angular_velocity.z,"
-                            "msg->linear_acceleration.x, msg->linear_acceleration.y, msg->linear_acceleration.z,"
-                            "roll, pitch, yaw\n");
-            char fileNameBufferMocap[100];
-            sprintf(fileNameBufferMocap,"/home/tonnesfn/catkin_ws/customLogs/mocapLogs/mocap_%04u%02u%02u%02u%02u%02u.csv", now->tm_year+1900, now->tm_mon+1, now->tm_mday, now->tm_hour, now->tm_min, now->tm_sec);
-            mocapLog = fopen(fileNameBufferMocap, "w");
-            fprintf(mocapLog, "time (ms), "
-                              "msg->pose.position.x, "
-                              "msg->pose.position.y, "
-                              "msg->pose.position.z, "
-                              "msg->pose.orientation.w, "
-                              "msg->pose.orientation.x, "
-                              "msg->pose.orientation.y, "
-                              "msg->pose.orientation.z\n");
+          char fileNameBufferImu[120];
+          sprintf(fileNameBufferImu,"%s/catkin_ws/customLogs/imuLogs/imu_%04u%02u%02u%02u%02u%02u.csv", getenv("HOME"), now->tm_year+1900, now->tm_mon+1, now->tm_mday, now->tm_hour, now->tm_min, now->tm_sec);
+          imuLog = fopen(fileNameBufferImu, "w");
+
+          if (imuLog == NULL && errno == 2){
+            ROS_ERROR("imuLog directory not found!\n");
+          }
+
+          fprintf(imuLog, "time (ms), msg->angular_velocity.x, msg->angular_velocity.y, msg->angular_velocity.z,"
+                          "msg->linear_acceleration.x, msg->linear_acceleration.y, msg->linear_acceleration.z,"
+                          "roll, pitch, yaw\n");
+          char fileNameBufferSensorPose[2000];
+          sprintf(fileNameBufferSensorPose,"%s/catkin_ws/customLogs/sensorPoseLogs/sensorPose_%04u%02u%02u%02u%02u%02u.csv", getenv("HOME"), now->tm_year+1900, now->tm_mon+1, now->tm_mday, now->tm_hour, now->tm_min, now->tm_sec);
+          sensorPoseLog = fopen(fileNameBufferSensorPose, "w");
+
+          if (sensorPoseLog == NULL && errno == 2){
+            ROS_ERROR("sensorPoseLogs directory not found!\n");
+          }
+
+          fprintf(sensorPoseLog, "time (ms), "
+                            "msg->pose.position.x, "
+                            "msg->pose.position.y, "
+                            "msg->pose.position.z, "
+                            "msg->pose.orientation.w, "
+                            "msg->pose.orientation.x, "
+                            "msg->pose.orientation.y, "
+                            "msg->pose.orientation.z\n");
         }
 
         for (int i = 0; i < startPosition.size(); i++) startPosition[i] = currentPosition[i];
 
         break;
     }
-    case (req.t_pause):
+    case (dyret_controller::GetGaitEvaluationRequest::t_pause):
         ROS_INFO("req.t_pause received\n");
         enableCapture = false;
         accTime += getMs() - startTime;
 
         if (loggingEnabled == true){
-            if (imuLog != NULL){
+            if (imuLog != nullptr){
                 fclose(imuLog);
-                fclose(mocapLog);
-                imuLog = NULL;
-                mocapLog = NULL;
+                fclose(sensorPoseLog);
+                imuLog = nullptr;
+                sensorPoseLog = nullptr;
             }
         }
 
         break;
-    case (req.t_resetStatistics):
+    case (dyret_controller::GetGaitEvaluationRequest::t_resetStatistics):
       enableCapture = false;
 
       //printf("req.t_resetStatistics received\n");
       if (loggingEnabled == true){
-          if (imuLog != NULL){
+          if (imuLog != nullptr){
               fclose(imuLog);
-              fclose(mocapLog);
-              imuLog = NULL;
-              mocapLog = NULL;
+              fclose(sensorPoseLog);
+              imuLog = nullptr;
+              sensorPoseLog = nullptr;
           }
       }
 
@@ -119,7 +123,7 @@ bool getGaitEvaluationService(dyret_controller::GetGaitEvaluation::Request  &req
       for (int i = 0; i < currentData.size(); i++) currentData[i].clear();
 
       break;
-    case (req.t_getResults):
+    case (dyret_controller::GetGaitEvaluationRequest::t_getResults):
 
       if (discardSolution == 1){
         ROS_WARN("Discarded!\n");
@@ -130,7 +134,7 @@ bool getGaitEvaluationService(dyret_controller::GetGaitEvaluation::Request  &req
         ROS_WARN("Sideways!\n");
       } else {
 
-        results.resize(7); // 0: speed, 1: sum(SD['angVel'], 2: sum(SD['linAcc']), 3: sum(SD*('orientation'), 4: current, 5: mocapDistance, 3+2/50
+        results.resize(7); // 0: speed, 1: sum(SD['angVel'], 2: sum(SD['linAcc']), 3: sum(SD*('orientation'), 4: current, 5: sensorPoseDistance, 3+2/50
 
         // Calculate IMU fitness values:
         std::vector<float> sums(imuData.size());
@@ -155,24 +159,24 @@ bool getGaitEvaluationService(dyret_controller::GetGaitEvaluation::Request  &req
         float powerFitness;
 
         for (int i = 0; i < currentData.size(); i++){
-            currentSums[i] = std::accumulate(currentData[i].begin(), currentData[i].end(), 0.0);
+            currentSums[i] = std::accumulate(currentData[i].begin(), currentData[i].end(), 0.0f);
             currentMeans[i] = currentSums[i] / currentData[i].size();
         }
-        averagePowerDraw = std::accumulate(currentMeans.begin(), currentMeans.end(), 0.0);
-        ampHours = averagePowerDraw * (((((double) accTime) / 1000.0) / 60.0) / 60.0);
-        powerFitness = (fabs(accPos) / 1000.0) / ampHours; // m / Ah
+        averagePowerDraw = std::accumulate(currentMeans.begin(), currentMeans.end(), 0.0f);
+        ampHours = averagePowerDraw * (((((float) accTime) / 1000.0f) / 60.0f) / 60.0f);
+        powerFitness = (fabs(accPos) / 1000.0f) / ampHours; // m / Ah
 
         // Calculate speed fitness value:
-        float calculatedInferredSpeed = (fabs(accPos) / 1000.0) / (((double) accTime / 1000.0) / 60); // speed in m/min
+        float calculatedInferredSpeed = (fabs(accPos) / 1000.0f) / (((float) accTime / 1000.0f) / 60.0f); // speed in m/min
 
-        float mocapDist = sqrt(pow(startPosition[0] - lastSavedPosition[0],2) + pow(startPosition[1] - lastSavedPosition[1],2) + pow(startPosition[2] - lastSavedPosition[2],2));
-        float mocapSpeed = mocapDist / (((double) accTime / 1000.0) / 60);
+        float sensorPoseDist = sqrt(pow(startPosition[0] - lastSavedPosition[0],2) + pow(startPosition[1] - lastSavedPosition[1],2) + pow(startPosition[2] - lastSavedPosition[2],2));
+        float sensorPoseSpeed = sensorPoseDist / (((float) accTime / 1000.0f) / 60.0f);
 
         ROS_INFO("Origin: %.2f, %.2f, %.2f\n", startPosition[0], startPosition[1], startPosition[2]);
         ROS_INFO("End:    %.2f, %.2f, %.2f\n", lastSavedPosition[0], lastSavedPosition[1], startPosition[2]);
 
         // Calculate mocap fitness value
-        ROS_INFO("Distance: %.2f (S: %.2f)\n", mocapDist, mocapSpeed);
+        ROS_INFO("Distance: %.2f (S: %.2f)\n", sensorPoseDist, sensorPoseSpeed);
 
         // Assign fitness values:
         results[0] = calculatedInferredSpeed;            // Inferred speed in in m/min
@@ -180,7 +184,7 @@ bool getGaitEvaluationService(dyret_controller::GetGaitEvaluation::Request  &req
         results[2] = - (SDs[3] + SDs[4] + SDs[5]);       // linAcc
         results[3] = - (SDs[6] + SDs[7] + SDs[8]);       // Combined angle stability (roll + pitch)
         results[4] = powerFitness;                       // Efficiency
-        results[5] = mocapSpeed;                         // Inferred speed in m/min
+        results[5] = sensorPoseSpeed;                         // Inferred speed in m/min
         results[6] = results[3] + (results[2] / 50.0);   // Combined IMU stability
       }
 
@@ -191,7 +195,7 @@ bool getGaitEvaluationService(dyret_controller::GetGaitEvaluation::Request  &req
 
 }
 
-void mocapDataCallback(const geometry_msgs::PoseStamped::ConstPtr& msg){
+void sensorPoseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg){
   currentPosition[0] = msg->pose.position.x;
   currentPosition[1] = msg->pose.position.y;
   currentPosition[2] = msg->pose.position.z;
@@ -202,8 +206,8 @@ void mocapDataCallback(const geometry_msgs::PoseStamped::ConstPtr& msg){
       lastSavedPosition[2] = msg->pose.position.z;
 
       if (loggingEnabled == true){
-          fprintf(mocapLog, "%lld, ", getMs() - startTime);
-          fprintf(mocapLog, "%f, %f, %f, %f, %f, %f, %f\n",
+          fprintf(sensorPoseLog, "%lld, ", getMs() - startTime);
+          fprintf(sensorPoseLog, "%f, %f, %f, %f, %f, %f, %f\n",
                   msg->pose.position.x,
                   msg->pose.position.y,
                   msg->pose.position.z,
@@ -260,8 +264,6 @@ void gaitInferredPos_Callback(const dyret_controller::DistAng::ConstPtr& msg)
 {
   if (msg->msgType == msg->t_measurementInferred){
       accPos += msg->distance;
-  } else if (msg->msgType == msg->t_measurementCalculated){
-      receivedCalculated = msg->distance;
   }
 }
 
@@ -271,8 +273,8 @@ int main(int argc, char **argv) {
   startPosition.resize(3); // 3D mocap
   imuData.resize(9);      // 9 axes
   currentData.resize(12); // 12 servos
-  imuLog = NULL;
-  mocapLog = NULL;
+  imuLog = nullptr;
+  sensorPoseLog = nullptr;
   accPos = 0.0;
 
   enableCapture = false;
@@ -285,13 +287,7 @@ int main(int argc, char **argv) {
   ros::Subscriber gaitInferredPos_sub = n.subscribe("/dyret/dyret_controller/gaitInferredPos", 1000, gaitInferredPos_Callback);
   ros::ServiceServer gaitEvalService = n.advertiseService("get_gait_evaluation", getGaitEvaluationService);
   ros::Subscriber servoStates_sub = n.subscribe("/dyret/state", 1, servoStatesCallback);
-  ros::Subscriber mocapData_sub = n.subscribe("/dyret/sensor/pose", 5, mocapDataCallback);
-
-  //waitForRosInit(gaitInferredPos_sub, "gaitInferredPos");
-  //waitForRosInit(imuData_sub, "imuData");
-  //waitForRosInit(servoStates_sub, "servoStates");
-
-//  signal(SIGINT, discardFunction);
+  ros::Subscriber sensorPose_sub = n.subscribe("/dyret/sensor/pose", 5, sensorPoseCallback);
 
   while(ros::ok()) ros::spin();
 

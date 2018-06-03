@@ -60,7 +60,7 @@ double globalLiftDuration;
 const double groundHeightOffset = -430;
 const double groundCorrectionFactor = 0.8;
 float groundHeight = -430.0f;
-std::vector<double> legActuatorLengths = {0.0, 0.0};
+std::vector<double> legActuatorLengths;
 
 const float bSplineGaitWagOffset = 0.91;
 
@@ -70,24 +70,6 @@ std::vector<double> pidParameters;
 
 std::vector<double> servoAnglesInRad(12);
 std::vector<double> prismaticPositions(8);
-float femurActuatorLength = 0.0;
-float tibiaActuatorLength = 0.0;
-
-void actuatorState_Callback(const dyret_hardware::ActuatorBoardState::ConstPtr& msg){
-
-    if (msg->position.size() == 8) {
-        float femurActuatorLength = (msg->position[0] + msg->position[2] + msg->position[4] + msg->position[6]) / 4.0f;
-        float tibiaActuatorLength = (msg->position[1] + msg->position[3] + msg->position[5] + msg->position[7]) / 4.0f;
-
-        legActuatorLengths[0] = femurActuatorLength;
-        legActuatorLengths[1] = tibiaActuatorLength;
-
-        groundHeight = groundHeightOffset - ((femurActuatorLength + tibiaActuatorLength) * groundCorrectionFactor);
-    } else {
-        ROS_WARN("Did not apply actuatorCommand to inverse kinematic");
-    }
-
-}
 
 bool getGaitControllerStatusService(dyret_controller::GetGaitControllerStatus::Request  &req,
                                     dyret_controller::GetGaitControllerStatus::Response &res){
@@ -108,13 +90,14 @@ void servoStatesCallback(const dyret_common::State::ConstPtr& msg){
   for (int i = 0; i < 12; i++){
       servoAnglesInRad[i] = msg->revolute[i].position;
   }
-  if (msg->revolute.size() == prismaticPositions.size()){
-    for (int i = 0; i < prismaticPositions.size(); i++){
-      prismaticPositions[i] = msg->prismatic[i].position;
-    }
-    femurActuatorLength = (prismaticPositions[0] + prismaticPositions[2] + prismaticPositions[4] + prismaticPositions[6]) / 4.0f;
-    tibiaActuatorLength = (prismaticPositions[1] + prismaticPositions[3] + prismaticPositions[5] + prismaticPositions[7]) / 4.0f;
+
+  for (int i = 0; i < prismaticPositions.size(); i++){
+    prismaticPositions[i] = msg->prismatic[i].position;
   }
+  legActuatorLengths[0] = (prismaticPositions[0] + prismaticPositions[2] + prismaticPositions[4] + prismaticPositions[6]) / 4.0f;
+  legActuatorLengths[1] = (prismaticPositions[1] + prismaticPositions[3] + prismaticPositions[5] + prismaticPositions[7]) / 4.0f;
+
+  groundHeight = groundHeightOffset - ((legActuatorLengths[0] + legActuatorLengths[1]) * groundCorrectionFactor);
 }
 
 void gaitControllerParamConfigCallback(robo_cont::gaitControllerParamsConfig &config, uint32_t level) {
@@ -192,7 +175,6 @@ int main(int argc, char **argv)
   // Initialize topics
   ros::Subscriber actionMessages_sub = n.subscribe("/dyret/dyret_controller/actionMessages", 100, actionMessagesCallback);
   ros::Subscriber servoStates_sub = n.subscribe("/dyret/state", 1, servoStatesCallback);
-  ros::Subscriber gaitInferredPos_sub = n.subscribe("/dyret/actuator_board/state", 1000, actuatorState_Callback);
   ros::Publisher  poseCommand_pub = n.advertise<dyret_common::Pose>("/dyret/command", 3);
   ros::Publisher  gaitInferredPos_pub = n.advertise<dyret_controller::DistAng>("/dyret/dyret_controller/gaitInferredPos", 1000);
   ros::ServiceClient servoConfigClient = n.serviceClient<dyret_common::Configure>("/dyret/configuration");
@@ -207,6 +189,8 @@ int main(int argc, char **argv)
   dynamic_reconfigure::Server<robo_cont::gaitControllerParamsConfig>::CallbackType gaitControllerParamsConfigFunction;
   gaitControllerParamsConfigFunction = boost::bind(&gaitControllerParamConfigCallback, _1, _2);
   gaitControllerParamsConfigServer.setCallback(gaitControllerParamsConfigFunction);
+
+  legActuatorLengths = {0.0, 0.0};
 
   // Initialize bSplineGait
   globalStepLength     = 150.0;
@@ -236,10 +220,12 @@ int main(int argc, char **argv)
 
   IncPoseAdjuster bSplineInitAdjuster(add(bSplineGait.getPosition(0.0, true), bSplineGait.getGaitWagPoint(0.0, true)),
                                       &servoAnglesInRad,
+                                      &legActuatorLengths,
                                       positionCommand_pub);
 
   IncPoseAdjuster restPoseAdjuster(getRestPose(),
                                    &servoAnglesInRad,
+                                   &legActuatorLengths,
                                    positionCommand_pub);
 
   int lastAction = dyret_controller::ActionMessage::t_idle;
@@ -295,7 +281,7 @@ int main(int argc, char **argv)
 
               setServoSpeeds(poseAdjustSpeed, servoConfigClient);
 
-              restPoseAdjuster.setPoseAndActuatorLengths(getRestPose(), legActuatorLengths);
+              restPoseAdjuster.setPoseAndActuatorLengths(getRestPose());
               restPoseAdjuster.reset();
           }
 
@@ -367,13 +353,14 @@ int main(int argc, char **argv)
               vec3P wagPoint = bSplineGait.getGaitWagPoint(0.0, movingForward);
 
               std::vector<vec3P> initPose = lockToZ(add(bSplineGait.getPosition(0.0, movingForward), wagPoint), groundHeight);
-              bSplineInitAdjuster.setPoseAndActuatorLengths(initPose, legActuatorLengths);
+              bSplineInitAdjuster.setPoseAndActuatorLengths(initPose);
 
               lastTime = 0;
 
           }
 
           if (bSplineInitAdjuster.done() == false){
+              printf("gaitController l1: %.2f, l2: %.2f\n", legActuatorLengths[0], legActuatorLengths[1]);
               if (bSplineInitAdjuster.Spin() == true){
                   setServoSpeeds(gaitServoSpeed, servoConfigClient);
               }
@@ -449,8 +436,8 @@ int main(int argc, char **argv)
                                                                                                 legPosition.y(),
                                                                                                 legPosition.z(),
                                                                                                 i,
-                                                                                                femurActuatorLength,
-                                                                                                tibiaActuatorLength);
+                                                                                                legActuatorLengths[0],
+                                                                                                legActuatorLengths[1]);
               for (int j = 0; j < 3; j++){
                 anglesInRad.push_back(inverseReturn[j]);
               }

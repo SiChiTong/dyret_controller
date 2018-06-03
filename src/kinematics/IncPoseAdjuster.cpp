@@ -16,6 +16,12 @@ void printPosition(std::vector<vec3P> givenPosition, std::string givenDescriptio
 }
 
 bool IncPoseAdjuster::Spin(){
+  // Calculate groundHeight:
+  groundHeight = -430 - ((legActuatorLengths[0][0] + legActuatorLengths[0][1]) * 0.8f);
+  for (int i = 0; i < 4; i++) goalPose[i].points[2] = groundHeight; // Update goalPose continuously
+
+  printf("groundHeight: %.2f (l0: %.2f, l1: %.2f)\n",groundHeight, legActuatorLengths[0][0], legActuatorLengths[0][1]);
+
   if (currentPoseStates[0] == FINISHED &&
       currentPoseStates[1] == FINISHED &&
       currentPoseStates[2] == FINISHED &&
@@ -34,11 +40,8 @@ bool IncPoseAdjuster::Spin(){
 
           printf("INIT_STEPDOWN\n");
 
-          // groundHeight is set as the minimum of goalPose leg heights
-          groundHeight = (float) fmin(fmin(goalPose[0].z(), goalPose[1].z()),fmin(goalPose[2].z(), goalPose[3].z()));
-
           // Set goal positions:
-          positionArray = currentLegPositions(*servoAnglesInRad, legActuatorLengths);;
+          positionArray = currentLegPositions(*servoAnglesInRad, *legActuatorLengths);;
 
       } else { // Actually doing the stepping down
 

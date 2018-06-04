@@ -1,3 +1,5 @@
+#include <sys/stat.h>
+
 #include <ctime>
 #include <chrono>
 #include <signal.h>
@@ -27,7 +29,7 @@ std::vector<std::vector<float>> currentData;
 
 FILE * imuLog;
 FILE * sensorPoseLog;
-bool loggingEnabled = true;
+bool loggingEnabled = false;
 
 long long int startTime;
 long long int accTime;
@@ -38,6 +40,23 @@ std::vector<double> currentPosition;
 std::vector<double> lastSavedPosition;
 
 volatile sig_atomic_t discardSolution = 0;
+
+std::string createLogDirectory(std::string experimentName){
+  char customLogsPath[120];
+  sprintf(customLogsPath,"%s/catkin_ws/customLogs", getenv("HOME"));
+  mkdir(customLogsPath, 0700);
+  char experimentLogsPath[120];
+  sprintf(experimentLogsPath,"%s/catkin_ws/customLogs/%s", getenv("HOME"), experimentName.c_str());
+  mkdir(experimentLogsPath, 0700);
+
+  time_t t = time(0);   // get time now
+  struct tm * now = localtime( & t );
+
+  char logFilePath[120];
+  sprintf(logFilePath,"%s/%s_%04u%02u%02u%02u%02u%02u.csv", experimentLogsPath, experimentName.c_str(), now->tm_year+1900, now->tm_mon+1, now->tm_mday, now->tm_hour, now->tm_min, now->tm_sec);
+
+  return std::string(logFilePath);
+}
 
 bool getGaitEvaluationService(dyret_controller::GetGaitEvaluation::Request  &req,
                               dyret_controller::GetGaitEvaluation::Response &res){
@@ -55,24 +74,20 @@ bool getGaitEvaluationService(dyret_controller::GetGaitEvaluation::Request  &req
         struct tm * now = localtime( & t );
 
         if (loggingEnabled == true){
-          char fileNameBufferImu[120];
-          sprintf(fileNameBufferImu,"%s/catkin_ws/customLogs/imuLogs/imu_%04u%02u%02u%02u%02u%02u.csv", getenv("HOME"), now->tm_year+1900, now->tm_mon+1, now->tm_mday, now->tm_hour, now->tm_min, now->tm_sec);
-          imuLog = fopen(fileNameBufferImu, "w");
+          std::string imuLogPath = createLogDirectory("imu");
+          imuLog = fopen(imuLogPath.c_str(), "w");
 
-          if (imuLog == NULL && errno == 2){
-            ROS_ERROR("imuLog directory not found!\n");
-          }
+          if (imuLog == NULL) ROS_ERROR("Failed creating imuLog file (err%d)\n", errno);
 
           fprintf(imuLog, "time (ms), msg->angular_velocity.x, msg->angular_velocity.y, msg->angular_velocity.z,"
                           "msg->linear_acceleration.x, msg->linear_acceleration.y, msg->linear_acceleration.z,"
                           "roll, pitch, yaw\n");
-          char fileNameBufferSensorPose[2000];
-          sprintf(fileNameBufferSensorPose,"%s/catkin_ws/customLogs/sensorPoseLogs/sensorPose_%04u%02u%02u%02u%02u%02u.csv", getenv("HOME"), now->tm_year+1900, now->tm_mon+1, now->tm_mday, now->tm_hour, now->tm_min, now->tm_sec);
-          sensorPoseLog = fopen(fileNameBufferSensorPose, "w");
 
-          if (sensorPoseLog == NULL && errno == 2){
-            ROS_ERROR("sensorPoseLogs directory not found!\n");
-          }
+          std::string sensorPoseLogPath = createLogDirectory("sensorPose");
+
+          sensorPoseLog = fopen(sensorPoseLogPath.c_str(), "w");
+
+          if (sensorPoseLog == NULL) ROS_ERROR("Failed creating sensorPoseLog file (err%d)\n", errno);
 
           fprintf(sensorPoseLog, "time (ms), "
                             "msg->pose.position.x, "

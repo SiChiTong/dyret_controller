@@ -278,14 +278,12 @@ int main(int argc, char **argv)
           // Check for transition
           if (lastAction == dyret_controller::ActionMessage::t_contGait){
 
-              setServoLog(false, servoConfigClient);
+              if (ros::Time::isSystemTime()) setServoLog(false, servoConfigClient);
               pauseGaitRecording(get_gait_evaluation_client);
 
               activatedRecording = false;
 
-              if (ros::Time::isSystemTime()) { // do not set servo speed in simulation
-                setServoSpeeds(poseAdjustSpeed, servoConfigClient);
-              }
+              if (ros::Time::isSystemTime()) setServoSpeeds(poseAdjustSpeed, servoConfigClient);
 
               restPoseAdjuster.setPoseAndActuatorLengths(getRestPose());
               restPoseAdjuster.reset();
@@ -303,9 +301,7 @@ int main(int argc, char **argv)
 
           // Check for transition
           if (lastAction != dyret_controller::ActionMessage::t_contGait){
-              if (ros::Time::isSystemTime()){ // do not set speed in simulation
-                setServoSpeeds(poseAdjustSpeed, servoConfigClient);
-              }
+              if (ros::Time::isSystemTime()) setServoSpeeds(poseAdjustSpeed, servoConfigClient);
               bSplineInitAdjuster.reset();
 
               // PID:
@@ -372,9 +368,7 @@ int main(int argc, char **argv)
           if (bSplineInitAdjuster.done() == false){
               printf("gaitController l1: %.2f, l2: %.2f\n", legActuatorLengths[0], legActuatorLengths[1]);
               if (bSplineInitAdjuster.Spin() == true){
-                if (ros::Time::isSystemTime()){ // do not set speed in simulation
-                  setServoSpeeds(gaitServoSpeed, servoConfigClient);
-                }
+                if (ros::Time::isSystemTime()) setServoSpeeds(gaitServoSpeed, servoConfigClient);
               }
               poseAdjusterRate.sleep();
 
@@ -383,7 +377,7 @@ int main(int argc, char **argv)
 
             if (activatedRecording == false){
                 startGaitRecording(get_gait_evaluation_client);
-                setServoLog(true, servoConfigClient);
+                if (ros::Time::isSystemTime()) setServoLog(true, servoConfigClient);
                 activatedRecording = true;
             }
 

@@ -285,8 +285,15 @@ int main(int argc, char **argv)
 
               if (ros::Time::isSystemTime()) setServoSpeeds(poseAdjustSpeed, servoConfigClient);
 
+            if (ros::Time::isSimTime()){
+              moveAllLegsToGlobalPosition(getRestPose(), positionCommand_pub);
+              restPoseAdjuster.skip();
+              ros::Duration(1).sleep();
+              startTime = std::chrono::duration_cast< std::chrono::milliseconds > (system_clock::now().time_since_epoch()).count();
+            } else {
               restPoseAdjuster.setPoseAndActuatorLengths(getRestPose());
               restPoseAdjuster.reset();
+            }
           }
 
           if (restPoseAdjuster.done() == false){
@@ -359,7 +366,15 @@ int main(int argc, char **argv)
               vec3P wagPoint = bSplineGait.getGaitWagPoint(0.0, movingForward);
 
               std::vector<vec3P> initPose = lockToZ(add(bSplineGait.getPosition(0.0, movingForward), wagPoint), groundHeight);
-              bSplineInitAdjuster.setPoseAndActuatorLengths(initPose);
+
+              if (ros::Time::isSimTime()){ // If simulation - force legs and wait 2 sec to settle
+                moveAllLegsToGlobalPosition(initPose, positionCommand_pub);
+                bSplineInitAdjuster.skip();
+                ros::Duration(1).sleep();
+                startTime = std::chrono::duration_cast< std::chrono::milliseconds > (system_clock::now().time_since_epoch()).count();
+              } else {
+                bSplineInitAdjuster.setPoseAndActuatorLengths(initPose);
+              }
 
               lastTime = 0;
 
@@ -367,9 +382,13 @@ int main(int argc, char **argv)
 
           if (bSplineInitAdjuster.done() == false){
               printf("gaitController l1: %.2f, l2: %.2f\n", legActuatorLengths[0], legActuatorLengths[1]);
-              if (bSplineInitAdjuster.Spin() == true){
-                if (ros::Time::isSystemTime()) setServoSpeeds(gaitServoSpeed, servoConfigClient);
+
+              if (ros::Time::isSystemTime()) {
+                if (bSplineInitAdjuster.Spin() == true) {
+                  setServoSpeeds(gaitServoSpeed, servoConfigClient);
+                }
               }
+
               poseAdjusterRate.sleep();
 
               startTime = std::chrono::duration_cast< std::chrono::milliseconds > (system_clock::now().time_since_epoch()).count();
@@ -450,21 +469,6 @@ int main(int argc, char **argv)
 
             }
 
-/*        std::vector<vec3P> actual = currentLegPositions(servoAnglesInRad, legActuatorLengths);
-
-        fprintf(gaitLogGlobal,"%.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f\n",
-                currentRelativeTime,
-                globalLegPositions[0].x(), globalLegPositions[0].y(), globalLegPositions[0].z(),
-                actual[0].x(), actual[0].y(), actual[0].z(),
-                globalLegPositions[1].x(), globalLegPositions[1].y(), globalLegPositions[1].z(),
-                actual[1].x(), actual[1].y(), actual[1].z(),
-                globalLegPositions[2].x(), globalLegPositions[2].y(), globalLegPositions[2].z(),
-                actual[2].x(), actual[2].y(), actual[2].z(),
-                globalLegPositions[3].x(), globalLegPositions[3].y(), globalLegPositions[3].z(),
-                actual[3].x(), actual[3].y(), actual[3].z()
-               );
-*/
-
         if (servoIds.size() != 0){
             msg.revolute = anglesInRad;
             poseCommand_pub.publish(msg);
@@ -480,11 +484,6 @@ int main(int argc, char **argv)
     ros::spinOnce();
 
   }
-
-/*
-  fclose(wagLog);
-  fclose(gaitLogGlobal);
-*/
 
   ROS_INFO("Exiting gaitController");
 

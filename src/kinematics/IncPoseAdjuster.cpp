@@ -56,7 +56,7 @@ bool IncPoseAdjuster::Spin(){
                   currentPoseStates[i] = LEAN_GENERATE;
               }
               printf("L* -> Lean Generate\n");
-              sleep(stateTransitionDelay);
+              sleep(stateTransitionDelay); // Only for debug
           }
       }
 
@@ -100,7 +100,7 @@ bool IncPoseAdjuster::Spin(){
                 currentPoseStates[legId] = LEAN_INTERPOLATE;
                 printf("L%u: -> leanInterpolate\n", legId);
                 currentProgress = 0.0;
-                sleep(stateTransitionDelay);
+                sleep(stateTransitionDelay); // Only for debug
 
                 break;
               }
@@ -115,7 +115,7 @@ bool IncPoseAdjuster::Spin(){
                    currentPoseStates[legId] = LIFT;
                    printf("L%u: -> lift\n", legId);
                    currentProgress = 0.0;
-                   sleep(stateTransitionDelay);
+                   sleep(stateTransitionDelay); // Only for debug
                }
 
 
@@ -136,7 +136,7 @@ bool IncPoseAdjuster::Spin(){
                     currentPoseStates[legId] = LINE_INTERPOLATE;
                     currentProgress = 0.0;
                     printf("L%u: -> LineInterpolate\n", legId);
-                    sleep(stateTransitionDelay);
+                    sleep(stateTransitionDelay); // Only for debug
 
                 }
 
@@ -159,7 +159,7 @@ bool IncPoseAdjuster::Spin(){
                     positionArray[legId] = goalPose[legId]; // This leg is now in the correct position
                     printf("L%u: -> stepDown\n", legId);
                     currentProgress = 0.0;
-                    sleep(stateTransitionDelay);
+                    sleep(stateTransitionDelay); // Only for debug
                 }
 
                 currentProgress += legMoveSpeed;
@@ -185,7 +185,7 @@ bool IncPoseAdjuster::Spin(){
                   currentPoseStates[legId] = LEAN_BACK;
                   positionArray[legId] = goalPose[legId];
                   printf("L%u: -> LEAN_BACK\n",legId);
-                  sleep(stateTransitionDelay);
+                  sleep(stateTransitionDelay); // Only for debug
                 }
 
                 break;
@@ -203,7 +203,7 @@ bool IncPoseAdjuster::Spin(){
                     currentProgress = 0.0;
                     currentPoseStates[legId] = FINISHED;
                     printf("L%u: -> FINISHED\n", legId);
-                    sleep(stateTransitionDelay);
+                    sleep(stateTransitionDelay); // Only for debug
                 }
 
                 break;

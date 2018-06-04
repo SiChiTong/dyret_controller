@@ -257,7 +257,7 @@ int main(int argc, char **argv)
   const double poseAdjustSpeed = 0.08;
   const double gaitServoSpeed = 0.0;
 
-  ros::Rate loop_rate(3);
+  ros::Rate loop_rate(5);
 
   long long int startTime;
   long long int lastTime = 0;
@@ -269,7 +269,7 @@ int main(int argc, char **argv)
       if (currentAction == dyret_controller::ActionMessage::t_sleep){
 
       } else if (currentAction == dyret_controller::ActionMessage::t_idle){
-          //loop_rate.sleep();
+          loop_rate.sleep();
 
           //moveAllLegsToGlobal(getRestPose(), ..., poseCommand_pub);
 

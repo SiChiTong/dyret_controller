@@ -17,7 +17,7 @@ struct vec2A {
 };
 
 vec2A calculateT2(double x, double p1_x, double y, double p1_y, double z, double L12, double L13, double L23) {
-  vec2A *vectorToReturn = new vec2A();
+  vec2A vectorToReturn;
 
   double L13xy = sqrt(pow((x - p1_x), 2) + pow((y - p1_y), 2));
   double L13z = z;
@@ -27,14 +27,14 @@ vec2A calculateT2(double x, double p1_x, double y, double p1_y, double z, double
 
   if ((fabs(x) < fabs(p1_x)) || (x < 0 && p1_x > 0) || (y < 0 && p1_y > 0) ||
       (y > 0 && p1_y > 0 && (fabs(y) < fabs(p1_y))) || (x > 0 && p1_x < 0 && (fabs(x) >= fabs(p1_x)) && y >= 0)) {
-    vectorToReturn->angles[1] = M_PI - (t2_bot - t2_tot);
-    vectorToReturn->angles[0] = M_PI - (t2_tot + t2_bot);
+    vectorToReturn.angles[1] = M_PI - (t2_bot - t2_tot);
+    vectorToReturn.angles[0] = M_PI - (t2_tot + t2_bot);
   } else {
-    vectorToReturn->angles[0] = t2_bot - t2_tot;
-    vectorToReturn->angles[1] = t2_tot + t2_bot;
+    vectorToReturn.angles[0] = t2_bot - t2_tot;
+    vectorToReturn.angles[1] = t2_tot + t2_bot;
   }
 
-  return *vectorToReturn;
+  return vectorToReturn;
 }
 
 

@@ -49,8 +49,8 @@ void BSplineGait::bSplineInit(std::vector<vec3P> givenPoints, float givenStepLen
   // Write spline to file:
   float numberOfPointsToGenerate = 1000.0;
 
-  FILE * fp;
-  fp = fopen("/home/tonnesfn/catkin_ws/bSplineGaitOutput.csv", "w");
+//  FILE * fp;
+//  fp = fopen("/home/tonnesfn/catkin_ws/bSplineGaitOutput.csv", "w");
 
   for (float i = 0; i < 1.0f; i = i + (1.0f / numberOfPointsToGenerate)) {
     float scaled;
@@ -65,11 +65,11 @@ void BSplineGait::bSplineInit(std::vector<vec3P> givenPoints, float givenStepLen
     Vector3 currentPoint = bSpline->getPosition(ArcLength::solveLengthCyclic(*bSpline, 0.0f, scaled));
     if (currentPoint[2] < groundHeight) currentPoint[2] = groundHeight; // Stop dips and loops below groundHeight
 
-    fprintf(fp, "%.2f, %.2f, %.2f\n", i, currentPoint[1], currentPoint[2]);
+//    fprintf(fp, "%.2f, %.2f, %.2f\n", i, currentPoint[1], currentPoint[2]);
 
   }
 
-  fclose(fp);
+//  fclose(fp);
 
 }
 

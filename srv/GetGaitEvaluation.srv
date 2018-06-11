@@ -7,3 +7,5 @@ uint8 t_getResults=3
 uint8 givenCommand
 ---
 float32[] results
+string[] descriptors
+

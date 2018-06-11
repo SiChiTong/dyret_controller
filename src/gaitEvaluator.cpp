@@ -16,7 +16,6 @@
 #include "dyret_common/State.h"
 
 #include "dyret_common/wait_for_ros.h"
-#include "dyret_common/timeHandling.h"
 
 #include "dyret_controller/DistAng.h"
 #include "dyret_controller/GetGaitControllerStatus.h"

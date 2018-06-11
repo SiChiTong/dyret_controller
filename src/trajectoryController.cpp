@@ -9,7 +9,6 @@
 #include "dyret_controller/Trajectory.h"
 
 #include "dyret_common/wait_for_ros.h"
-#include "dyret_common/timeHandling.h"
 
 #include "states/trajectoryControllerState.h"
 
@@ -25,7 +24,7 @@ bool directionForward;
 
 bool sentMessage = false;
 bool started;
-long long int startTime;
+ros::Time startTime;
 bool newTrajectoryMessageReceived;
 
 t_trajectoryControllerState currentState;
@@ -35,7 +34,7 @@ void gaitInferredPos_Callback(const dyret_controller::DistAng::ConstPtr& msg)
   if (msg->msgType == msg->t_measurementInferred){
       if (started == false){
           started = true;
-          startTime = getMs();
+          startTime = ros::Time::now();
           ROS_INFO("Set new startTime\n");
       }
 
@@ -168,9 +167,9 @@ int main(int argc, char **argv)
                 currentState = SETUP_WALK;
         }
 
-        float currentRelativeTime = ((getMs() - startTime) / 1000.0);
+        float currentRelativeTime = (ros::Time::now() - startTime).sec;
 
-        if ( (started == true) && (timeoutInSec[currentSegment] != 0.0) && (currentRelativeTime > timeoutInSec[currentSegment]) ){
+        if ( (started == true) && (timeoutInSec[currentSegment] != 0.0) && (currentRelativeTime >= timeoutInSec[currentSegment]) ){
             // TIMEOUT
             ROS_INFO("WALKING -> SETUP_WALK (Timeout @ %.2f, seg%u)\n", currentRelativeTime, currentSegment);
             currentSegment++;

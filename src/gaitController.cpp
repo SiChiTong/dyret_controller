@@ -26,7 +26,6 @@
 #include "kinematics/IncPoseAdjuster.h"
 
 #include "dyret_common/wait_for_ros.h"
-#include "dyret_common/timeHandling.h"
 
 #include "dyret_common/Configure.h"
 
@@ -259,11 +258,13 @@ int main(int argc, char **argv)
 
   ros::Rate loop_rate(5);
 
-  long long int startTime;
-  long long int lastTime = 0;
+  ros::Time startTime;
+  ros::Time lastTime;
+  bool lastTimeValid = false;
   bool activatedRecording = false;
   std::vector<vec3P> lastGlobalLegPositions;
   ros::Rate poseAdjusterRate(50);
+  ros::Rate gaitRate(100);
 
   while ( ros::ok() ) {
       if (currentAction == dyret_controller::ActionMessage::t_sleep){
@@ -289,7 +290,7 @@ int main(int argc, char **argv)
               moveAllLegsToGlobalPosition(getRestPose(), positionCommand_pub);
               restPoseAdjuster.skip();
               ros::Duration(1).sleep();
-              startTime = std::chrono::duration_cast< std::chrono::milliseconds > (system_clock::now().time_since_epoch()).count();
+              startTime = ros::Time::now();
             } else {
               restPoseAdjuster.setPoseAndActuatorLengths(getRestPose());
               restPoseAdjuster.reset();
@@ -305,6 +306,8 @@ int main(int argc, char **argv)
           }
 
       }else if (currentAction == dyret_controller::ActionMessage::t_contGait){
+
+          gaitRate.sleep();
 
           // Check for transition
           if (lastAction != dyret_controller::ActionMessage::t_contGait){
@@ -371,12 +374,12 @@ int main(int argc, char **argv)
                 moveAllLegsToGlobalPosition(initPose, positionCommand_pub);
                 bSplineInitAdjuster.skip();
                 ros::Duration(1).sleep();
-                startTime = std::chrono::duration_cast< std::chrono::milliseconds > (system_clock::now().time_since_epoch()).count();
+                startTime = ros::Time::now();
               } else {
                 bSplineInitAdjuster.setPoseAndActuatorLengths(initPose);
               }
 
-              lastTime = 0;
+              lastTimeValid = false;
 
           }
 
@@ -391,7 +394,7 @@ int main(int argc, char **argv)
 
               poseAdjusterRate.sleep();
 
-              startTime = std::chrono::duration_cast< std::chrono::milliseconds > (system_clock::now().time_since_epoch()).count();
+              startTime = ros::Time::now();
           } else {
 
             if (activatedRecording == false){
@@ -401,21 +404,22 @@ int main(int argc, char **argv)
             }
 
             // Get leg positions:
-            double currentRelativeTime = (std::chrono::duration_cast< milliseconds >
-                (system_clock::now().time_since_epoch()).count()) - startTime; // Given in milliseconds
+            double currentRelativeTime = (ros::Time::now() - startTime).toNSec() / 1000000.0; // Given in milliseconds
+            printf("%.2f\n", currentRelativeTime);
             std::vector<vec3P> globalLegPositions(4);
 
             globalLegPositions = bSplineGait.getPosition(currentRelativeTime * globalGaitFrequency, movingForward);
 
             // Calculate posChangeMsg:
-            if (lastTime == 0){
+            if (lastTimeValid == false){
                 // Not initialized
-                lastTime = getMs();
+                lastTime = ros::Time::now();
+                lastTimeValid = true;
             } else {
                 // Initialized:
 
-                double secondsPassed = getMs() - lastTime;
-                double distance = bSplineGait.getStepLength() * globalGaitFrequency * (secondsPassed / 1000.0f);
+                double secondsPassed = (ros::Time::now() - lastTime).toNSec() / 1000000000.0f;
+                double distance = bSplineGait.getStepLength() * globalGaitFrequency * (secondsPassed);
 
                 dyret_controller::DistAng posChangeMsg;
                 if (movingForward) posChangeMsg.distance = distance; else posChangeMsg.distance = -distance;
@@ -425,7 +429,7 @@ int main(int argc, char **argv)
                 gaitInferredPos_pub.publish(posChangeMsg);
             }
 
-            lastTime = getMs();
+            lastTime = ros::Time::now();
 
             dyret_common::Pose msg;
 

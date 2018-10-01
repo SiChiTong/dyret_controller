@@ -42,7 +42,21 @@ bool getGaitEvaluationService(dyret_controller::GetGaitEvaluation::Request  &req
   std::vector<float> results;
   std::vector<std::string> descriptors;
 
+    // Assign fitness values:
+    descriptors.resize(7);
+    descriptors[0] = "inferredSpeed";
+    descriptors[1] = "angVel";
+    descriptors[2] = "linAcc";
+    descriptors[3] = "combAngStab";
+    descriptors[4] = "power";
+    descriptors[5] = "sensorSpeed";
+    descriptors[6] = "combImuStab";
+
   switch (req.givenCommand){
+    case (dyret_controller::GetGaitEvaluationRequest::t_getDescriptors):
+    {
+        results.resize(0);
+    }
     case (dyret_controller::GetGaitEvaluationRequest::t_start):
     {
         ROS_INFO("req.t_start received\n");
@@ -80,8 +94,7 @@ bool getGaitEvaluationService(dyret_controller::GetGaitEvaluation::Request  &req
         ROS_WARN("Sideways!\n");
       } else {
 
-        results.resize(7); // 0: speed, 1: sum(SD['angVel'], 2: sum(SD['linAcc']), 3: sum(SD*('orientation'), 4: current, 5: sensorPoseDistance, 3+2/50
-        descriptors.resize(7);
+        results.resize(7); // See descriptors above for contents
 
         // Calculate IMU fitness values:
         std::vector<float> sums(imuData.size());
@@ -127,19 +140,12 @@ bool getGaitEvaluationService(dyret_controller::GetGaitEvaluation::Request  &req
 
         // Assign fitness values:
         results[0] = calculatedInferredSpeed;            // Inferred speed in in m/min
-        descriptors[0] = "inferredSpeed";
         results[1] = - (SDs[0] + SDs[1] + SDs[2]);       // angVel
-        descriptors[1] = "angVel";
         results[2] = - (SDs[3] + SDs[4] + SDs[5]);       // linAcc
-        descriptors[2] = "linAcc";
         results[3] = - (SDs[6] + SDs[7] + SDs[8]);       // Combined angle stability (roll + pitch)
-        descriptors[3] = "combAngStab";
         results[4] = powerFitness;                       // Efficiency
-        descriptors[4] = "power";
         results[5] = sensorPoseSpeed;                     // Inferred speed in m/min
-        descriptors[5] = "sensorSpeed";
         results[6] = results[3] + (results[2] / 50.0f);   // Combined IMU stability
-        descriptors[6] = "combImuStab";
       }
 
       break;

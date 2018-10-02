@@ -4,4 +4,6 @@ uint8 t_resetPosition=1
 
 uint8 command
 
-DistAng[] trajectorySegments
+bool returnToRest
+
+DistAngCommand[] trajectorySegments

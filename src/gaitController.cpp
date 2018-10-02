@@ -31,7 +31,7 @@
 
 #include "dyret_controller/PositionCommand.h"
 #include "dyret_controller/ActionMessage.h"
-#include "dyret_controller/DistAng.h"
+#include "dyret_controller/DistAngMeasurement.h"
 
 #include "dyret_controller/GetGaitControllerStatus.h"
 #include "dyret_controller/GetGaitEvaluation.h"
@@ -172,7 +172,7 @@ int main(int argc, char **argv) {
     ros::Subscriber actionMessages_sub = n.subscribe("/dyret/dyret_controller/actionMessages", 100, actionMessagesCallback);
     ros::Subscriber servoStates_sub = n.subscribe("/dyret/state", 1, servoStatesCallback);
     ros::Publisher poseCommand_pub = n.advertise<dyret_common::Pose>("/dyret/command", 3);
-    ros::Publisher gaitInferredPos_pub = n.advertise<dyret_controller::DistAng>("/dyret/dyret_controller/gaitInferredPos", 1000);
+    ros::Publisher gaitInferredPos_pub = n.advertise<dyret_controller::DistAngMeasurement>("/dyret/dyret_controller/gaitInferredPos", 1000);
     ros::ServiceClient servoConfigClient = n.serviceClient<dyret_common::Configure>("/dyret/configuration");
     ros::Publisher positionCommand_pub = n.advertise<dyret_controller::PositionCommand>("/dyret/dyret_controller/positionCommand", 1);;
 
@@ -252,11 +252,19 @@ int main(int argc, char **argv) {
         } else if (currentAction == dyret_controller::ActionMessage::t_idle) {
             loop_rate.sleep();
 
-            //moveAllLegsToGlobal(getRestPose(), ..., poseCommand_pub);
+            // Check for transition
+            if (lastAction == dyret_controller::ActionMessage::t_contGait) {
+                if (ros::Time::isSystemTime()) setServoLog(false, servoConfigClient);
+                pauseGaitRecording(get_gait_evaluation_client);
+
+                activatedRecording = false;
+
+                if (ros::Time::isSystemTime()) setServoSpeeds(poseAdjustSpeed, servoConfigClient);
+            }
 
         } else if (currentAction == dyret_controller::ActionMessage::t_restPose) {
 
-            // Check for transition
+            // Check for transition from walking
             if (lastAction == dyret_controller::ActionMessage::t_contGait) {
 
                 if (ros::Time::isSystemTime()) setServoLog(false, servoConfigClient);
@@ -264,6 +272,10 @@ int main(int argc, char **argv) {
 
                 activatedRecording = false;
 
+            }
+
+            // Check for transition from anything
+            if (lastAction != dyret_controller::ActionMessage::t_restPose){
                 if (ros::Time::isSystemTime()) setServoSpeeds(poseAdjustSpeed, servoConfigClient);
 
                 if (ros::Time::isSimTime() && !initAdjustInSim) {
@@ -363,7 +375,6 @@ int main(int argc, char **argv) {
             }
 
             if (gaitInitAdjuster.done() == false) {
-                printf("gaitController l1: %.2f, l2: %.2f\n", legActuatorLengths[0], legActuatorLengths[1]);
 
                 if (ros::Time::isSystemTime() || initAdjustInSim) {
                     if (gaitInitAdjuster.Spin() == true) {
@@ -385,7 +396,6 @@ int main(int argc, char **argv) {
                 // Get leg positions:
                 double currentRelativeTime =
                         (ros::Time::now() - startTime).toNSec() / 1000000.0; // Given in milliseconds
-                printf("%.2f\n", currentRelativeTime);
                 std::vector<vec3P> globalLegPositions(4);
 
                 globalLegPositions = bSplineGait.getPosition(currentRelativeTime * globalGaitFrequency, movingForward);
@@ -401,7 +411,7 @@ int main(int argc, char **argv) {
                     double secondsPassed = (ros::Time::now() - lastTime).toNSec() / 1000000000.0f;
                     double distance = bSplineGait.getStepLength() * globalGaitFrequency * (secondsPassed);
 
-                    dyret_controller::DistAng posChangeMsg;
+                    dyret_controller::DistAngMeasurement posChangeMsg;
                     if (movingForward) posChangeMsg.distance = distance; else posChangeMsg.distance = -distance;
 
                     posChangeMsg.msgType = posChangeMsg.t_measurementInferred;

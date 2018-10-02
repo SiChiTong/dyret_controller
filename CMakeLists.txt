@@ -27,7 +27,8 @@ add_message_files(
   FILES
   PositionCommand.msg
   ActionMessage.msg
-  DistAng.msg
+  DistAngCommand.msg
+  DistAngMeasurement.msg
   Trajectory.msg
   GaitControllerStatus.msg
 )

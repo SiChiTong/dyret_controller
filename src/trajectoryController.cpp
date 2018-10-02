@@ -5,7 +5,7 @@
 
 #include "ros/ros.h"
 
-#include "dyret_controller/DistAng.h"
+#include "dyret_controller/DistAngMeasurement.h"
 #include "dyret_controller/Trajectory.h"
 
 #include "dyret_common/wait_for_ros.h"
@@ -19,6 +19,7 @@ double accAngle;
 std::vector<double> distanceGoal;
 std::vector<double> angleGoal;
 std::vector<double> timeoutInSec;
+bool returnToRest;
 int currentSegment = 0;
 bool directionForward;
 
@@ -29,7 +30,7 @@ bool newTrajectoryMessageReceived;
 
 t_trajectoryControllerState currentState;
 
-void gaitInferredPos_Callback(const dyret_controller::DistAng::ConstPtr& msg)
+void gaitInferredPos_Callback(const dyret_controller::DistAngMeasurement::ConstPtr& msg)
 {
   if (msg->msgType == msg->t_measurementInferred){
       if (started == false){
@@ -53,6 +54,7 @@ void trajectoryMessages_Callback(const dyret_controller::Trajectory::ConstPtr& m
       distanceGoal.resize(msg->trajectorySegments.size());
       angleGoal.resize(msg->trajectorySegments.size());
       timeoutInSec.resize(msg->trajectorySegments.size());
+      returnToRest = msg->returnToRest;
 
       for (int i = 0; i < msg->trajectorySegments.size(); i++){
           distanceGoal[i] = msg->trajectorySegments[i].distance;
@@ -80,6 +82,15 @@ void sendRestPoseMessage(ros::Publisher givenActionMessages_pub){
   actionMessage.speed = 0.0;
   actionMessage.direction = 0.0;
   givenActionMessages_pub.publish(actionMessage);
+}
+
+void sendIdleMessage(ros::Publisher givenActionMessages_pub){
+    dyret_controller::ActionMessage actionMessage;
+    actionMessage.configuration = dyret_controller::ActionMessage::t_mammal;
+    actionMessage.actionType = dyret_controller::ActionMessage::t_idle;
+    actionMessage.speed = 0.0;
+    actionMessage.direction = 0.0;
+    givenActionMessages_pub.publish(actionMessage);
 }
 
 void sendContGaitMessage(double givenDirection, ros::Publisher givenActionMessages_pub){
@@ -134,7 +145,8 @@ int main(int argc, char **argv)
       {
         if (distanceGoal.size() <= currentSegment){
             // No more segments to cover
-            sendRestPoseMessage(actionMessages_pub);
+            if (returnToRest) sendRestPoseMessage(actionMessages_pub); else sendIdleMessage(actionMessages_pub);
+
             currentState = WAIT;
             ROS_INFO("SETUP_WALK -> WAIT (finished @ %u)\n", currentSegment);
         } else {

@@ -17,7 +17,7 @@
 
 #include "dyret_common/wait_for_ros.h"
 
-#include "dyret_controller/DistAng.h"
+#include "dyret_controller/DistAngMeasurement.h"
 #include "dyret_controller/GetGaitControllerStatus.h"
 #include "dyret_controller/GetGaitEvaluation.h"
 
@@ -202,7 +202,7 @@ void servoStatesCallback(const dyret_common::State::ConstPtr& msg){
   }
 }
 
-void gaitInferredPos_Callback(const dyret_controller::DistAng::ConstPtr& msg)
+void gaitInferredPos_Callback(const dyret_controller::DistAngMeasurement::ConstPtr& msg)
 {
   if (msg->msgType == msg->t_measurementInferred){
       accPos += msg->distance;

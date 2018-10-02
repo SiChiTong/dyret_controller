@@ -20,8 +20,6 @@ bool IncPoseAdjuster::Spin(){
   groundHeight = -430 - ((legActuatorLengths[0][0] + legActuatorLengths[0][1]) * 0.8f);
   for (int i = 0; i < 4; i++) goalPose[i].points[2] = groundHeight; // Update goalPose continuously
 
-  printf("groundHeight: %.2f (l0: %.2f, l1: %.2f)\n",groundHeight, legActuatorLengths[0][0], legActuatorLengths[0][1]);
-
   if (currentPoseStates[0] == FINISHED &&
       currentPoseStates[1] == FINISHED &&
       currentPoseStates[2] == FINISHED &&

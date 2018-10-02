@@ -14,7 +14,6 @@
 #include "dyret_common/State.h"
 #include "dyret_common/Pose.h"
 
-#include "gait/gait.h"
 #include "gait/BSplineGait.h"
 
 #include "kinematics/movementFunctions.h"

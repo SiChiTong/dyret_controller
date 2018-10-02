@@ -21,7 +21,6 @@ vec3P BSplineGait::getGaitWagPoint(double givenTime, bool walkingForwards){
 
 void BSplineGait::bSplineInit(std::vector<vec3P> givenPoints, float givenStepLength, float givenLiftDuration){
   assert(givenLiftDuration >= 0.05f && givenLiftDuration <= 0.2f); // liftDuration has to be between 5% and 20%
-  groundPercent = 1.0f - givenLiftDuration;
   stepLength = givenStepLength;
 
   // Make spline object:
@@ -34,7 +33,6 @@ void BSplineGait::bSplineInit(std::vector<vec3P> givenPoints, float givenStepLen
   bSpline = new LoopingCubicHermiteSpline<Vector3>(gaitPoints, 0.5);
 
   totalLength = bSpline->totalLength();
-  groundPercent = stepLength / bSpline->totalLength();
 
   // Set offsets:
   legPhaseOffset[0][0] = 0.00; // forwards
@@ -49,8 +47,8 @@ void BSplineGait::bSplineInit(std::vector<vec3P> givenPoints, float givenStepLen
   // Write spline to file:
   float numberOfPointsToGenerate = 1000.0;
 
-//  FILE * fp;
-//  fp = fopen("/home/tonnesfn/catkin_ws/bSplineGaitOutput.csv", "w");
+/*  FILE * fp;
+  fp = fopen("/home/tonnesfn/catkin_ws/bSplineGaitOutput.csv", "w");
 
   for (float i = 0; i < 1.0f; i = i + (1.0f / numberOfPointsToGenerate)) {
     float scaled;
@@ -65,24 +63,24 @@ void BSplineGait::bSplineInit(std::vector<vec3P> givenPoints, float givenStepLen
     Vector3 currentPoint = bSpline->getPosition(ArcLength::solveLengthCyclic(*bSpline, 0.0f, scaled));
     if (currentPoint[2] < groundHeight) currentPoint[2] = groundHeight; // Stop dips and loops below groundHeight
 
-//    fprintf(fp, "%.2f, %.2f, %.2f\n", i, currentPoint[1], currentPoint[2]);
+    fprintf(fp, "%.2f, %.2f, %.2f\n", i, currentPoint[1], currentPoint[2]);
 
   }
 
-//  fclose(fp);
+  fclose(fp);*/
 
 }
 
-std::vector<vec3P> BSplineGait::createBSplineGaitPoints(double stepHeight, double stepLength, double smoothing, double groundHeight){
+std::vector<vec3P> BSplineGait::createBSplineGaitPoints(double givenStepHeight, double givenStepLength, double givenSmoothing, double givenGroundHeight){
 
     // The two ground points has to be first for ground scaling to work properly
     std::vector<vec3P> result =
     {
-      { 0.0f, (float)               (stepLength/2.0f), (float)                       groundHeight }, // Front ground
-      { 0.0f, (float)              -(stepLength/2.0f), (float)                       groundHeight }, // Back ground
-      { 0.0f, (float)            -((stepLength/2.0f)), (float) (groundHeight + (stepHeight/1.5f)) }, // Back smoothing
-      { 0.0f,                                    0.0f, (float)        (groundHeight + stepHeight) }, // Top
-      { 0.0f, (float) ((stepLength/2.0f) + smoothing), (float) (groundHeight + (stepHeight/4.0f)) }, // Front smoothing
+      { 0.0f, (float)                    (givenStepLength/2.0f), (float)                            givenGroundHeight }, // Front ground
+      { 0.0f, (float)                   -(givenStepLength/2.0f), (float)                            givenGroundHeight }, // Back ground
+      { 0.0f, (float)                 -((givenStepLength/2.0f)), (float) (givenGroundHeight + (givenStepHeight/1.5f)) }, // Back smoothing
+      { 0.0f,                                              0.0f, (float)        (givenGroundHeight + givenStepHeight) }, // Top
+      { 0.0f, (float) ((givenStepLength/2.0f) + givenSmoothing), (float) (givenGroundHeight + (givenStepHeight/4.0f)) }, // Front smoothing
     };
 
     return result;
@@ -91,18 +89,19 @@ std::vector<vec3P> BSplineGait::createBSplineGaitPoints(double stepHeight, doubl
 BSplineGait::BSplineGait(double stepHeight,
                          double stepLength,
                          double smoothing,
-                         double groundHeight,
+                         double givenGroundHeight,
                          double givenSpread,
                          double givenOffsetFront,
                          double givenOffsetLeft,
-                         double rearLegOffset,
-                         double givenLiftDuration)
-  : Gait(){
-  std::vector<vec3P> calculatedGaitPoints = createBSplineGaitPoints(stepHeight, stepLength, smoothing, groundHeight);
+                         double givenRearLegOffset,
+                         double givenLiftDuration){
+  std::vector<vec3P> calculatedGaitPoints = createBSplineGaitPoints(stepHeight, stepLength, smoothing, givenGroundHeight);
 
-  init(calculatedGaitPoints);
-  setSpread(givenSpread);
-  setOffsets(givenOffsetFront, givenOffsetLeft, rearLegOffset);
+  for (int i = 0; i < calculatedGaitPoints.size(); i++) if (calculatedGaitPoints[i].points[2] < groundHeight) groundHeight = calculatedGaitPoints[i].points[2];
+  spreadAmount = givenSpread;
+  offsetFront = givenOffsetFront;
+  rearLegOffset = givenRearLegOffset;
+
   bSplineInit(calculatedGaitPoints, stepLength, givenLiftDuration);
 
 }

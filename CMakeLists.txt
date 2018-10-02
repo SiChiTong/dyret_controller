@@ -66,8 +66,7 @@ include_directories(include
 )
 
 add_executable(gaitController 
-               src/gaitController.cpp 
-               src/gait/gait.cpp
+               src/gaitController.cpp
                src/gait/BSplineGait.cpp
                src/kinematics/kinematicFunctions.cpp
                src/kinematics/forwardKinematics.cpp

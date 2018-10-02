@@ -34,15 +34,13 @@ class IncPoseAdjuster{
 
 public:
 
-  IncPoseAdjuster(std::vector<vec3P> givenGoalPose,
-                  std::vector<double>* givenServoAnglesInRad,
+  IncPoseAdjuster(std::vector<double>* givenServoAnglesInRad,
                   std::vector<double>* givenActuatorLengths,
                   ros::Publisher givenPositionCommand_pub){
     currentProgress = 0.0;
     positionArray.resize(4); // Set size 4
     servoAnglesInRad = givenServoAnglesInRad;
     legActuatorLengths = givenActuatorLengths;
-    goalPose = givenGoalPose;
     positionCommand_pub = givenPositionCommand_pub;
     for (int i = 0; i < 4; i++) currentPoseStates[i] = INIT_STEPDOWN;
     currentProgress = 0.0;
@@ -50,7 +48,7 @@ public:
     reachedPose = false;
   }
 
-  void setPoseAndActuatorLengths(std::vector<vec3P> givenGoalPose){
+  void setPose(std::vector<vec3P> givenGoalPose){
     goalPose = givenGoalPose;
   }
 

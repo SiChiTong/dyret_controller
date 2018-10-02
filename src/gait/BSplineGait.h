@@ -10,39 +10,31 @@ class BSplineGait {
   private:
     LoopingCubicHermiteSpline<Vector3>* bSpline;
 
-    float groundPercentGoal = 0.90f; //Time spent on the ground (minimum 3/4 = 75%)
+    // Leg phase offsets forwards and reverse, with a leg order of FL, BR, FR, BL
+    double const legPhaseOffset[4][2] = { {0.00, 0.75}, {0.50, 0.25}, {0.75, 0.00}, {0.25, 0.50} };
 
-    double totalLength = 0.0;
-    float spreadAmount  = 0.0;
-    float legPhaseOffset[4][2];
-    float groundHeight = 0.0;
-    float stepLength;
-
-    float offsetFront   = 0.0;
-    float rearLegOffset = 0.0;
-
-    std::vector<vec3P> createBSplineGaitPoints(double stepHeight,
-                                               double stepLength,
-                                               double smoothing,
-                                               double givenGroundHeight);
-
-    void bSplineInit(std::vector<vec3P> givenPoints,
-                     float stepLength,
-                     float givenLiftDuration);
+    double stepLength;
+    double offsetFront;
+    double totalLength;
+    double spreadAmount;
+    double groundHeight;
+    double rearLegOffset;
+    double groundPercentGoal; //Time spent on the ground (minimum 3/4 = 75%)
 
   public:
-    BSplineGait(double stepHeight,
-                double stepLength,
-                double smoothing,
-                double givenGroundHeight,
-                double givenSpread,
-                double givenOffsetFront,
-                double givenOffsetLeft,
-                double rearLegOffset,
-                double givenLiftDuration);
+    void initGait(double stepHeight,
+                  double stepLength,
+                  double smoothing,
+                  double givenGroundHeight,
+                  double givenSpread,
+                  double givenOffsetFront,
+                  double rearLegOffset,
+                  double givenLiftDuration);
 
     std::vector<vec3P> getPosition(double givenTime, bool walkingForwards);
 
-    float getStepLength() { return stepLength;}
+    double getStepLength() { return stepLength;}
+
+    void writeGaitToFile();
 
 };

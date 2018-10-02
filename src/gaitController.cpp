@@ -46,15 +46,11 @@ unsigned char currentAction;
 dyret_controller::ActionMessage::ConstPtr lastActionMessage;
 robo_cont::gaitControllerParamsConfig lastGaitControllerParamsConfigMessage;
 
+bool initAdjustInSim = true;
+
 bool movingForward;
-double globalStepHeight;
-double globalStepLength;
-double globalSmoothing;
 double globalGaitFrequency;
 double globalGaitSpeed;
-double globalWagAmplitude_x;
-double globalWagAmplitude_y;
-double globalWagPhaseOffset;
 double globalLiftDuration;
 const double groundHeightOffset = -430;
 const double groundCorrectionFactor = 0.8;
@@ -170,20 +166,15 @@ int main(int argc, char **argv) {
     ros::NodeHandle n;
 
     // Initialize services
-    ros::ServiceClient get_gait_evaluation_client = n.serviceClient<dyret_controller::GetGaitEvaluation>(
-            "get_gait_evaluation");
-    ros::ServiceServer gaitControllerStatusService_server = n.advertiseService("get_gait_controller_status",
-                                                                               getGaitControllerStatusService);
+    ros::ServiceClient get_gait_evaluation_client = n.serviceClient<dyret_controller::GetGaitEvaluation>("get_gait_evaluation");
+    ros::ServiceServer gaitControllerStatusService_server = n.advertiseService("get_gait_controller_status", getGaitControllerStatusService);
     // Initialize topics
-    ros::Subscriber actionMessages_sub = n.subscribe("/dyret/dyret_controller/actionMessages", 100,
-                                                     actionMessagesCallback);
+    ros::Subscriber actionMessages_sub = n.subscribe("/dyret/dyret_controller/actionMessages", 100, actionMessagesCallback);
     ros::Subscriber servoStates_sub = n.subscribe("/dyret/state", 1, servoStatesCallback);
     ros::Publisher poseCommand_pub = n.advertise<dyret_common::Pose>("/dyret/command", 3);
-    ros::Publisher gaitInferredPos_pub = n.advertise<dyret_controller::DistAng>(
-            "/dyret/dyret_controller/gaitInferredPos", 1000);
+    ros::Publisher gaitInferredPos_pub = n.advertise<dyret_controller::DistAng>("/dyret/dyret_controller/gaitInferredPos", 1000);
     ros::ServiceClient servoConfigClient = n.serviceClient<dyret_common::Configure>("/dyret/configuration");
-    ros::Publisher positionCommand_pub = n.advertise<dyret_controller::PositionCommand>(
-            "/dyret/dyret_controller/positionCommand", 1);;
+    ros::Publisher positionCommand_pub = n.advertise<dyret_controller::PositionCommand>("/dyret/dyret_controller/positionCommand", 1);;
 
     waitForRosInit(get_gait_evaluation_client, "get_gait_evaluation");
     waitForRosInit(actionMessages_sub, "/dyret/dyret_controller/actionMessages");
@@ -198,41 +189,20 @@ int main(int argc, char **argv) {
     legActuatorLengths = {0.0, 0.0};
 
     // Initialize bSplineGait
-    globalStepLength = 150.0;
-    globalStepHeight = 35.0;
-    globalSmoothing = 25.0;
     globalGaitFrequency = 1.0;
-    globalWagAmplitude_x = 40.0;
-    globalWagAmplitude_y = 20.0;
-    globalWagPhaseOffset = 0.0;
     globalLiftDuration = 0.125;
 
     const float frontOffset = 0.0f;
-    const float leftOffset = 0.0f;
     const float rearLegOffset = -30.0f;
 
-    BSplineGait bSplineGait = BSplineGait(globalStepHeight,
-                                          globalStepLength,
-                                          globalSmoothing,
-                                          groundHeight,
-                                          spreadAmount,
-                                          frontOffset,
-                                          leftOffset,
-                                          rearLegOffset,
-                                          globalLiftDuration);
+    BSplineGait bSplineGait;
     WagGenerator wagGenerator;
-    wagGenerator.enableWag(bSplineGaitWagOffset, 40.0f, 0.0f);
 
-    IncPoseAdjuster bSplineInitAdjuster(
-            add(bSplineGait.getPosition(0.0, true), wagGenerator.getGaitWagPoint(0.0, true)),
-            &servoAnglesInRad,
-            &legActuatorLengths,
-            positionCommand_pub);
-
-    IncPoseAdjuster restPoseAdjuster(getRestPose(),
-                                     &servoAnglesInRad,
+    IncPoseAdjuster restPoseAdjuster(&servoAnglesInRad,
                                      &legActuatorLengths,
                                      positionCommand_pub);
+    restPoseAdjuster.setPose(getRestPose());
+    restPoseAdjuster.skip();
 
     int lastAction = dyret_controller::ActionMessage::t_idle;
     currentAction = dyret_controller::ActionMessage::t_idle;
@@ -259,8 +229,6 @@ int main(int argc, char **argv) {
     std::vector<vec3P> restPose = getRestPose();
     moveAllLegsToGlobalPosition(getRestPose(), positionCommand_pub);
 
-    restPoseAdjuster.skip();
-
     const double poseAdjustSpeed = 0.08;
     const double gaitServoSpeed = 0.0;
 
@@ -270,9 +238,13 @@ int main(int argc, char **argv) {
     ros::Time lastTime;
     bool lastTimeValid = false;
     bool activatedRecording = false;
-    std::vector<vec3P> lastGlobalLegPositions;
     ros::Rate poseAdjusterRate(50);
     ros::Rate gaitRate(100);
+
+    IncPoseAdjuster gaitInitAdjuster(
+            &servoAnglesInRad,
+            &legActuatorLengths,
+            positionCommand_pub);
 
     while (ros::ok()) {
         if (currentAction == dyret_controller::ActionMessage::t_sleep) {
@@ -294,13 +266,13 @@ int main(int argc, char **argv) {
 
                 if (ros::Time::isSystemTime()) setServoSpeeds(poseAdjustSpeed, servoConfigClient);
 
-                if (ros::Time::isSimTime()) {
+                if (ros::Time::isSimTime() && !initAdjustInSim) {
                     moveAllLegsToGlobalPosition(getRestPose(), positionCommand_pub);
                     restPoseAdjuster.skip();
                     ros::Duration(1).sleep();
                     startTime = ros::Time::now();
                 } else {
-                    restPoseAdjuster.setPoseAndActuatorLengths(getRestPose());
+                    restPoseAdjuster.setPose(getRestPose());
                     restPoseAdjuster.reset();
                 }
             }
@@ -320,7 +292,7 @@ int main(int argc, char **argv) {
             // Check for transition
             if (lastAction != dyret_controller::ActionMessage::t_contGait) {
                 if (ros::Time::isSystemTime()) setServoSpeeds(poseAdjustSpeed, servoConfigClient);
-                bSplineInitAdjuster.reset();
+                gaitInitAdjuster.reset();
 
                 // PID:
                 if (ros::Time::isSystemTime()) { // do not set pid in simulation
@@ -338,29 +310,24 @@ int main(int argc, char **argv) {
                 }
 
                 // Gait params:
-                globalStepHeight = lastGaitControllerParamsConfigMessage.stepHeight;
-                globalStepLength = lastGaitControllerParamsConfigMessage.stepLength;
-                globalSmoothing = lastGaitControllerParamsConfigMessage.smoothing;
                 globalGaitFrequency = lastGaitControllerParamsConfigMessage.gaitFrequency;
                 globalGaitSpeed = lastGaitControllerParamsConfigMessage.gaitSpeed;
-                globalWagAmplitude_x = lastGaitControllerParamsConfigMessage.wagAmplitude_x;
-                globalWagAmplitude_y = lastGaitControllerParamsConfigMessage.wagAmplitude_y;
-                globalWagPhaseOffset = lastGaitControllerParamsConfigMessage.wagPhase;
                 globalLiftDuration = lastGaitControllerParamsConfigMessage.liftDuration;
 
-                bSplineGait = BSplineGait(globalStepHeight,
-                                          globalStepLength,
-                                          globalSmoothing,
-                                          groundHeight,
-                                          spreadAmount,
-                                          frontOffset,
-                                          leftOffset,
-                                          rearLegOffset,
-                                          globalLiftDuration);
+                bSplineGait.initGait(lastGaitControllerParamsConfigMessage.stepHeight,
+                                     lastGaitControllerParamsConfigMessage.stepLength,
+                                     lastGaitControllerParamsConfigMessage.smoothing,
+                                     groundHeight,
+                                     spreadAmount,
+                                     frontOffset,
+                                     rearLegOffset,
+                                     globalLiftDuration);
 
+                wagGenerator.enableWag(bSplineGaitWagOffset + lastGaitControllerParamsConfigMessage.wagPhase,
+                                       lastGaitControllerParamsConfigMessage.wagAmplitude_x,
+                                       lastGaitControllerParamsConfigMessage.wagAmplitude_y);
 
-                wagGenerator.enableWag(bSplineGaitWagOffset + globalWagPhaseOffset, globalWagAmplitude_x,
-                                       globalWagAmplitude_y);
+                gaitInitAdjuster.setPose(add(bSplineGait.getPosition(0.0, true), wagGenerator.getGaitWagPoint(0.0, true)));
 
                 if ((std::isnan(globalGaitSpeed) == true) && (std::isnan(globalGaitFrequency) == true)) {
                     ROS_ERROR("GlobalGaitSpeed or globalGaitFrequency has to be set\n");
@@ -377,30 +344,30 @@ int main(int argc, char **argv) {
                     movingForward = true;
                 }
 
-                vec3P wagPoint = wagGenerator.getGaitWagPoint(0.0, movingForward);
+                // Calculate the initial pose of the gait
+                std::vector<vec3P> initGaitPose = lockToZ(add( bSplineGait.getPosition(0.0, movingForward), wagGenerator.getGaitWagPoint(0.0, movingForward) ),
+                                                          groundHeight);
 
-                std::vector<vec3P> initPose = lockToZ(add(bSplineGait.getPosition(0.0, movingForward), wagPoint),
-                                                      groundHeight);
-
-                if (ros::Time::isSimTime()) { // If simulation - force legs and wait 2 sec to settle
-                    moveAllLegsToGlobalPosition(initPose, positionCommand_pub);
-                    bSplineInitAdjuster.skip();
+                // Adjust to the start of the gait only in the real world or if the initAdjustInSim bool is set for testing
+                if (ros::Time::isSimTime() && !initAdjustInSim) {
+                    moveAllLegsToGlobalPosition(initGaitPose, positionCommand_pub);
+                    gaitInitAdjuster.skip();
                     ros::Duration(1).sleep();
                     startTime = ros::Time::now();
                 } else {
-                    bSplineInitAdjuster.setPoseAndActuatorLengths(initPose);
+                    gaitInitAdjuster.setPose(initGaitPose);
                 }
 
                 lastTimeValid = false;
 
             }
 
-            if (bSplineInitAdjuster.done() == false) {
+            if (gaitInitAdjuster.done() == false) {
                 printf("gaitController l1: %.2f, l2: %.2f\n", legActuatorLengths[0], legActuatorLengths[1]);
 
-                if (ros::Time::isSystemTime()) {
-                    if (bSplineInitAdjuster.Spin() == true) {
-                        setServoSpeeds(gaitServoSpeed, servoConfigClient);
+                if (ros::Time::isSystemTime() || initAdjustInSim) {
+                    if (gaitInitAdjuster.Spin() == true) {
+                        if (ros::Time::isSystemTime()) setServoSpeeds(gaitServoSpeed, servoConfigClient);
                     }
                 }
 
@@ -455,19 +422,6 @@ int main(int argc, char **argv) {
 
                 std::vector<vec3P> currentPositions = currentLegPositions(servoAnglesInRad, legActuatorLengths);
 
-                // L0z, L1z, L2z, L3_z, wag_commanded_x, wag_commanded_y, L0_x, L1_x, L2_x, L3_x
-/*            fprintf(wagLog, "%.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f\n",
-                    currentPositions[0].points[2],
-                    currentPositions[1].points[2],
-                    currentPositions[2].points[2],
-                    currentPositions[3].points[2],
-                    wag.points[0],
-                    wag.points[1],
-                    currentPositions[0].points[0],
-                    currentPositions[1].points[0],
-                    currentPositions[2].points[0],
-                    currentPositions[3].points[0]);
-*/
                 // Get IK solutions for each leg:
                 for (int i = 0; i < 4; i++) { // For each leg
 
@@ -493,7 +447,8 @@ int main(int argc, char **argv) {
                 }
             }
         } else {
-            // Undefined action!
+            ROS_FATAL("Undefined action!");
+            exit(-1);
         }
 
         lastAction = currentAction; // Save last action to handle transitions

@@ -3,91 +3,70 @@
 #include "../external/splineLibrary/utils/arclength.h"
 #include "../kinematics/kinematicFunctions.h"
 
-
-void BSplineGait::bSplineInit(std::vector<vec3P> givenPoints, float givenStepLength, float givenLiftDuration){
-  assert(givenLiftDuration >= 0.05f && givenLiftDuration <= 0.2f); // liftDuration has to be between 5% and 20%
-  stepLength = givenStepLength;
-
-  // Make spline object:
-  std::vector<Vector3> gaitPoints(givenPoints.size());
-
-  for (int i = 0; i < givenPoints.size(); i++) {
-    gaitPoints[i] = Vector3({(float) givenPoints[i].x(), (float) givenPoints[i].y(), (float) givenPoints[i].z()});
-  }
-
-  bSpline = new LoopingCubicHermiteSpline<Vector3>(gaitPoints, 0.5);
-
-  totalLength = bSpline->totalLength();
-
-  // Set offsets:
-  legPhaseOffset[0][0] = 0.00; // forwards
-  legPhaseOffset[1][0] = 0.50;
-  legPhaseOffset[2][0] = 0.75;
-  legPhaseOffset[3][0] = 0.25;
-  legPhaseOffset[0][1] = 0.75; // reverse:
-  legPhaseOffset[1][1] = 0.25;
-  legPhaseOffset[2][1] = 0.00;
-  legPhaseOffset[3][1] = 0.50;
-
+void BSplineGait::writeGaitToFile(){
   // Write spline to file:
   float numberOfPointsToGenerate = 1000.0;
 
-/*  FILE * fp;
-  fp = fopen("/home/tonnesfn/catkin_ws/bSplineGaitOutput.csv", "w");
+  FILE * fp;
+  fp = fopen("/home/tonnesfn/catkin_ws/splineGaitOutput.csv", "w");
 
-  for (float i = 0; i < 1.0f; i = i + (1.0f / numberOfPointsToGenerate)) {
-    float scaled;
+  fprintf(fp, "stepLength: %.3f, totalLength: %.3f, groundPercentGoal: %.3f\n",
+          stepLength,
+          totalLength,
+          groundPercentGoal);
 
-    // Test ground scaling:
-    if (i < groundPercentGoal){
-      scaled = (i / groundPercentGoal) * stepLength;
-    } else {
-      scaled = stepLength + (totalLength - stepLength) * ((i - groundPercentGoal) * (1.0f / (1.0f - groundPercentGoal)));
-    }
+  for (float i = 0; i < numberOfPointsToGenerate; i++) {
+    float scaled = (float) (totalLength / numberOfPointsToGenerate) * i;
 
     Vector3 currentPoint = bSpline->getPosition(ArcLength::solveLengthCyclic(*bSpline, 0.0f, scaled));
-    if (currentPoint[2] < groundHeight) currentPoint[2] = groundHeight; // Stop dips and loops below groundHeight
 
-    fprintf(fp, "%.2f, %.2f, %.2f\n", i, currentPoint[1], currentPoint[2]);
+    fprintf(fp, "%.2f, %.2f, %.2f\n", scaled, currentPoint[1], currentPoint[2]);
 
   }
 
-  fclose(fp);*/
-
+  fclose(fp);
 }
 
-std::vector<vec3P> BSplineGait::createBSplineGaitPoints(double givenStepHeight, double givenStepLength, double givenSmoothing, double givenGroundHeight){
+void BSplineGait::initGait(double givenStepHeight,
+                           double givenStepLength,
+                           double givenSmoothing,
+                           double givenGroundHeight,
+                           double givenSpread,
+                           double givenOffsetFront,
+                           double givenRearLegOffset,
+                           double givenLiftDuration){
 
-    // The two ground points has to be first for ground scaling to work properly
-    std::vector<vec3P> result =
+    assert(givenLiftDuration >= 0.05f && givenLiftDuration <= 0.2f); // liftDuration has to be between 5% and 20%
+
+    // Set class variables:
+    stepLength = givenStepLength;
+    offsetFront = givenOffsetFront;
+    spreadAmount = givenSpread;
+    groundHeight = givenGroundHeight;
+    rearLegOffset = givenRearLegOffset;
+    groundPercentGoal = 1.0 - givenLiftDuration;
+
+    // Calculate gait points (the two ground points need to be first):
+    std::vector<vec3P> calculatedGaitPoints =
     {
-      { 0.0f, (float)                    (givenStepLength/2.0f), (float)                            givenGroundHeight }, // Front ground
-      { 0.0f, (float)                   -(givenStepLength/2.0f), (float)                            givenGroundHeight }, // Back ground
-      { 0.0f, (float)                 -((givenStepLength/2.0f)), (float) (givenGroundHeight + (givenStepHeight/1.5f)) }, // Back smoothing
-      { 0.0f,                                              0.0f, (float)        (givenGroundHeight + givenStepHeight) }, // Top
-      { 0.0f, (float) ((givenStepLength/2.0f) + givenSmoothing), (float) (givenGroundHeight + (givenStepHeight/4.0f)) }, // Front smoothing
+        { 0.0f, (float)                    (givenStepLength/2.0f), (float)                            givenGroundHeight }, // Front ground
+        { 0.0f, (float)                   -(givenStepLength/2.0f), (float)                            givenGroundHeight }, // Back ground
+        { 0.0f, (float)                 -((givenStepLength/2.0f)), (float) (givenGroundHeight + (givenStepHeight/1.5f)) }, // Back smoothing
+        { 0.0f,                                              0.0f, (float)        (givenGroundHeight + givenStepHeight) }, // Top
+        { 0.0f, (float) ((givenStepLength/2.0f) + givenSmoothing), (float) (givenGroundHeight + (givenStepHeight/4.0f)) }, // Front smoothing
     };
 
-    return result;
-}
+    // Check lowest Z point and adjust ground height accordingly:
+    for (int i = 0; i < calculatedGaitPoints.size(); i++) if (calculatedGaitPoints[i].points[2] < groundHeight) groundHeight = calculatedGaitPoints[i].points[2];
 
-BSplineGait::BSplineGait(double stepHeight,
-                         double stepLength,
-                         double smoothing,
-                         double givenGroundHeight,
-                         double givenSpread,
-                         double givenOffsetFront,
-                         double givenOffsetLeft,
-                         double givenRearLegOffset,
-                         double givenLiftDuration){
-  std::vector<vec3P> calculatedGaitPoints = createBSplineGaitPoints(stepHeight, stepLength, smoothing, givenGroundHeight);
+    // Make the spline object:
+    std::vector<Vector3> gaitPoints(calculatedGaitPoints.size());
+    for (int i = 0; i < calculatedGaitPoints.size(); i++) gaitPoints[i] = Vector3({(float) calculatedGaitPoints[i].x(), (float) calculatedGaitPoints[i].y(), (float) calculatedGaitPoints[i].z()});
 
-  for (int i = 0; i < calculatedGaitPoints.size(); i++) if (calculatedGaitPoints[i].points[2] < groundHeight) groundHeight = calculatedGaitPoints[i].points[2];
-  spreadAmount = givenSpread;
-  offsetFront = givenOffsetFront;
-  rearLegOffset = givenRearLegOffset;
+    bSpline = new LoopingCubicHermiteSpline<Vector3>(gaitPoints, 0.5);
 
-  bSplineInit(calculatedGaitPoints, stepLength, givenLiftDuration);
+    // Get total length calculation from new spline
+    totalLength = bSpline->totalLength();
 
 }
 
@@ -98,41 +77,44 @@ std::vector<vec3P> BSplineGait::getPosition(double givenTime, bool walkingForwar
 	// For all legs:
 	for (int i = 0; i < 4; i++) {
 		// Correct for multiplier:
-		float currentTime = givenTime / 1000;
+        double currentTime = givenTime / 1000;
 
 		// Use correct leg phase:
-        float currentLegPhaseOffset = legPhaseOffset[i][0];
+        double currentLegPhaseOffset = legPhaseOffset[i][0];
         if (walkingForwards == false) currentLegPhaseOffset = legPhaseOffset[i][1];
 
 		// Calculate with offset:
 		currentTime += currentLegPhaseOffset;
 
+		// Normalize time within one period
 		double relativeTime = fmod(currentTime, 1.0);
 
-        float scaledTime = (relativeTime / groundPercentGoal) * stepLength;
-        if (relativeTime >= groundPercentGoal){
-          scaledTime = stepLength + (totalLength - stepLength) * ((relativeTime - groundPercentGoal) * (1.0f / (1.0f - groundPercentGoal)));
+		// Calculate the spline position, constrained by the liftDuration
+        double splinePosition;
+        if (relativeTime < groundPercentGoal) { // We are supposed to be on the ground
+            splinePosition = (relativeTime / groundPercentGoal) * stepLength;
+        } else { // We are supposed to be in the air
+            splinePosition = stepLength + (totalLength - stepLength) * ((relativeTime - groundPercentGoal) * (1.0f / (1.0f - groundPercentGoal)));
         }
 
-        Vector3 vecRet = bSpline->getPosition(ArcLength::solveLengthCyclic(*bSpline, 0.0f, (float) scaledTime));
+        // Get the point from the spline object
+        Vector3 vecRet = bSpline->getPosition(ArcLength::solveLengthCyclic(*bSpline, 0.0f, (float) splinePosition));
 
-        // OffsetFront should always point forwards
+        // Apply offsetFront so it always point forwards
 		if (walkingForwards) vecRet[1] = vecRet[1] + offsetFront; else vecRet[1] = vecRet[1] - offsetFront;
 
-		// Spread amount is always to the outside of the robot
-		if (i == 0 || i == 3){
-          vecRet[0] = vecRet[0] - spreadAmount;
-		} else {
-          vecRet[0] = vecRet[0] + spreadAmount;
-		}
+        // Apply spread so it always points to the outside of the robot
+		if (i == 0 || i == 3) vecRet[0] = vecRet[0] - spreadAmount; else vecRet[0] = vecRet[0] + spreadAmount;
 
-		// Cap spline to groundHeight
+
+
+		// Make sure the point we got from the spline object is not lower than the groundHeight
 		if (vecRet[2] < groundHeight) vecRet[2] = groundHeight;
 
-		vectorToReturn[i] = vec3P(vecRet[0], vecRet[1], vecRet[2]); // Stop dips and loops?
+		vectorToReturn[i] = vec3P(vecRet[0], vecRet[1], vecRet[2]);
 	}
 
-	// Add rearLegOffset:
+	// Add rearLegOffset to the back two legs, depending on which way the robot is walking
 	if (walkingForwards == true){
 	    for (int i = 2; i <= 3; i++) vectorToReturn[i].points[1] = vectorToReturn[i].points[1] + rearLegOffset;
 	} else {
@@ -140,7 +122,7 @@ std::vector<vec3P> BSplineGait::getPosition(double givenTime, bool walkingForwar
 	}
 
 	// Invert Y axis if walking in reverse:
-  if (walkingForwards != true){
+    if (walkingForwards != true){
       for (int i = 0; i < 4; i++) vectorToReturn[i].points[1] = -vectorToReturn[i].points[1];
 	}
 

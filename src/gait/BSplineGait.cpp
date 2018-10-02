@@ -3,21 +3,6 @@
 #include "../external/splineLibrary/utils/arclength.h"
 #include "../kinematics/kinematicFunctions.h"
 
-vec3P BSplineGait::getGaitWagPoint(double givenTime, bool walkingForwards){
-  vec3P wagPoint = getWagPoint(getWagAmplitude_x(),
-                               getWagAmplitude_y(),
-                               1.0,
-                               givenTime/1000,
-                               getWagPhase());
-
-  if (walkingForwards == false){
-    wagPoint.points[0] = -wagPoint.points[0];
-    wagPoint.points[1] = -wagPoint.points[1];
-  }
-
-  return wagPoint;
-
-}
 
 void BSplineGait::bSplineInit(std::vector<vec3P> givenPoints, float givenStepLength, float givenLiftDuration){
   assert(givenLiftDuration >= 0.05f && givenLiftDuration <= 0.2f); // liftDuration has to be between 5% and 20%

@@ -15,6 +15,7 @@
 #include "dyret_common/Pose.h"
 
 #include "gait/BSplineGait.h"
+#include "gait/wagGenerator.h"
 
 #include "kinematics/movementFunctions.h"
 #include "kinematics/kinematicFunctions.h"
@@ -213,10 +214,10 @@ int main(int argc, char **argv)
                                         leftOffset,
                                         rearLegOffset,
                                         globalLiftDuration);
+  WagGenerator wagGenerator;
+  wagGenerator.enableWag(bSplineGaitWagOffset, 40.0f, 0.0f);
 
-  bSplineGait.enableWag(bSplineGaitWagOffset, 40.0f, 0.0f);
-
-  IncPoseAdjuster bSplineInitAdjuster(add(bSplineGait.getPosition(0.0, true), bSplineGait.getGaitWagPoint(0.0, true)),
+  IncPoseAdjuster bSplineInitAdjuster(add(bSplineGait.getPosition(0.0, true), wagGenerator.getGaitWagPoint(0.0, true)),
                                       &servoAnglesInRad,
                                       &legActuatorLengths,
                                       positionCommand_pub);
@@ -348,7 +349,8 @@ int main(int argc, char **argv)
                                         rearLegOffset,
                                         globalLiftDuration);
 
-              bSplineGait.enableWag(bSplineGaitWagOffset+globalWagPhaseOffset, globalWagAmplitude_x, globalWagAmplitude_y);
+
+              wagGenerator.enableWag(bSplineGaitWagOffset+globalWagPhaseOffset, globalWagAmplitude_x, globalWagAmplitude_y);
 
               if ((std::isnan(globalGaitSpeed) == true) && (std::isnan(globalGaitFrequency) == true)){
                   ROS_ERROR("GlobalGaitSpeed or globalGaitFrequency has to be set\n");
@@ -365,7 +367,7 @@ int main(int argc, char **argv)
                 movingForward = true;
               }
 
-              vec3P wagPoint = bSplineGait.getGaitWagPoint(0.0, movingForward);
+              vec3P wagPoint = wagGenerator.getGaitWagPoint(0.0, movingForward);
 
               std::vector<vec3P> initPose = lockToZ(add(bSplineGait.getPosition(0.0, movingForward), wagPoint), groundHeight);
 
@@ -438,7 +440,7 @@ int main(int argc, char **argv)
             std::vector<float> anglesInRad;
             int currentActuatorIndex = 0;
 
-            vec3P wag = bSplineGait.getGaitWagPoint(currentRelativeTime * globalGaitFrequency, movingForward);
+            vec3P wag = wagGenerator.getGaitWagPoint(currentRelativeTime * globalGaitFrequency, movingForward);
 
             std::vector<vec3P> currentPositions = currentLegPositions(servoAnglesInRad, legActuatorLengths);
 

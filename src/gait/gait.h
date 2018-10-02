@@ -3,17 +3,12 @@
 #include <vector>
 
 #include "../kinematics/kinematicTypes.h"
-#include "GaitSegment.h"
 
 class Gait {
-
-private:
-	void markGroundSegments();
 
 protected:
 
 	std::vector<vec3P> gaitPointVector;
-	std::vector<GaitSegment> gaitSegments;
 
 	float legPhaseOffset[4][2];
 
@@ -60,26 +55,13 @@ public:
 	void enableWag(float givenWagPhase, float givenWagAmplitude_x, float givenWagAmplitude_y);
 
 	void init(std::vector<vec3P> givenPoints){
+		fprintf(stderr, "In gait.h init!\n");
 
 	  gaitPointVector = givenPoints;
       numberOfPoints = givenPoints.size();
 
-      // Add all segments:
-      gaitSegments.resize(gaitPointVector.size());
+	  for (int i = 0; i < numberOfPoints; i++) if (gaitPointVector[i].points[2] < groundHeight) groundHeight = gaitPointVector[i].points[2];
 
-	  for (int i = 0; i < numberOfPoints; i++) {
-
-	    if (gaitPointVector[i].points[2] < groundHeight) groundHeight = gaitPointVector[i].points[2];
-
-	    gaitSegments[i].start = gaitPointVector[i];
-	    if (i == (numberOfPoints-1)) {
-	  	  gaitSegments[i].end = gaitPointVector[0];
-	    } else {
-		  gaitSegments[i].end = gaitPointVector[i + 1];
-	    }
-	  }
-
-	  markGroundSegments();
 	}
 
 	void setSpread(float givenSpreadAmount){

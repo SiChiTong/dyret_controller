@@ -27,14 +27,14 @@ void BSplineGait::writeGaitToFile(){
   fclose(fp);
 }
 
-void BSplineGait::initGait(double givenStepHeight,
-                           double givenStepLength,
-                           double givenSmoothing,
-                           double givenGroundHeight,
-                           double givenSpread,
-                           double givenOffsetFront,
-                           double givenRearLegOffset,
-                           double givenLiftDuration){
+void BSplineGait::initHighLevelGait(double givenStepHeight,
+                                    double givenStepLength,
+                                    double givenSmoothing,
+                                    double givenGroundHeight,
+                                    double givenSpread,
+                                    double givenOffsetFront,
+                                    double givenRearLegOffset,
+                                    double givenLiftDuration){
 
     assert(givenLiftDuration >= 0.05f && givenLiftDuration <= 0.2f); // liftDuration has to be between 5% and 20%
 

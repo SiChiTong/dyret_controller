@@ -29,8 +29,8 @@ add_message_files(
   ActionMessage.msg
   DistAngCommand.msg
   DistAngMeasurement.msg
-  Trajectory.msg
   GaitControllerStatus.msg
+  GaitConfiguration.msg
 )
 
 add_service_files(
@@ -78,14 +78,6 @@ add_executable(gaitController
               )
 target_link_libraries(gaitController ${catkin_LIBRARIES})
 add_dependencies(gaitController
-                 ${catkin_EXPORTED_TARGETS}
-                 dyret_controller_generate_messages_cpp)
-
-add_executable(trajectoryController
-               src/trajectoryController.cpp
-              )
-target_link_libraries(trajectoryController ${catkin_LIBRARIES})
-add_dependencies(trajectoryController
                  ${catkin_EXPORTED_TARGETS}
                  dyret_controller_generate_messages_cpp)
 

@@ -42,15 +42,15 @@ bool getGaitEvaluationService(dyret_controller::GetGaitEvaluation::Request  &req
   std::vector<float> results;
   std::vector<std::string> descriptors;
 
-    // Assign fitness values:
-    descriptors.resize(7);
-    descriptors[0] = "inferredSpeed";
-    descriptors[1] = "angVel";
-    descriptors[2] = "linAcc";
-    descriptors[3] = "combAngStab";
-    descriptors[4] = "power";
-    descriptors[5] = "sensorSpeed";
-    descriptors[6] = "combImuStab";
+  // Assign fitness values:
+  descriptors.resize(7);
+  descriptors[0] = "inferredSpeed";
+  descriptors[1] = "angVel";
+  descriptors[2] = "linAcc";
+  descriptors[3] = "combAngStab";
+  descriptors[4] = "power";
+  descriptors[5] = "sensorSpeed";
+  descriptors[6] = "combImuStab";
 
   switch (req.givenCommand){
     case (dyret_controller::GetGaitEvaluationRequest::t_getDescriptors):
@@ -74,6 +74,7 @@ bool getGaitEvaluationService(dyret_controller::GetGaitEvaluation::Request  &req
 
         break;
     case (dyret_controller::GetGaitEvaluationRequest::t_resetStatistics):
+      ROS_INFO("req.t_resetStatistics received\n");
       enableCapture = false;
 
       accTime = 0.0;
@@ -84,14 +85,13 @@ bool getGaitEvaluationService(dyret_controller::GetGaitEvaluation::Request  &req
 
       break;
     case (dyret_controller::GetGaitEvaluationRequest::t_getResults):
+      ROS_INFO("req.t_getResults received\n");
 
       if (discardSolution == 1){
         ROS_WARN("Discarded!\n");
         discardSolution = 0;
-      } else if (linAcc_z < 0){
-        ROS_WARN("Upside down!\n");
-      } else if (linAcc_z < 8){
-        ROS_WARN("Sideways!\n");
+      } else if (linAcc_z < 2){
+        ROS_WARN("Toppled at %.2f!\n", linAcc_z);
       } else {
 
         results.resize(7); // See descriptors above for contents
@@ -205,7 +205,7 @@ void servoStatesCallback(const dyret_common::State::ConstPtr& msg){
 void gaitInferredPos_Callback(const dyret_controller::DistAngMeasurement::ConstPtr& msg)
 {
   if (msg->msgType == msg->t_measurementInferred){
-      accPos += msg->distance;
+      accPos = msg->distance;
   }
 }
 

@@ -32,6 +32,7 @@
 #include "dyret_controller/PositionCommand.h"
 #include "dyret_controller/ActionMessage.h"
 #include "dyret_controller/DistAngMeasurement.h"
+#include "dyret_controller/GaitConfiguration.h"
 
 #include "dyret_controller/GetGaitControllerStatus.h"
 #include "dyret_controller/GetGaitEvaluation.h"
@@ -45,6 +46,9 @@ using namespace std::chrono;
 unsigned char currentAction;
 dyret_controller::ActionMessage::ConstPtr lastActionMessage;
 robo_cont::gaitControllerParamsConfig lastGaitControllerParamsConfigMessage;
+
+std::string gaitType;
+std::map<std::string, float> gaitConfiguration;
 
 bool initAdjustInSim = true;
 
@@ -79,6 +83,18 @@ void actionMessagesCallback(const dyret_controller::ActionMessage::ConstPtr &msg
     currentAction = msg->actionType;
 
     ROS_INFO("Direction is %.2f (%.2f)", lastActionMessage->direction, msg->direction);
+}
+
+void gaitConfigurationCallback(const dyret_controller::GaitConfiguration::ConstPtr &msg) {
+
+    ROS_INFO("Got gait configuration message for gait type %s", msg->gaitName.c_str());
+    gaitType = msg->gaitName;
+
+    gaitConfiguration.clear();
+    assert(msg->parameterName.size() == msg->parameterValue.size());
+    for (size_t i = 0; i < msg->parameterName.size(); ++i)
+        gaitConfiguration[msg->parameterName[i]] = msg->parameterValue[i];
+
 }
 
 void servoStatesCallback(const dyret_common::State::ConstPtr &msg) {
@@ -158,6 +174,16 @@ std::vector<vec3P> getRestPose() {
     return restPose;
 }
 
+void sendGaitInferredPos(ros::Publisher givenGaitInferredPos_pub, float givenDistance){
+    dyret_controller::DistAngMeasurement posChangeMsg;
+    posChangeMsg.msgType = posChangeMsg.t_measurementInferred;
+    posChangeMsg.absoluteMeasurement = true;
+    posChangeMsg.distance = givenDistance;
+    posChangeMsg.angle = 0.0f;
+
+    givenGaitInferredPos_pub.publish(posChangeMsg);
+}
+
 int main(int argc, char **argv) {
 
     pidParameters.resize(3 * 3);
@@ -170,6 +196,7 @@ int main(int argc, char **argv) {
     ros::ServiceServer gaitControllerStatusService_server = n.advertiseService("get_gait_controller_status", getGaitControllerStatusService);
     // Initialize topics
     ros::Subscriber actionMessages_sub = n.subscribe("/dyret/dyret_controller/actionMessages", 100, actionMessagesCallback);
+    ros::Subscriber gaitConfiguration_sub = n.subscribe("/dyret/dyret_controller/gaitConfiguration", 1, gaitConfigurationCallback);
     ros::Subscriber servoStates_sub = n.subscribe("/dyret/state", 1, servoStatesCallback);
     ros::Publisher poseCommand_pub = n.advertise<dyret_common::Pose>("/dyret/command", 3);
     ros::Publisher gaitInferredPos_pub = n.advertise<dyret_controller::DistAngMeasurement>("/dyret/dyret_controller/gaitInferredPos", 1000);
@@ -211,21 +238,6 @@ int main(int argc, char **argv) {
         setServoSpeeds(0.01, servoConfigClient);
     }
 
-    if (ros::Time::isSystemTime()) { // do not set pid in simulation
-        printf("P: %.2f, I: %.2f, D: %.2f\n", lastGaitControllerParamsConfigMessage.cP,
-               lastGaitControllerParamsConfigMessage.cI, lastGaitControllerParamsConfigMessage.cD);
-        pidParameters[0] = 2.0; // Set to 2 to stop coxa shaking before experiment begins
-        pidParameters[1] = lastGaitControllerParamsConfigMessage.cI;
-        pidParameters[2] = lastGaitControllerParamsConfigMessage.cD;
-        pidParameters[3] = lastGaitControllerParamsConfigMessage.fP;
-        pidParameters[4] = lastGaitControllerParamsConfigMessage.fI;
-        pidParameters[5] = lastGaitControllerParamsConfigMessage.fD;
-        pidParameters[6] = lastGaitControllerParamsConfigMessage.tP;
-        pidParameters[7] = lastGaitControllerParamsConfigMessage.tI;
-        pidParameters[8] = lastGaitControllerParamsConfigMessage.tD;
-        setServoPIDs(pidParameters, servoConfigClient);
-    }
-
     std::vector<vec3P> restPose = getRestPose();
     moveAllLegsToGlobalPosition(getRestPose(), positionCommand_pub);
 
@@ -235,8 +247,6 @@ int main(int argc, char **argv) {
     ros::Rate loop_rate(5);
 
     ros::Time startTime;
-    ros::Time lastTime;
-    bool lastTimeValid = false;
     bool activatedRecording = false;
     ros::Rate poseAdjusterRate(50);
     ros::Rate gaitRate(100);
@@ -306,38 +316,23 @@ int main(int argc, char **argv) {
                 if (ros::Time::isSystemTime()) setServoSpeeds(poseAdjustSpeed, servoConfigClient);
                 gaitInitAdjuster.reset();
 
-                // PID:
-                if (ros::Time::isSystemTime()) { // do not set pid in simulation
-                    pidParameters[0] = lastGaitControllerParamsConfigMessage.cP;
-                    pidParameters[1] = lastGaitControllerParamsConfigMessage.cI;
-                    pidParameters[2] = lastGaitControllerParamsConfigMessage.cD;
-                    pidParameters[3] = lastGaitControllerParamsConfigMessage.fP;
-                    pidParameters[4] = lastGaitControllerParamsConfigMessage.fI;
-                    pidParameters[5] = lastGaitControllerParamsConfigMessage.fD;
-                    pidParameters[6] = lastGaitControllerParamsConfigMessage.tP;
-                    pidParameters[7] = lastGaitControllerParamsConfigMessage.tI;
-                    pidParameters[8] = lastGaitControllerParamsConfigMessage.tD;
-
-                    setServoPIDs(pidParameters, servoConfigClient);
-                }
-
                 // Gait params:
-                globalGaitFrequency = lastGaitControllerParamsConfigMessage.gaitFrequency;
-                globalGaitSpeed = lastGaitControllerParamsConfigMessage.gaitSpeed;
-                globalLiftDuration = lastGaitControllerParamsConfigMessage.liftDuration;
+                globalGaitFrequency = gaitConfiguration.at("frequency");
+                globalGaitSpeed     = gaitConfiguration.at("speed");
+                globalLiftDuration  = gaitConfiguration.at("liftDuration");
 
-                bSplineGait.initGait(lastGaitControllerParamsConfigMessage.stepHeight,
-                                     lastGaitControllerParamsConfigMessage.stepLength,
-                                     lastGaitControllerParamsConfigMessage.smoothing,
-                                     groundHeight,
-                                     spreadAmount,
-                                     frontOffset,
-                                     rearLegOffset,
-                                     globalLiftDuration);
+                bSplineGait.initHighLevelGait(gaitConfiguration.at("stepHeight"),
+                                              gaitConfiguration.at("stepLength"),
+                                              gaitConfiguration.at("smoothing"),
+                                              groundHeight,
+                                              spreadAmount,
+                                              frontOffset,
+                                              rearLegOffset,
+                                              globalLiftDuration);
 
-                wagGenerator.enableWag(bSplineGaitWagOffset + lastGaitControllerParamsConfigMessage.wagPhase,
-                                       lastGaitControllerParamsConfigMessage.wagAmplitude_x,
-                                       lastGaitControllerParamsConfigMessage.wagAmplitude_y);
+                wagGenerator.enableWag(bSplineGaitWagOffset + gaitConfiguration.at("wagPhase"),
+                                       gaitConfiguration.at("wagAmplitude_x"),
+                                       gaitConfiguration.at("wagAmplitude_y"));
 
                 gaitInitAdjuster.setPose(add(bSplineGait.getPosition(0.0, true), wagGenerator.getGaitWagPoint(0.0, true)));
 
@@ -357,20 +352,18 @@ int main(int argc, char **argv) {
                 }
 
                 // Calculate the initial pose of the gait
-                std::vector<vec3P> initGaitPose = lockToZ(add( bSplineGait.getPosition(0.0, movingForward), wagGenerator.getGaitWagPoint(0.0, movingForward) ),
+                std::vector<vec3P> initialGaitPose = lockToZ(add( bSplineGait.getPosition(0.0, movingForward), wagGenerator.getGaitWagPoint(0.0, movingForward) ),
                                                           groundHeight);
 
                 // Adjust to the start of the gait only in the real world or if the initAdjustInSim bool is set for testing
                 if (ros::Time::isSimTime() && !initAdjustInSim) {
-                    moveAllLegsToGlobalPosition(initGaitPose, positionCommand_pub);
+                    moveAllLegsToGlobalPosition(initialGaitPose, positionCommand_pub);
                     gaitInitAdjuster.skip();
                     ros::Duration(1).sleep();
                     startTime = ros::Time::now();
                 } else {
-                    gaitInitAdjuster.setPose(initGaitPose);
+                    gaitInitAdjuster.setPose(initialGaitPose);
                 }
-
-                lastTimeValid = false;
 
             }
 
@@ -401,26 +394,19 @@ int main(int argc, char **argv) {
                 globalLegPositions = bSplineGait.getPosition(currentRelativeTime * globalGaitFrequency, movingForward);
 
                 // Calculate posChangeMsg:
-                if (lastTimeValid == false) {
-                    // Not initialized
-                    lastTime = ros::Time::now();
-                    lastTimeValid = true;
-                } else {
-                    // Initialized:
 
-                    double secondsPassed = (ros::Time::now() - lastTime).toNSec() / 1000000000.0f;
-                    double distance = bSplineGait.getStepLength() * globalGaitFrequency * (secondsPassed);
+                double secondsPassed = (ros::Time::now() - startTime).toNSec() / 1000000000.0f;
+                float distance = (float) (bSplineGait.getStepLength() * globalGaitFrequency * (secondsPassed));
 
-                    dyret_controller::DistAngMeasurement posChangeMsg;
-                    if (movingForward) posChangeMsg.distance = distance; else posChangeMsg.distance = -distance;
+                dyret_controller::DistAngMeasurement posChangeMsg;
+                if (movingForward) posChangeMsg.distance = distance; else posChangeMsg.distance = -distance;
 
-                    posChangeMsg.msgType = posChangeMsg.t_measurementInferred;
-                    posChangeMsg.angle = 0.0f;
-                    gaitInferredPos_pub.publish(posChangeMsg);
-                }
+                posChangeMsg.msgType = posChangeMsg.t_measurementInferred;
+                posChangeMsg.angle = 0.0f;
+                posChangeMsg.absoluteMeasurement = true;
+                gaitInferredPos_pub.publish(posChangeMsg);
 
-                lastTime = ros::Time::now();
-
+                // Generate and send pose message
                 dyret_common::Pose msg;
 
                 std::vector<int> servoIds(12);

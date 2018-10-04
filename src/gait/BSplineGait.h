@@ -22,14 +22,14 @@ class BSplineGait {
     double groundPercentGoal; //Time spent on the ground (minimum 3/4 = 75%)
 
   public:
-    void initGait(double stepHeight,
-                  double stepLength,
-                  double smoothing,
-                  double givenGroundHeight,
-                  double givenSpread,
-                  double givenOffsetFront,
-                  double rearLegOffset,
-                  double givenLiftDuration);
+    void initHighLevelGait(double stepHeight,
+                           double stepLength,
+                           double smoothing,
+                           double givenGroundHeight,
+                           double givenSpread,
+                           double givenOffsetFront,
+                           double rearLegOffset,
+                           double givenLiftDuration);
 
     std::vector<vec3P> getPosition(double givenTime, bool walkingForwards);
 

@@ -281,23 +281,43 @@ int main(int argc, char **argv) {
                 if (ros::Time::isSystemTime()) setServoSpeeds(poseAdjustSpeed, servoConfigClient);
                 gaitInitAdjuster.reset();
 
-                // Gait params:
-                globalGaitFrequency = gaitConfiguration.at("frequency");
-                globalGaitSpeed     = gaitConfiguration.at("speed");
-                globalLiftDuration  = gaitConfiguration.at("liftDuration");
+                if (gaitType == "highLevelSplineGait") {
+                    // Gait params:
+                    globalGaitFrequency = gaitConfiguration.at("frequency");
+                    globalGaitSpeed = gaitConfiguration.at("speed");
+                    globalLiftDuration = gaitConfiguration.at("liftDuration");
 
-                bSplineGait.initHighLevelGait(gaitConfiguration.at("stepHeight"),
-                                              gaitConfiguration.at("stepLength"),
-                                              gaitConfiguration.at("smoothing"),
-                                              groundHeight,
-                                              spreadAmount,
-                                              frontOffset,
-                                              rearLegOffset,
-                                              globalLiftDuration);
+                    bSplineGait.initHighLevelGait(gaitConfiguration.at("stepHeight"),
+                                                  gaitConfiguration.at("stepLength"),
+                                                  gaitConfiguration.at("smoothing"),
+                                                  groundHeight,
+                                                  spreadAmount,
+                                                  frontOffset,
+                                                  rearLegOffset,
+                                                  globalLiftDuration);
 
-                wagGenerator.enableWag(bSplineGaitWagOffset + gaitConfiguration.at("wagPhase"),
-                                       gaitConfiguration.at("wagAmplitude_x"),
-                                       gaitConfiguration.at("wagAmplitude_y"));
+                    wagGenerator.enableWag(bSplineGaitWagOffset + gaitConfiguration.at("wagPhase"),
+                                           gaitConfiguration.at("wagAmplitude_x"),
+                                           gaitConfiguration.at("wagAmplitude_y"));
+
+                } else if (gaitType == "lowLevelSplineGait"){
+
+                    fprintf(stderr,"a\n");
+                    globalGaitFrequency = gaitConfiguration.at("frequency");
+                    fprintf(stderr,"b\n");
+                    globalLiftDuration = gaitConfiguration.at("liftDuration");
+                    fprintf(stderr,"c\n");
+                    globalGaitSpeed = NAN;
+
+                    bSplineGait.initLowLevelGait(gaitConfiguration, groundHeight);
+                    fprintf(stderr,"d\n");
+
+                    wagGenerator.enableWag(0.0, 0.0, 0.0);
+
+                } else {
+                    ROS_FATAL("Unknown gait specified: %s!", gaitType.c_str());
+                    exit(-1);
+                }
 
                 gaitInitAdjuster.setPose(add(bSplineGait.getPosition(0.0, true), wagGenerator.getGaitWagPoint(0.0, true)));
 

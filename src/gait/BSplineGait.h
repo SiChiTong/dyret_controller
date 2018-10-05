@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include <map>
 
 #include "../kinematics/kinematicTypes.h"
 #include "../external/splineLibrary/spline.h"
@@ -31,10 +32,12 @@ class BSplineGait {
                            double rearLegOffset,
                            double givenLiftDuration);
 
+    void initLowLevelGait(std::map<std::string, float> gaitConfiguration, double givenGroundHeight);
+
     std::vector<vec3P> getPosition(double givenTime, bool walkingForwards);
 
     double getStepLength() { return stepLength;}
 
-    void writeGaitToFile();
+    void writeGaitToFile(std::string fileName);
 
 };

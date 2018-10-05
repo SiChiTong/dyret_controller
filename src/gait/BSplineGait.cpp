@@ -3,12 +3,12 @@
 #include "../external/splineLibrary/utils/arclength.h"
 #include "../kinematics/kinematicFunctions.h"
 
-void BSplineGait::writeGaitToFile(){
+void BSplineGait::writeGaitToFile(std::string fileName){
   // Write spline to file:
   float numberOfPointsToGenerate = 1000.0;
 
   FILE * fp;
-  fp = fopen("/home/tonnesfn/catkin_ws/splineGaitOutput.csv", "w");
+  fp = fopen(std::string("/home/tonnesfn/catkin_ws/" + fileName + ".csv").c_str(), "w");
 
   fprintf(fp, "stepLength: %.3f, totalLength: %.3f, groundPercentGoal: %.3f\n",
           stepLength,
@@ -63,11 +63,51 @@ void BSplineGait::initHighLevelGait(double givenStepHeight,
     std::vector<Vector3> gaitPoints(calculatedGaitPoints.size());
     for (int i = 0; i < calculatedGaitPoints.size(); i++) gaitPoints[i] = Vector3({(float) calculatedGaitPoints[i].x(), (float) calculatedGaitPoints[i].y(), (float) calculatedGaitPoints[i].z()});
 
+    printf("highLevelPoints: \n");
+    for (int i = 0; i < calculatedGaitPoints.size(); i++) printf("    %.2f, %.2f, %.2f\n", calculatedGaitPoints[i].x(), calculatedGaitPoints[i].y(), calculatedGaitPoints[i].z());
+
     bSpline = new LoopingCubicHermiteSpline<Vector3>(gaitPoints, 0.5);
 
     // Get total length calculation from new spline
     totalLength = bSpline->totalLength();
 
+    writeGaitToFile("lastHighLevelGait");
+}
+
+void BSplineGait::initLowLevelGait(std::map<std::string, float> gaitConfiguration, double givenGroundHeight){
+    fprintf(stderr, "1\n");
+    stepLength = gaitConfiguration.at("p0_y") - gaitConfiguration.at("p1_y");
+    fprintf(stderr, "2\n");
+    groundPercentGoal = 1.0 - gaitConfiguration.at("liftDuration");
+    fprintf(stderr, "3\n");
+    groundHeight = givenGroundHeight;
+    offsetFront = 0.0;
+    spreadAmount = 80.0;
+    rearLegOffset = -30.0;
+
+    // Calculate gait points (the two ground points need to be first):
+    std::vector<vec3P> calculatedGaitPoints =
+        {{ gaitConfiguration.at("p0_x"), gaitConfiguration.at("p0_y"), (float) givenGroundHeight }, // Front ground
+         { gaitConfiguration.at("p1_x"), gaitConfiguration.at("p1_y"), (float) givenGroundHeight }, // Back ground
+         { gaitConfiguration.at("p2_x"), gaitConfiguration.at("p2_y"), (float) givenGroundHeight + gaitConfiguration.at("p2_z") },
+         { gaitConfiguration.at("p3_x"), gaitConfiguration.at("p3_y"), (float) givenGroundHeight + gaitConfiguration.at("p3_z") },
+         { gaitConfiguration.at("p4_x"), gaitConfiguration.at("p4_y"), (float) givenGroundHeight + gaitConfiguration.at("p4_z") }};
+
+    fprintf(stderr, "4\n");
+
+    // Make the spline object:
+    std::vector<Vector3> gaitPoints(calculatedGaitPoints.size());
+    for (int i = 0; i < calculatedGaitPoints.size(); i++) gaitPoints[i] = Vector3({(float) calculatedGaitPoints[i].x(), (float) calculatedGaitPoints[i].y(), (float) calculatedGaitPoints[i].z()});
+
+    printf("lowLevelPoints: \n");
+    for (int i = 0; i < calculatedGaitPoints.size(); i++) printf("    %.2f, %.2f, %.2f\n", calculatedGaitPoints[i].x(), calculatedGaitPoints[i].y(), calculatedGaitPoints[i].z());
+
+    bSpline = new LoopingCubicHermiteSpline<Vector3>(gaitPoints, 0.5);
+
+    // Get total length calculation from new spline
+    totalLength = bSpline->totalLength();
+
+    writeGaitToFile("lastLowLevelGait");
 }
 
 std::vector<vec3P> BSplineGait::getPosition(double givenTime, bool walkingForwards) {

@@ -2,6 +2,8 @@
 
 #include <vector>
 #include <map>
+#include <string>
+#include <sstream>
 
 #include "../kinematics/kinematicTypes.h"
 #include "../external/splineLibrary/spline.h"
@@ -22,6 +24,9 @@ class BSplineGait {
     double rearLegOffset;
     double groundPercentGoal; //Time spent on the ground (minimum 3/4 = 75%)
 
+    std::string gaitDescriptionString;
+    std::vector<vec3P> controlPoints;
+
   public:
     void initHighLevelGait(double stepHeight,
                            double stepLength,
@@ -38,6 +43,6 @@ class BSplineGait {
 
     double getStepLength() { return stepLength;}
 
-    void writeGaitToFile(std::string fileName);
+    void writeGaitToFile();
 
 };

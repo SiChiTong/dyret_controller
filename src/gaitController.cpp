@@ -282,11 +282,18 @@ int main(int argc, char **argv) {
                 if (ros::Time::isSystemTime()) setServoSpeeds(poseAdjustSpeed, servoConfigClient);
                 gaitInitAdjuster.reset();
 
+                if (fabs(lastActionMessage->direction - M_PI) < 0.1) {
+                    movingForward = false;
+                } else {
+                    movingForward = true;
+                }
+
+
                 if (gaitType == "highLevelSplineGait") {
                     // Gait params:
                     frequencyFactor = gaitConfiguration.at("frequencyFactor");
                     globalLiftDuration = gaitConfiguration.at("liftDuration");
-
+                    fprintf(stderr, "1\n");
                     bSplineGait.initHighLevelGait(gaitConfiguration.at("stepHeight"),
                                                   gaitConfiguration.at("stepLength"),
                                                   gaitConfiguration.at("smoothing"),
@@ -302,14 +309,11 @@ int main(int argc, char **argv) {
 
                 } else if (gaitType == "lowLevelSplineGait"){
 
-                    fprintf(stderr,"a\n");
                     frequencyFactor = gaitConfiguration.at("frequencyFactor");
-                    fprintf(stderr,"b\n");
                     globalLiftDuration = gaitConfiguration.at("liftDuration");
-                    fprintf(stderr,"c\n");
 
                     bSplineGait.initLowLevelGait(gaitConfiguration, groundHeight);
-                    fprintf(stderr,"d\n");
+                    if (movingForward) bSplineGait.writeGaitToFile();
 
                     wagGenerator.enableWag(0.0, 0.0, 0.0);
 
@@ -323,12 +327,6 @@ int main(int argc, char **argv) {
                 globalGaitFrequency = maxFrequency * frequencyFactor;
 
                 gaitInitAdjuster.setPose(add(bSplineGait.getPosition(0.0, true), wagGenerator.getGaitWagPoint(0.0, true)));
-
-                if (fabs(lastActionMessage->direction - M_PI) < 0.1) {
-                    movingForward = false;
-                } else {
-                    movingForward = true;
-                }
 
                 // Calculate the initial pose of the gait
                 std::vector<vec3P> initialGaitPose = lockToZ(add( bSplineGait.getPosition(0.0, movingForward), wagGenerator.getGaitWagPoint(0.0, movingForward) ),

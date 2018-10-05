@@ -37,15 +37,12 @@
 #include "dyret_controller/GetGaitControllerStatus.h"
 #include "dyret_controller/GetGaitEvaluation.h"
 
-#include "dyret_controller/gaitControllerParamsConfig.h"
-
 #include <dyret_hardware/ActuatorBoardState.h>
 
 using namespace std::chrono;
 
 unsigned char currentAction;
 dyret_controller::ActionMessage::ConstPtr lastActionMessage;
-robo_cont::gaitControllerParamsConfig lastGaitControllerParamsConfigMessage;
 
 std::string gaitType;
 std::map<std::string, float> gaitConfiguration;
@@ -111,32 +108,6 @@ void servoStatesCallback(const dyret_common::State::ConstPtr &msg) {
             (prismaticPositions[1] + prismaticPositions[3] + prismaticPositions[5] + prismaticPositions[7]) / 4.0f;
 
     groundHeight = (float) (groundHeightOffset - ((legActuatorLengths[0] + legActuatorLengths[1]) * groundCorrectionFactor));
-}
-
-void gaitControllerParamConfigCallback(robo_cont::gaitControllerParamsConfig &config, uint32_t level) {
-    ROS_INFO("Reconfigure Request: \n\t"
-             "stepHeight: %.2f\n\t"
-             "stepLength: %.2f\n\t"
-             "smoothing: %.2f\n\t"
-             "speed: %.2f\n\t"
-             "wagAmplitude_x: %.2f\n\t"
-             "wagAmplitude_y: %.2f\n\t"
-             "wagPhaseOffset: %.2f\n\t"
-             "liftDuration: %.2f",
-             config.stepHeight,
-             config.stepLength,
-             config.smoothing,
-             config.gaitFrequency,
-             config.wagAmplitude_x,
-             config.wagAmplitude_y,
-             config.wagPhase,
-             config.liftDuration);
-
-    ROS_INFO("\n\tC: P%.2f I%.2f D%.2f\n\tF: P%.2f I%.2f D%.2f\n\tT: P%.2f I%.2f D%.2f\n\n",
-             config.cP, config.cI, config.cD, config.fP, config.fI, config.fD, config.tP, config.tI, config.tD);
-
-    lastGaitControllerParamsConfigMessage = config;
-
 }
 
 void startGaitRecording(ros::ServiceClient get_gait_evaluation_client) {
@@ -206,12 +177,6 @@ int main(int argc, char **argv) {
     waitForRosInit(get_gait_evaluation_client, "get_gait_evaluation");
     waitForRosInit(actionMessages_sub, "/dyret/dyret_controller/actionMessages");
     waitForRosInit(servoStates_sub, "servoStates");
-
-    // Initialize dynamic reconfiguration:
-    dynamic_reconfigure::Server<robo_cont::gaitControllerParamsConfig> gaitControllerParamsConfigServer;
-    dynamic_reconfigure::Server<robo_cont::gaitControllerParamsConfig>::CallbackType gaitControllerParamsConfigFunction;
-    gaitControllerParamsConfigFunction = boost::bind(&gaitControllerParamConfigCallback, _1, _2);
-    gaitControllerParamsConfigServer.setCallback(gaitControllerParamsConfigFunction);
 
     legActuatorLengths = {0.0, 0.0};
 

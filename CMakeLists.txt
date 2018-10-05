@@ -6,8 +6,8 @@ set(ROS_BUILD_TYPE Debug)
 set(CMAKE_CXX_FLAGS "-std=c++11 ${CMAKE_CXX_FLAGS} -ltbb -D SFERES_XML_WRITE")
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}")
 
-set(Boost_USE_STATIC_LIBS OFF) 
-set(Boost_USE_MULTITHREADED ON)  
+set(Boost_USE_STATIC_LIBS OFF)
+set(Boost_USE_MULTITHREADED ON)
 set(Boost_USE_STATIC_RUNTIME OFF)
 
 find_package(catkin REQUIRED COMPONENTS
@@ -17,7 +17,6 @@ find_package(catkin REQUIRED COMPONENTS
   sensor_msgs
   message_generation
   genmsg
-  dynamic_reconfigure
   dyret_common
   dyret_hardware
 )
@@ -44,10 +43,6 @@ generate_messages(
   geometry_msgs
 )
 
-generate_dynamic_reconfigure_options(
-  cfg/gaitControllerParams.cfg
-)
-
 find_package(Boost REQUIRED COMPONENTS 
   program_options
   serialization
@@ -66,7 +61,7 @@ include_directories(include
   ${TBB_INCLUDE_DIRS}
 )
 
-add_executable(gaitController 
+add_executable(gaitController
                src/gaitController.cpp
                src/gait/BSplineGait.cpp
                src/kinematics/kinematicFunctions.cpp
@@ -85,7 +80,7 @@ add_executable(gaitEvaluator
                src/gaitEvaluator.cpp
               )
 target_link_libraries(gaitEvaluator ${catkin_LIBRARIES})
-add_dependencies(gaitEvaluator 
+add_dependencies(gaitEvaluator
                  ${catkin_EXPORTED_TARGETS}
                  dyret_controller_generate_messages_cpp)
 
@@ -94,7 +89,6 @@ add_executable(inverseKinematicsAdapter
 	src/kinematics/inverseKinematics.cpp
 )
 target_link_libraries(inverseKinematicsAdapter ${catkin_LIBRARIES})
-add_dependencies(inverseKinematicsAdapter 
+add_dependencies(inverseKinematicsAdapter
                  ${catkin_EXPORTED_TARGETS}
                  dyret_controller_generate_messages_cpp)
-

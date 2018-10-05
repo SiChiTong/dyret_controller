@@ -47,11 +47,12 @@ dyret_controller::ActionMessage::ConstPtr lastActionMessage;
 std::string gaitType;
 std::map<std::string, float> gaitConfiguration;
 
+// This decides if the leg adjustment done in hardware is done in sim as well
 bool initAdjustInSim = true;
 
 bool movingForward;
 double globalGaitFrequency;
-double globalGaitSpeed;
+double frequencyFactor;
 double globalLiftDuration;
 const double groundHeightOffset = -430;
 const double groundCorrectionFactor = 0.8;
@@ -283,8 +284,7 @@ int main(int argc, char **argv) {
 
                 if (gaitType == "highLevelSplineGait") {
                     // Gait params:
-                    globalGaitFrequency = gaitConfiguration.at("frequency");
-                    globalGaitSpeed = gaitConfiguration.at("speed");
+                    frequencyFactor = gaitConfiguration.at("frequencyFactor");
                     globalLiftDuration = gaitConfiguration.at("liftDuration");
 
                     bSplineGait.initHighLevelGait(gaitConfiguration.at("stepHeight"),
@@ -303,11 +303,10 @@ int main(int argc, char **argv) {
                 } else if (gaitType == "lowLevelSplineGait"){
 
                     fprintf(stderr,"a\n");
-                    globalGaitFrequency = gaitConfiguration.at("frequency");
+                    frequencyFactor = gaitConfiguration.at("frequencyFactor");
                     fprintf(stderr,"b\n");
                     globalLiftDuration = gaitConfiguration.at("liftDuration");
                     fprintf(stderr,"c\n");
-                    globalGaitSpeed = NAN;
 
                     bSplineGait.initLowLevelGait(gaitConfiguration, groundHeight);
                     fprintf(stderr,"d\n");
@@ -319,16 +318,11 @@ int main(int argc, char **argv) {
                     exit(-1);
                 }
 
+                // Limit frequency so speed is below 10m/min:
+                double maxFrequency = ((10.0/60.0)*1000.0) / bSplineGait.getStepLength();
+                globalGaitFrequency = maxFrequency * frequencyFactor;
+
                 gaitInitAdjuster.setPose(add(bSplineGait.getPosition(0.0, true), wagGenerator.getGaitWagPoint(0.0, true)));
-
-                if ((std::isnan(globalGaitSpeed) == true) && (std::isnan(globalGaitFrequency) == true)) {
-                    ROS_ERROR("GlobalGaitSpeed or globalGaitFrequency has to be set\n");
-                } else if (std::isnan(globalGaitFrequency) == true) {
-                    // Frequency has not been set => Calculate frequency from speed
-
-                    ROS_FATAL("std::isnan(globalGaitFrequency) == true\n");
-                    exit(-1);
-                }
 
                 if (fabs(lastActionMessage->direction - M_PI) < 0.1) {
                     movingForward = false;

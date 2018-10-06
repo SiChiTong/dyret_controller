@@ -25,9 +25,11 @@ void BSplineGait::writeGaitToFile(){
   // Write spline to file:
   float numberOfPointsToGenerate = 1000.0;
 
+  std::string dateString = getDateString();
+
   // Save raw points:
   FILE * fp;
-  fp = fopen(std::string("/home/tonnesfn/catkin_ws/customLogs/lowLevelSplineGait/" + getDateString() + "_raw.csv").c_str(), "w");
+  fp = fopen(std::string("/home/tonnesfn/catkin_ws/customLogs/lowLevelSplineGait/" + dateString + "_raw.csv").c_str(), "w");
 
   for (int i = 0; i < numberOfPointsToGenerate; i++) {
     float scaled = (float) (totalLength / numberOfPointsToGenerate) * i;
@@ -44,7 +46,7 @@ void BSplineGait::writeGaitToFile(){
   fclose(fp);
 
   // Save control points:
-  fp = fopen(std::string("/home/tonnesfn/catkin_ws/customLogs/lowLevelSplineGait/" + getDateString() + "_cnt.csv").c_str(), "w");
+  fp = fopen(std::string("/home/tonnesfn/catkin_ws/customLogs/lowLevelSplineGait/" + dateString + "_cnt.csv").c_str(), "w");
 
   for (int i = 0; i < controlPoints.size(); i++) {
     fprintf(fp, "%.2f, %.2f, %.2f\n", controlPoints[i].x(), controlPoints[i].y(), controlPoints[i].z());
@@ -54,7 +56,7 @@ void BSplineGait::writeGaitToFile(){
   fclose(fp);
 
   // Save description:
-  fp = fopen(std::string("/home/tonnesfn/catkin_ws/customLogs/lowLevelSplineGait/" + getDateString() + ".txt").c_str(), "w");
+  fp = fopen(std::string("/home/tonnesfn/catkin_ws/customLogs/lowLevelSplineGait/" + dateString + ".txt").c_str(), "w");
 
   fprintf(fp, "%s", gaitDescriptionString.c_str());
 
@@ -122,12 +124,25 @@ void BSplineGait::initLowLevelGait(std::map<std::string, float> gaitConfiguratio
     rearLegOffset = -30.0;
 
     // Calculate gait points (the two ground points need to be first):
-    controlPoints =
-        {{ gaitConfiguration.at("p0_x"), gaitConfiguration.at("p0_y"), (float) givenGroundHeight }, // Front ground
-         { gaitConfiguration.at("p1_x"), gaitConfiguration.at("p1_y"), (float) givenGroundHeight }, // Back ground
-         { gaitConfiguration.at("p2_x"), gaitConfiguration.at("p2_y"), (float) givenGroundHeight + gaitConfiguration.at("p2_z") },
-         { gaitConfiguration.at("p3_x"), gaitConfiguration.at("p3_y"), (float) givenGroundHeight + gaitConfiguration.at("p3_z") },
-         { gaitConfiguration.at("p4_x"), gaitConfiguration.at("p4_y"), (float) givenGroundHeight + gaitConfiguration.at("p4_z") }};
+    controlPoints.clear();
+
+    if (gaitConfiguration.at("p0_y") > gaitConfiguration.at("p1_y")) {
+      controlPoints.push_back({gaitConfiguration.at("p0_x"), gaitConfiguration.at("p0_y"), (float) givenGroundHeight});
+      controlPoints.push_back({gaitConfiguration.at("p1_x"), gaitConfiguration.at("p1_y"), (float) givenGroundHeight});
+    } else {
+      controlPoints.push_back({gaitConfiguration.at("p1_x"), gaitConfiguration.at("p1_y"), (float) givenGroundHeight});
+      controlPoints.push_back({gaitConfiguration.at("p0_x"), gaitConfiguration.at("p0_y"), (float) givenGroundHeight});
+    }
+
+    std::map<double, vec3P> airPoints = {
+        {gaitConfiguration.at("p2_y"), {gaitConfiguration.at("p2_x"), gaitConfiguration.at("p2_y"), (float) givenGroundHeight + gaitConfiguration.at("p2_z")}},
+        {gaitConfiguration.at("p3_y"), {gaitConfiguration.at("p3_x"), gaitConfiguration.at("p3_y"), (float) givenGroundHeight + gaitConfiguration.at("p3_z")}},
+        {gaitConfiguration.at("p4_y"), {gaitConfiguration.at("p4_x"), gaitConfiguration.at("p4_y"), (float) givenGroundHeight + gaitConfiguration.at("p4_z")}}
+    };
+
+    for(auto elem : airPoints){
+      controlPoints.push_back(elem.second);
+    }
 
     // Make the spline object:
     std::vector<Vector3> gaitPoints(controlPoints.size());

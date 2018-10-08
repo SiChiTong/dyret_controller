@@ -48,7 +48,7 @@ std::string gaitType;
 std::map<std::string, float> gaitConfiguration;
 
 // This decides if the leg adjustment done in hardware is done in sim as well
-bool initAdjustInSim = true;
+bool initAdjustInSim = false;
 
 bool movingForward;
 double globalGaitFrequency;

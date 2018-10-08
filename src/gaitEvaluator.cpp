@@ -34,23 +34,18 @@ std::vector<double> startPosition;
 std::vector<double> currentPosition;
 std::vector<double> lastSavedPosition;
 
-volatile sig_atomic_t discardSolution = 0;
-
 bool getGaitEvaluationService(dyret_controller::GetGaitEvaluation::Request  &req,
                               dyret_controller::GetGaitEvaluation::Response &res){
 
   std::vector<float> results;
-  std::vector<std::string> descriptors;
-
-  // Assign fitness values:
-  descriptors.resize(7);
-  descriptors[0] = "inferredSpeed";
-  descriptors[1] = "angVel";
-  descriptors[2] = "linAcc";
-  descriptors[3] = "combAngStab";
-  descriptors[4] = "power";
-  descriptors[5] = "sensorSpeed";
-  descriptors[6] = "combImuStab";
+  std::vector<std::string> descriptors = {"inferredSpeed",
+                                          "angVel",
+                                          "linAcc",
+                                          "combAngStab",
+                                          "power",
+                                          "sensorSpeed",
+                                          "combImuStab",
+                                          "linAcc_z"};
 
   switch (req.givenCommand){
     case (dyret_controller::GetGaitEvaluationRequest::t_getDescriptors):
@@ -87,66 +82,60 @@ bool getGaitEvaluationService(dyret_controller::GetGaitEvaluation::Request  &req
     case (dyret_controller::GetGaitEvaluationRequest::t_getResults):
       ROS_INFO("req.t_getResults received\n");
 
-      if (discardSolution == 1){
-        ROS_WARN("Discarded!\n");
-        discardSolution = 0;
-      } else if (linAcc_z < 2){
-        ROS_WARN("Toppled at %.2f!\n", linAcc_z);
-      } else {
 
-        results.resize(7); // See descriptors above for contents
+      results.resize(8); // See descriptors above for contents
 
-        // Calculate IMU fitness values:
-        std::vector<float> sums(imuData.size());
-        std::vector<float> means(imuData.size());
-        std::vector<float> sq_sums(imuData.size());
-        std::vector<float> SDs(imuData.size());
-        //std::vector<float> SDs_z(imuData.size());
+      // Calculate IMU fitness values:
+      std::vector<float> sums(imuData.size());
+      std::vector<float> means(imuData.size());
+      std::vector<float> sq_sums(imuData.size());
+      std::vector<float> SDs(imuData.size());
+      //std::vector<float> SDs_z(imuData.size());
 
-        for (int i = 0; i < imuData.size(); i++){
-          sums[i] = std::accumulate(imuData[i].begin(), imuData[i].end(), 0.0);
-          means[i] = sums[i] / imuData[i].size();
-          sq_sums[i] = std::inner_product(imuData[i].begin(), imuData[i].end(), imuData[i].begin(), 0.0);
-          SDs[i] = std::sqrt(sq_sums[i] / imuData[i].size() - means[i] * means[i]);
-          //SDs_z[i] = std::sqrt(sq_sums[i] / imuData[i].size());
-        }
-
-        // Calculate servo fitness value:
-        std::vector<float> currentSums(currentData.size());
-        std::vector<float> currentMeans(currentData.size());
-        float averagePowerDraw;
-        float ampHours;
-        float powerFitness;
-
-        for (int i = 0; i < currentData.size(); i++){
-            currentSums[i] = std::accumulate(currentData[i].begin(), currentData[i].end(), 0.0f);
-            currentMeans[i] = currentSums[i] / currentData[i].size();
-        }
-        averagePowerDraw = std::accumulate(currentMeans.begin(), currentMeans.end(), 0.0f);
-        ampHours = averagePowerDraw * ((((float) accTime) / 60.0f) / 60.0f);
-        powerFitness = (fabs(accPos) / 1000.0f) / ampHours; // m / Ah
-
-        // Calculate speed fitness value:
-        float calculatedInferredSpeed = (fabs(accPos) / 1000.0f) / (((float) accTime) / 60.0f); // speed in m/min
-
-        double sensorPoseDist = sqrt(pow(startPosition[0] - lastSavedPosition[0],2) + pow(startPosition[1] - lastSavedPosition[1],2) + pow(startPosition[2] - lastSavedPosition[2],2));
-        float sensorPoseSpeed = sensorPoseDist / (((float) accTime) / 60.0f);
-
-        ROS_INFO("Origin: %.2f, %.2f, %.2f\n", startPosition[0], startPosition[1], startPosition[2]);
-        ROS_INFO("End:    %.2f, %.2f, %.2f\n", lastSavedPosition[0], lastSavedPosition[1], startPosition[2]);
-
-        // Calculate mocap fitness value
-        ROS_INFO("Distance: %.2f (S: %.2f)\n", sensorPoseDist, sensorPoseSpeed);
-
-        // Assign fitness values:
-        results[0] = calculatedInferredSpeed;            // Inferred speed in in m/min
-        results[1] = - (SDs[0] + SDs[1] + SDs[2]);       // angVel
-        results[2] = - (SDs[3] + SDs[4] + SDs[5]);       // linAcc
-        results[3] = - (SDs[6] + SDs[7] + SDs[8]);       // Combined angle stability (roll + pitch)
-        results[4] = powerFitness;                       // Efficiency
-        results[5] = sensorPoseSpeed;                     // Inferred speed in m/min
-        results[6] = results[3] + (results[2] / 50.0f);   // Combined IMU stability
+      for (int i = 0; i < imuData.size(); i++){
+        sums[i] = std::accumulate(imuData[i].begin(), imuData[i].end(), 0.0);
+        means[i] = sums[i] / imuData[i].size();
+        sq_sums[i] = std::inner_product(imuData[i].begin(), imuData[i].end(), imuData[i].begin(), 0.0);
+        SDs[i] = std::sqrt(sq_sums[i] / imuData[i].size() - means[i] * means[i]);
+        //SDs_z[i] = std::sqrt(sq_sums[i] / imuData[i].size());
       }
+
+      // Calculate servo fitness value:
+      std::vector<float> currentSums(currentData.size());
+      std::vector<float> currentMeans(currentData.size());
+      float averagePowerDraw;
+      float ampHours;
+      float powerFitness;
+
+      for (int i = 0; i < currentData.size(); i++){
+          currentSums[i] = std::accumulate(currentData[i].begin(), currentData[i].end(), 0.0f);
+          currentMeans[i] = currentSums[i] / currentData[i].size();
+      }
+      averagePowerDraw = std::accumulate(currentMeans.begin(), currentMeans.end(), 0.0f);
+      ampHours = averagePowerDraw * ((((float) accTime) / 60.0f) / 60.0f);
+      powerFitness = (fabs(accPos) / 1000.0f) / ampHours; // m / Ah
+
+      // Calculate speed fitness value:
+      float calculatedInferredSpeed = (fabs(accPos) / 1000.0f) / (((float) accTime) / 60.0f); // speed in m/min
+
+      double sensorPoseDist = sqrt(pow(startPosition[0] - lastSavedPosition[0],2) + pow(startPosition[1] - lastSavedPosition[1],2) + pow(startPosition[2] - lastSavedPosition[2],2));
+      float sensorPoseSpeed = sensorPoseDist / (((float) accTime) / 60.0f);
+
+      ROS_INFO("Origin: %.2f, %.2f, %.2f\n", startPosition[0], startPosition[1], startPosition[2]);
+      ROS_INFO("End:    %.2f, %.2f, %.2f\n", lastSavedPosition[0], lastSavedPosition[1], startPosition[2]);
+
+      // Calculate mocap fitness value
+      ROS_INFO("Distance: %.2f (S: %.2f)\n", sensorPoseDist, sensorPoseSpeed);
+
+      // Assign fitness values:
+      results[0] = calculatedInferredSpeed;            // Inferred speed in m/min
+      results[1] = - (SDs[0] + SDs[1] + SDs[2]);       // angVel
+      results[2] = - (SDs[3] + SDs[4] + SDs[5]);       // linAcc
+      results[3] = - (SDs[6] + SDs[7] + SDs[8]);       // Combined angle stability (roll + pitch)
+      results[4] = powerFitness;                       // Power efficiency
+      results[5] = sensorPoseSpeed;                    // Sensor speed in m/min
+      results[6] = results[3] + (results[2] / 50.0f);  // Combined IMU stability
+      results[7] = (float) linAcc_z; // For topple detection
 
       break;
   };

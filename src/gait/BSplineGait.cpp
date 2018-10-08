@@ -65,6 +65,44 @@ void BSplineGait::writeGaitToFile(){
 
 }
 
+void BSplineGait::writeGaitToFile(std::vector<vec3P> customPoints, LoopingCubicHermiteSpline<Vector3> customSpline, int index){
+    // Write spline to file:
+    float numberOfPointsToGenerate = 1000.0;
+
+    std::string dateString = getDateString();
+
+    // Save raw points:
+    FILE * fp;
+    fp = fopen(std::string("/home/tonnesfn/catkin_ws/customLogs/lowLevelSplineGait/" + std::to_string(index) + "_raw.csv").c_str(), "w");
+
+    for (int i = 0; i < numberOfPointsToGenerate; i++) {
+        float scaled = (float) (customSpline.totalLength() / numberOfPointsToGenerate) * i;
+
+        Vector3 currentPoint = customSpline.getPosition(ArcLength::solveLengthCyclic(customSpline, 0.0f, scaled));
+
+        double z = currentPoint[2];
+        if (z < groundHeight) z = groundHeight; // Add same ground limit we have in getPosition
+
+        fprintf(fp, "%.2f, %.2f, %.2f\n", scaled, currentPoint[1], z);
+
+    }
+
+    fclose(fp);
+
+    // Save control points:
+    fp = fopen(std::string("/home/tonnesfn/catkin_ws/customLogs/lowLevelSplineGait/" + std::to_string(index) + "_cnt.csv").c_str(), "w");
+
+    for (int i = 0; i < customPoints.size(); i++) {
+        fprintf(fp, "%.2f, %.2f, %.2f\n", customPoints[i].x(), customPoints[i].y(), customPoints[i].z());
+
+    }
+
+    fclose(fp);
+
+    sleep(2);
+
+}
+
 void BSplineGait::initHighLevelGait(double givenStepHeight,
                                     double givenStepLength,
                                     double givenSmoothing,
@@ -116,11 +154,16 @@ void BSplineGait::initHighLevelGait(double givenStepHeight,
 }
 
 void BSplineGait::initLowLevelGait(std::map<std::string, float> gaitConfiguration, double givenGroundHeight){
+
+    assert(gaitConfiguration.at("liftDuration") >= 0.05f && gaitConfiguration.at("liftDuration") <= 0.2f); // liftDuration has to be between 5% and 20%
+
     groundPercentGoal = 1.0 - gaitConfiguration.at("liftDuration");
     groundHeight = givenGroundHeight;
     offsetFront = 0.0;
     spreadAmount = 80.0;
     rearLegOffset = -30.0;
+    totalLength = 99999.0; // Init length
+
 
     // Calculate gait points (the two ground points need to be first):
     controlPoints.clear();
@@ -135,29 +178,52 @@ void BSplineGait::initLowLevelGait(std::map<std::string, float> gaitConfiguratio
 
     stepLength = controlPoints[0].y() - controlPoints[1].y();
 
-    printf("StepLength: %.2f\n", stepLength);
+    // Try all combinations of point order to find one without self-intersection:
 
-    std::map<double, vec3P> airPoints = {
-        {gaitConfiguration.at("p2_y"), {gaitConfiguration.at("p2_x"), gaitConfiguration.at("p2_y"), (float) givenGroundHeight + gaitConfiguration.at("p2_z")}},
-        {gaitConfiguration.at("p3_y"), {gaitConfiguration.at("p3_x"), gaitConfiguration.at("p3_y"), (float) givenGroundHeight + gaitConfiguration.at("p3_z")}},
-        {gaitConfiguration.at("p4_y"), {gaitConfiguration.at("p4_x"), gaitConfiguration.at("p4_y"), (float) givenGroundHeight + gaitConfiguration.at("p4_z")}}
-    };
+    std::vector<vec3P> airPoints = {{gaitConfiguration.at("p2_x"), gaitConfiguration.at("p2_y"), (float) givenGroundHeight + gaitConfiguration.at("p2_z")},
+                                    {gaitConfiguration.at("p3_x"), gaitConfiguration.at("p3_y"), (float) givenGroundHeight + gaitConfiguration.at("p3_z")},
+                                    {gaitConfiguration.at("p4_x"), gaitConfiguration.at("p4_y"), (float) givenGroundHeight + gaitConfiguration.at("p4_z")}};
 
-    for(auto elem : airPoints){
-      controlPoints.push_back(elem.second);
-    }
+    std::vector<int> indexes = {0, 1, 2};
+    int i = 0;
 
-    // Make the spline object:
-    std::vector<Vector3> gaitPoints(controlPoints.size());
-    for (int i = 0; i < controlPoints.size(); i++) gaitPoints[i] = Vector3({(float) controlPoints[i].x(), (float) controlPoints[i].y(), (float) controlPoints[i].z()});
+    do {
 
-    printf("lowLevelPoints: \n");
-    for (int i = 0; i < controlPoints.size(); i++) printf("    %.2f, %.2f, %.2f\n", controlPoints[i].x(), controlPoints[i].y(), controlPoints[i].z());
+        std::vector<vec3P> tempPoints;
 
-    bSpline = new LoopingCubicHermiteSpline<Vector3>(gaitPoints, 0.5);
+        tempPoints.push_back(controlPoints[0]);
+        tempPoints.push_back(controlPoints[1]);
 
-    // Get total length calculation from new spline
-    totalLength = bSpline->totalLength();
+        for (int i = 0; i < 3; i++){
+            tempPoints.push_back(airPoints[indexes[i]]);
+        }
+
+        // Make the spline object:
+        std::vector<Vector3> gaitPoints(tempPoints.size());
+        for (int i = 0; i < tempPoints.size(); i++)
+            gaitPoints[i] = Vector3({(float) tempPoints[i].x(), (float) tempPoints[i].y(), (float) tempPoints[i].z()});
+
+/*        printf("lowLevelPoints: \n");
+        for (int i = 0; i < tempPoints.size(); i++)
+            printf("    %.2f, %.2f, %.2f\n", tempPoints[i].x(), tempPoints[i].y(), tempPoints[i].z());*/
+
+        LoopingCubicHermiteSpline<Vector3>* tmpBSpline = new LoopingCubicHermiteSpline<Vector3>(gaitPoints, 0.5);
+
+        // Get total length calculation from new spline
+        double tmpTotalLength = tmpBSpline->totalLength();
+
+        if (tmpTotalLength < totalLength) {
+            printf("Replacing original spline (%.2f) with new (%.2f)\n", totalLength, tmpTotalLength);
+            controlPoints = tempPoints;
+            totalLength = tmpTotalLength;
+            delete(bSpline);
+            bSpline = tmpBSpline;
+        } else {
+            delete(tmpBSpline);
+        }
+
+        i+=1;
+    } while (std::next_permutation(indexes.begin(), indexes.end()));
 
     gaitDescriptionString.clear();
     gaitDescriptionString += "lowLevelGait:\n";

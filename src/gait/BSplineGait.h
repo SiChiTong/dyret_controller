@@ -11,7 +11,7 @@
 
 class BSplineGait {
   private:
-    LoopingCubicHermiteSpline<Vector3>* bSpline;
+    LoopingCubicHermiteSpline<Vector3>* bSpline = NULL;
 
     // Leg phase offsets forwards and reverse, with a leg order of FL, BR, FR, BL
     double const legPhaseOffset[4][2] = { {0.00, 0.75}, {0.50, 0.25}, {0.75, 0.00}, {0.25, 0.50} };
@@ -26,6 +26,8 @@ class BSplineGait {
 
     std::string gaitDescriptionString;
     std::vector<vec3P> controlPoints;
+
+    void writeGaitToFile(std::vector<vec3P> customPoints, LoopingCubicHermiteSpline<Vector3> customSpline, int index);
 
   public:
     void initHighLevelGait(double stepHeight,

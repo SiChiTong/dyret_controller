@@ -116,7 +116,6 @@ void BSplineGait::initHighLevelGait(double givenStepHeight,
 }
 
 void BSplineGait::initLowLevelGait(std::map<std::string, float> gaitConfiguration, double givenGroundHeight){
-    stepLength = gaitConfiguration.at("p0_y") - gaitConfiguration.at("p1_y");
     groundPercentGoal = 1.0 - gaitConfiguration.at("liftDuration");
     groundHeight = givenGroundHeight;
     offsetFront = 0.0;
@@ -133,6 +132,10 @@ void BSplineGait::initLowLevelGait(std::map<std::string, float> gaitConfiguratio
       controlPoints.push_back({gaitConfiguration.at("p1_x"), gaitConfiguration.at("p1_y"), (float) givenGroundHeight});
       controlPoints.push_back({gaitConfiguration.at("p0_x"), gaitConfiguration.at("p0_y"), (float) givenGroundHeight});
     }
+
+    stepLength = controlPoints[0].y() - controlPoints[1].y();
+
+    printf("StepLength: %.2f\n", stepLength);
 
     std::map<double, vec3P> airPoints = {
         {gaitConfiguration.at("p2_y"), {gaitConfiguration.at("p2_x"), gaitConfiguration.at("p2_y"), (float) givenGroundHeight + gaitConfiguration.at("p2_z")}},

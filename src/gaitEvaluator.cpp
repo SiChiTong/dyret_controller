@@ -229,6 +229,8 @@ int main(int argc, char **argv) {
   ros::Subscriber servoStates_sub = n.subscribe("/dyret/state", 1, servoStatesCallback);
   ros::Subscriber sensorPose_sub = n.subscribe("/dyret/sensor/pose", 5, sensorPoseCallback);
 
+  sleep(1);
+
   while(ros::ok()) ros::spin();
 
 }

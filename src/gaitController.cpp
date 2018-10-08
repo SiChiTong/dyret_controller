@@ -324,7 +324,8 @@ int main(int argc, char **argv) {
 
                 // Limit frequency so speed is below 10m/min:
                 double maxFrequency = ((10.0/60.0)*1000.0) / bSplineGait.getStepLength();
-                globalGaitFrequency = maxFrequency * frequencyFactor;
+                globalGaitFrequency = fmin(2.0, maxFrequency) * frequencyFactor;
+                printf("FrequencyFactor %.2f, stepLength: %.2f, maxFrequency: %.2f, frequency %.2f\n", frequencyFactor, bSplineGait.getStepLength(), maxFrequency, globalGaitFrequency);
 
                 gaitInitAdjuster.setPose(add(bSplineGait.getPosition(0.0, true), wagGenerator.getGaitWagPoint(0.0, true)));
 

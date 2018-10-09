@@ -293,7 +293,7 @@ int main(int argc, char **argv) {
                     // Gait params:
                     frequencyFactor = gaitConfiguration.at("frequencyFactor");
                     globalLiftDuration = gaitConfiguration.at("liftDuration");
-                    fprintf(stderr, "1\n");
+
                     bSplineGait.initHighLevelGait(gaitConfiguration.at("stepHeight"),
                                                   gaitConfiguration.at("stepLength"),
                                                   gaitConfiguration.at("smoothing"),

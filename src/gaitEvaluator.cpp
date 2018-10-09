@@ -34,23 +34,34 @@ std::vector<double> startPosition;
 std::vector<double> currentPosition;
 std::vector<double> lastSavedPosition;
 
+// This function makes sure the given key exists in the map before inserting it
+void setMapValue(std::map<std::string, double> &givenMap, std::string givenKey, double givenValue){
+  if (givenMap.find(givenKey) != givenMap.end()){
+    givenMap[givenKey] = givenValue;
+  } else {
+    ROS_FATAL("GivenKey \"%s\" not found in map!", givenKey.c_str());
+    ros::shutdown();
+    exit(-1);
+  }
+}
+
 bool getGaitEvaluationService(dyret_controller::GetGaitEvaluation::Request  &req,
                               dyret_controller::GetGaitEvaluation::Response &res){
 
-  std::vector<float> results;
-  std::vector<std::string> descriptors = {"inferredSpeed",
-                                          "angVel",
-                                          "linAcc",
-                                          "combAngStab",
-                                          "power",
-                                          "sensorSpeed",
-                                          "combImuStab",
-                                          "linAcc_z"};
+  std::map<std::string, double> results = {{"inferredSpeed", 0.0},
+                                           {"angVel", 0.0},
+                                           {"linAcc", 0.0},
+                                           {"combAngStab", 0.0},
+                                           {"power", 0.0},
+                                           {"sensorSpeed", 0.0},
+                                           {"combImuStab", 0.0},
+                                           {"linAcc_z", 0.0},
+                                           {"sensorSpeedForward",  0.0}};
 
   switch (req.givenCommand){
     case (dyret_controller::GetGaitEvaluationRequest::t_getDescriptors):
     {
-        results.resize(0);
+
     }
     case (dyret_controller::GetGaitEvaluationRequest::t_start):
     {
@@ -81,9 +92,6 @@ bool getGaitEvaluationService(dyret_controller::GetGaitEvaluation::Request  &req
       break;
     case (dyret_controller::GetGaitEvaluationRequest::t_getResults):
       ROS_INFO("req.t_getResults received\n");
-
-
-      results.resize(8); // See descriptors above for contents
 
       // Calculate IMU fitness values:
       std::vector<float> sums(imuData.size());
@@ -116,10 +124,13 @@ bool getGaitEvaluationService(dyret_controller::GetGaitEvaluation::Request  &req
       powerFitness = (fabs(accPos) / 1000.0f) / ampHours; // m / Ah
 
       // Calculate speed fitness value:
-      float calculatedInferredSpeed = (fabs(accPos) / 1000.0f) / (((float) accTime) / 60.0f); // speed in m/min
+      float calculatedInferredSpeed = (float) (fabs(accPos) / 1000.0f) / (((float) accTime) / 60.0f); // speed in m/min
 
-      double sensorPoseDist = sqrt(pow(startPosition[0] - lastSavedPosition[0],2) + pow(startPosition[1] - lastSavedPosition[1],2) + pow(startPosition[2] - lastSavedPosition[2],2));
+      float sensorPoseDist = (float) sqrt(pow(startPosition[0] - lastSavedPosition[0],2) + pow(startPosition[1] - lastSavedPosition[1],2) + pow(startPosition[2] - lastSavedPosition[2],2));
+      float sensorPoseDistForward = (float) -(startPosition[1] - lastSavedPosition[1]);
+
       float sensorPoseSpeed = sensorPoseDist / (((float) accTime) / 60.0f);
+      float sensorPoseSpeedForward = sensorPoseDistForward / (((float) accTime) / 60.0f);
 
       ROS_INFO("Origin: %.2f, %.2f, %.2f\n", startPosition[0], startPosition[1], startPosition[2]);
       ROS_INFO("End:    %.2f, %.2f, %.2f\n", lastSavedPosition[0], lastSavedPosition[1], startPosition[2]);
@@ -128,20 +139,23 @@ bool getGaitEvaluationService(dyret_controller::GetGaitEvaluation::Request  &req
       ROS_INFO("Distance: %.2f (S: %.2f)\n", sensorPoseDist, sensorPoseSpeed);
 
       // Assign fitness values:
-      results[0] = calculatedInferredSpeed;            // Inferred speed in m/min
-      results[1] = - (SDs[0] + SDs[1] + SDs[2]);       // angVel
-      results[2] = - (SDs[3] + SDs[4] + SDs[5]);       // linAcc
-      results[3] = - (SDs[6] + SDs[7] + SDs[8]);       // Combined angle stability (roll + pitch)
-      results[4] = powerFitness;                       // Power efficiency
-      results[5] = sensorPoseSpeed;                    // Sensor speed in m/min
-      results[6] = results[3] + (results[2] / 50.0f);  // Combined IMU stability
-      results[7] = (float) linAcc_z; // For topple detection
+      setMapValue(results, "inferredSpeed", calculatedInferredSpeed);
+      setMapValue(results, "angVel", -(SDs[0] + SDs[1] + SDs[2]));
+      setMapValue(results, "linAcc", -(SDs[3] + SDs[4] + SDs[5]));
+      setMapValue(results, "combAngStab", - (SDs[6] + SDs[7] + SDs[8]));
+      setMapValue(results, "power", powerFitness);
+      setMapValue(results, "sensorSpeed", sensorPoseSpeed);
+      setMapValue(results, "combImuStab", results["combAngStab"] + (results["linAcc"] / 50.0f));
+      setMapValue(results, "linAcc_z", (float) linAcc_z);
+      setMapValue(results, "sensorSpeedForward", sensorPoseSpeedForward);
 
       break;
   };
 
-  res.results = results;
-  res.descriptors = descriptors;
+  for(auto elem : results){
+    res.descriptors.push_back(elem.first);
+    res.results.push_back(elem.second);
+  }
 
 }
 

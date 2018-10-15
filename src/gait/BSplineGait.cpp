@@ -156,6 +156,9 @@ void BSplineGait::initHighLevelGait(double givenStepHeight,
 void BSplineGait::initLowLevelGait(std::map<std::string, float> gaitConfiguration, double givenGroundHeight){
 
     assert(gaitConfiguration.at("liftDuration") >= 0.05f && gaitConfiguration.at("liftDuration") <= 0.2f); // liftDuration has to be between 5% and 20%
+    assert(gaitConfiguration.at("difficultyFactor") >= 0.0f && gaitConfiguration.at("difficultyFactor") <= 1.0f); // Difficulty factor has to be between 0% and 100%
+
+    ROS_INFO("Initializing lowLevelGait with difficulty %.1f", gaitConfiguration.at("difficultyFactor"));
 
     groundPercentGoal = 1.0 - gaitConfiguration.at("liftDuration");
     groundHeight = givenGroundHeight;
@@ -213,7 +216,7 @@ void BSplineGait::initLowLevelGait(std::map<std::string, float> gaitConfiguratio
         double tmpTotalLength = tmpBSpline->totalLength();
 
         if (tmpTotalLength < totalLength) {
-            printf("Replacing original spline (%.2f) with new (%.2f)\n", totalLength, tmpTotalLength);
+            //printf("Replacing original spline (%.2f) with new (%.2f)\n", totalLength, tmpTotalLength);
             controlPoints = tempPoints;
             totalLength = tmpTotalLength;
             delete(bSpline);

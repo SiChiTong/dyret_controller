@@ -23,6 +23,7 @@ class BSplineGait {
     double groundHeight;
     double rearLegOffset;
     double groundPercentGoal; //Time spent on the ground (minimum 3/4 = 75%)
+    double gaitDifficultyFactor = -1;
 
     std::string gaitDescriptionString;
     std::vector<vec3P> controlPoints;

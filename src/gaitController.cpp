@@ -313,7 +313,7 @@ int main(int argc, char **argv) {
                     globalLiftDuration = gaitConfiguration.at("liftDuration");
 
                     bSplineGait.initLowLevelGait(gaitConfiguration, groundHeight);
-                    if (movingForward) bSplineGait.writeGaitToFile();
+                    //if (movingForward) bSplineGait.writeGaitToFile();
 
                     wagGenerator.enableWag(0.0, 0.0, 0.0);
 

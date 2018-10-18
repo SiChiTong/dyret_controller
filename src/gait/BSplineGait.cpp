@@ -29,7 +29,7 @@ void BSplineGait::writeGaitToFile(){
 
   // Save raw points:
   FILE * fp;
-  fp = fopen(std::string("/home/tonnesfn/catkin_ws/customLogs/lowLevelSplineGait/" + dateString + "_raw.csv").c_str(), "w");
+  fp = fopen(std::string("/home/tonnesfn/catkin_ws/customLogs/lowLevelSplineGait/" + dateString + "_" + std::to_string(gaitDifficultyFactor) + "_raw.csv").c_str(), "w");
 
   for (int i = 0; i < numberOfPointsToGenerate; i++) {
     float scaled = (float) (totalLength / numberOfPointsToGenerate) * i;
@@ -46,7 +46,7 @@ void BSplineGait::writeGaitToFile(){
   fclose(fp);
 
   // Save control points:
-  fp = fopen(std::string("/home/tonnesfn/catkin_ws/customLogs/lowLevelSplineGait/" + dateString + "_cnt.csv").c_str(), "w");
+  fp = fopen(std::string("/home/tonnesfn/catkin_ws/customLogs/lowLevelSplineGait/" + dateString + "_" + std::to_string(gaitDifficultyFactor) + "_cnt.csv").c_str(), "w");
 
   for (int i = 0; i < controlPoints.size(); i++) {
     fprintf(fp, "%.2f, %.2f, %.2f\n", controlPoints[i].x(), controlPoints[i].y(), controlPoints[i].z());
@@ -56,7 +56,7 @@ void BSplineGait::writeGaitToFile(){
   fclose(fp);
 
   // Save description:
-  fp = fopen(std::string("/home/tonnesfn/catkin_ws/customLogs/lowLevelSplineGait/" + dateString + ".txt").c_str(), "w");
+  fp = fopen(std::string("/home/tonnesfn/catkin_ws/customLogs/lowLevelSplineGait/" + dateString + "_" + std::to_string(gaitDifficultyFactor) + ".txt").c_str(), "w");
 
   fprintf(fp, "%s", gaitDescriptionString.c_str());
 
@@ -73,7 +73,7 @@ void BSplineGait::writeGaitToFile(std::vector<vec3P> customPoints, LoopingCubicH
 
     // Save raw points:
     FILE * fp;
-    fp = fopen(std::string("/home/tonnesfn/catkin_ws/customLogs/lowLevelSplineGait/" + std::to_string(index) + "_raw.csv").c_str(), "w");
+    fp = fopen(std::string("/home/tonnesfn/catkin_ws/customLogs/lowLevelSplineGait/" + std::to_string(index) + "_" + std::to_string(gaitDifficultyFactor) + "_raw.csv").c_str(), "w");
 
     for (int i = 0; i < numberOfPointsToGenerate; i++) {
         float scaled = (float) (customSpline.totalLength() / numberOfPointsToGenerate) * i;
@@ -90,7 +90,7 @@ void BSplineGait::writeGaitToFile(std::vector<vec3P> customPoints, LoopingCubicH
     fclose(fp);
 
     // Save control points:
-    fp = fopen(std::string("/home/tonnesfn/catkin_ws/customLogs/lowLevelSplineGait/" + std::to_string(index) + "_cnt.csv").c_str(), "w");
+    fp = fopen(std::string("/home/tonnesfn/catkin_ws/customLogs/lowLevelSplineGait/" + std::to_string(index) + "_" + std::to_string(gaitDifficultyFactor) + "_cnt.csv").c_str(), "w");
 
     for (int i = 0; i < customPoints.size(); i++) {
         fprintf(fp, "%.2f, %.2f, %.2f\n", customPoints[i].x(), customPoints[i].y(), customPoints[i].z());
@@ -157,6 +157,8 @@ void BSplineGait::initLowLevelGait(std::map<std::string, float> gaitConfiguratio
 
     assert(gaitConfiguration.at("liftDuration") >= 0.05f && gaitConfiguration.at("liftDuration") <= 0.2f); // liftDuration has to be between 5% and 20%
     assert(gaitConfiguration.at("difficultyFactor") >= 0.0f && gaitConfiguration.at("difficultyFactor") <= 1.0f); // Difficulty factor has to be between 0% and 100%
+
+    gaitDifficultyFactor = gaitConfiguration.at("difficultyFactor");
 
     ROS_INFO("Initializing lowLevelGait with difficulty %.1f", gaitConfiguration.at("difficultyFactor"));
 

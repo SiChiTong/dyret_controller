@@ -214,8 +214,8 @@ int main(int argc, char **argv) {
 
     ros::Time startTime;
     bool activatedRecording = false;
-    ros::Rate poseAdjusterRate(50);
-    ros::Rate gaitRate(100);
+    ros::Rate poseAdjusterRate(30);
+    ros::Rate gaitRate(30);
 
     IncPoseAdjuster gaitInitAdjuster(
             &servoAnglesInRad,

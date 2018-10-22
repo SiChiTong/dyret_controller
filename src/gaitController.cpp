@@ -52,7 +52,6 @@ bool initAdjustInSim = false;
 
 bool movingForward;
 double globalGaitFrequency;
-double frequencyFactor;
 double globalLiftDuration;
 const double groundHeightOffset = -430;
 const double groundCorrectionFactor = 0.8;
@@ -291,7 +290,6 @@ int main(int argc, char **argv) {
 
                 if (gaitType == "highLevelSplineGait") {
                     // Gait params:
-                    frequencyFactor = gaitConfiguration.at("frequencyFactor");
                     globalLiftDuration = gaitConfiguration.at("liftDuration");
 
                     bSplineGait.initHighLevelGait(gaitConfiguration.at("stepHeight"),
@@ -309,7 +307,7 @@ int main(int argc, char **argv) {
 
                 } else if (gaitType == "lowLevelSplineGait"){
 
-                    frequencyFactor = gaitConfiguration.at("frequencyFactor");
+                    globalGaitFrequency = gaitConfiguration.at("frequency");
                     globalLiftDuration = gaitConfiguration.at("liftDuration");
 
                     bSplineGait.initLowLevelGait(gaitConfiguration, groundHeight);
@@ -324,8 +322,7 @@ int main(int argc, char **argv) {
 
                 // Limit frequency so speed is below 10m/min:
                 double maxFrequency = ((10.0/60.0)*1000.0) / bSplineGait.getStepLength();
-                globalGaitFrequency = fmin(2.0, maxFrequency) * frequencyFactor;
-                printf("FrequencyFactor %.2f, stepLength: %.2f, maxFrequency: %.2f, frequency %.2f\n", frequencyFactor, bSplineGait.getStepLength(), maxFrequency, globalGaitFrequency);
+                globalGaitFrequency = gaitConfiguration.at("frequency");
 
                 gaitInitAdjuster.setPose(add(bSplineGait.getPosition(0.0, true), wagGenerator.getGaitWagPoint(0.0, true)));
 

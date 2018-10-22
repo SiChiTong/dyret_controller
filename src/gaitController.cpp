@@ -313,7 +313,10 @@ int main(int argc, char **argv) {
                     bSplineGait.initLowLevelGait(gaitConfiguration, groundHeight);
                     //if (movingForward) bSplineGait.writeGaitToFile();
 
-                    wagGenerator.enableWag(0.0, 0.0, 0.0);
+                    //wagGenerator.enableWag(0.0, 0.0, 0.0);
+                    wagGenerator.enableWag(bSplineGaitWagOffset + gaitConfiguration.at("wagPhase"),
+                                           gaitConfiguration.at("wagAmplitude_x"),
+                                           gaitConfiguration.at("wagAmplitude_y"));
 
                 } else {
                     ROS_FATAL("Unknown gait specified: %s!", gaitType.c_str());

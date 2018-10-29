@@ -277,10 +277,8 @@ std::vector<vec3P> BSplineGait::getPosition(double givenTime, bool walkingForwar
         // Apply offsetFront so it always point forwards
 		if (walkingForwards) vecRet[1] = vecRet[1] + offsetFront; else vecRet[1] = vecRet[1] - offsetFront;
 
-        // Apply spread so it always points to the outside of the robot
-		if (i == 0 || i == 3) vecRet[0] = vecRet[0] - spreadAmount; else vecRet[0] = vecRet[0] + spreadAmount;
-
-
+		// Apply spread
+		vecRet[0] = vecRet[0] - spreadAmount;
 
 		// Make sure the point we got from the spline object is not lower than the groundHeight
 		if (vecRet[2] < groundHeight) vecRet[2] = groundHeight;
@@ -299,6 +297,10 @@ std::vector<vec3P> BSplineGait::getPosition(double givenTime, bool walkingForwar
     if (walkingForwards != true){
       for (int i = 0; i < 4; i++) vectorToReturn[i].points[1] = -vectorToReturn[i].points[1];
 	}
+
+	// Invert X for right legs:
+    vectorToReturn[1].points[0] = -vectorToReturn[1].points[0];
+    vectorToReturn[2].points[0] = -vectorToReturn[2].points[0];
 
 	return vectorToReturn;
 }

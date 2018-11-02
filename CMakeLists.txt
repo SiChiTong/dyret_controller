@@ -30,6 +30,7 @@ add_message_files(
   DistAngMeasurement.msg
   GaitControllerStatus.msg
   GaitConfiguration.msg
+  GaitControllerCommand.msg
 )
 
 add_service_files(
@@ -39,6 +40,7 @@ add_service_files(
   SendPositionCommand.srv
   ConfigureGait.srv
   GetInferredPosition.srv
+  GaitControllerCommandService.srv
 )
 
 generate_messages(

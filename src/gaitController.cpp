@@ -176,7 +176,7 @@ bool gaitConfigurationCallback(dyret_controller::ConfigureGait::Request  &req,
     if (ros::Time::isSimTime() && !initAdjustInSim) {
         moveAllLegsToGlobalPosition(initialGaitPose, positionCommand_pub);
         gaitInitAdjuster.skip();
-        ros::Duration(1).sleep();
+        sleep(1);
         startTime = ros::Time::now();
     } else {
         gaitInitAdjuster.setPose(initialGaitPose);

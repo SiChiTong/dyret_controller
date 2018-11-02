@@ -37,6 +37,7 @@
 #include "dyret_controller/GetGaitControllerStatus.h"
 #include "dyret_controller/GetGaitEvaluation.h"
 #include "dyret_controller/SendPositionCommand.h"
+#include "dyret_controller/GetInferredPosition.h"
 
 #include <dyret_hardware/ActuatorBoardState.h>
 
@@ -51,6 +52,7 @@ std::map<std::string, float> gaitConfiguration;
 // This decides if the leg adjustment done in hardware is done in sim as well
 bool initAdjustInSim = false;
 
+double currentInferredPosition = 0.0;
 bool movingForward;
 double globalGaitFrequency;
 double globalLiftDuration;
@@ -147,14 +149,14 @@ std::vector<vec3P> getRestPose() {
     return restPose;
 }
 
-void sendGaitInferredPos(ros::Publisher givenGaitInferredPos_pub, float givenDistance){
-    dyret_controller::DistAngMeasurement posChangeMsg;
-    posChangeMsg.msgType = posChangeMsg.t_measurementInferred;
-    posChangeMsg.absoluteMeasurement = true;
-    posChangeMsg.distance = givenDistance;
-    posChangeMsg.angle = 0.0f;
+bool inferredPositionCallback(dyret_controller::GetInferredPosition::Request  &req,
+                              dyret_controller::GetInferredPosition::Response &res){
 
-    givenGaitInferredPos_pub.publish(posChangeMsg);
+    res.currentInferredPosition.angle = 0.0;
+    res.currentInferredPosition.msgType = res.currentInferredPosition.t_measurementInferred;
+    res.currentInferredPosition.distance = (float) currentInferredPosition;
+    res.currentInferredPosition.absoluteMeasurement = true;
+
 }
 
 int main(int argc, char **argv) {
@@ -173,9 +175,9 @@ int main(int argc, char **argv) {
     ros::ServiceServer gaitConfigurationServer = n.advertiseService("/dyret/dyret_controller/gaitConfigurationService", gaitConfigurationCallback);
     ros::Subscriber servoStates_sub = n.subscribe("/dyret/state", 1, servoStatesCallback);
     ros::Publisher poseCommand_pub = n.advertise<dyret_common::Pose>("/dyret/command", 3);
-    ros::Publisher gaitInferredPos_pub = n.advertise<dyret_controller::DistAngMeasurement>("/dyret/dyret_controller/gaitInferredPos", 1000);
     ros::ServiceClient servoConfigClient = n.serviceClient<dyret_common::Configure>("/dyret/configuration");
     ros::ServiceClient positionCommand_pub = n.serviceClient<dyret_controller::SendPositionCommand>("/dyret/dyret_controller/positionCommandService");
+    ros::ServiceServer inferredPositionServer = n.advertiseService("/dyret/dyret_controller/getInferredPosition", inferredPositionCallback);
 
     waitForRosInit(get_gait_evaluation_client, "get_gait_evaluation");
     waitForRosInit(actionMessages_sub, "/dyret/dyret_controller/actionMessages");
@@ -379,6 +381,9 @@ int main(int argc, char **argv) {
                 double secondsPassed = (ros::Time::now() - startTime).toNSec() / 1000000000.0f;
                 float distance = (float) (bSplineGait.getStepLength() * globalGaitFrequency * (secondsPassed));
 
+                if (movingForward) currentInferredPosition = distance; else currentInferredPosition = -distance;
+
+                /*
                 dyret_controller::DistAngMeasurement posChangeMsg;
                 if (movingForward) posChangeMsg.distance = distance; else posChangeMsg.distance = -distance;
 
@@ -386,6 +391,7 @@ int main(int argc, char **argv) {
                 posChangeMsg.angle = 0.0f;
                 posChangeMsg.absoluteMeasurement = true;
                 gaitInferredPos_pub.publish(posChangeMsg);
+                */
 
                 // Generate and send pose message
                 dyret_common::Pose msg;

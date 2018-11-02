@@ -38,6 +38,7 @@ add_service_files(
   GetGaitEvaluation.srv
   SendPositionCommand.srv
   ConfigureGait.srv
+  GetInferredPosition.srv
 )
 
 generate_messages(

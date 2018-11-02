@@ -20,6 +20,7 @@
 #include "dyret_controller/DistAngMeasurement.h"
 #include "dyret_controller/GetGaitControllerStatus.h"
 #include "dyret_controller/GetGaitEvaluation.h"
+#include "dyret_controller/GetInferredPosition.h"
 
 bool enableCapture;
 
@@ -27,12 +28,13 @@ std::vector<std::vector<double>> imuData;
 std::vector<std::vector<double>> currentData;
 
 ros::Time startTime;
-double accPos;
 double accTime;
 double linAcc_z;
 std::vector<double> startPosition;
 std::vector<double> currentPosition;
 std::vector<double> lastSavedPosition;
+
+ros::ServiceClient inferredPositionClient;
 
 // This function makes sure the given key exists in the map before inserting it
 void setMapValue(std::map<std::string, double> &givenMap, std::string givenKey, double givenValue){
@@ -43,6 +45,19 @@ void setMapValue(std::map<std::string, double> &givenMap, std::string givenKey, 
     ros::shutdown();
     exit(-1);
   }
+}
+
+float getInferredPosition(){
+    dyret_controller::GetInferredPosition srv;
+
+    if (!inferredPositionClient.call(srv)){
+        printf("Error while calling GetInferredPosition service\n");
+        ROS_ERROR("Error while calling GetInferredPosition service");
+
+        return 0.0;
+    }
+
+    return srv.response.currentInferredPosition.distance;
 }
 
 bool getGaitEvaluationService(dyret_controller::GetGaitEvaluation::Request  &req,
@@ -84,7 +99,6 @@ bool getGaitEvaluationService(dyret_controller::GetGaitEvaluation::Request  &req
       enableCapture = false;
 
       accTime = 0.0;
-      accPos = 0.0;
 
       for (int i = 0; i < imuData.size(); i++) imuData[i].clear();
       for (int i = 0; i < currentData.size(); i++) currentData[i].clear();
@@ -121,10 +135,10 @@ bool getGaitEvaluationService(dyret_controller::GetGaitEvaluation::Request  &req
       }
       averagePowerDraw = std::accumulate(currentMeans.begin(), currentMeans.end(), 0.0f);
       ampHours = averagePowerDraw * ((((float) accTime) / 60.0f) / 60.0f);
-      powerFitness = (fabs(accPos) / 1000.0f) / ampHours; // m / Ah
+      powerFitness = (fabs(getInferredPosition()) / 1000.0f) / ampHours; // m / Ah
 
       // Calculate speed fitness value:
-      float calculatedInferredSpeed = (float) (fabs(accPos) / 1000.0f) / (((float) accTime) / 60.0f); // speed in m/min
+      float calculatedInferredSpeed = (float) (fabs(getInferredPosition()) / 1000.0f) / (((float) accTime) / 60.0f); // speed in m/min
 
       float sensorPoseDist = (float) sqrt(pow(startPosition[0] - lastSavedPosition[0],2) + pow(startPosition[1] - lastSavedPosition[1],2) + pow(startPosition[2] - lastSavedPosition[2],2));
       float sensorPoseDistForward = (float) -(startPosition[1] - lastSavedPosition[1]);
@@ -205,20 +219,12 @@ void servoStatesCallback(const dyret_common::State::ConstPtr& msg){
   }
 }
 
-void gaitInferredPos_Callback(const dyret_controller::DistAngMeasurement::ConstPtr& msg)
-{
-  if (msg->msgType == msg->t_measurementInferred){
-      accPos = msg->distance;
-  }
-}
-
 int main(int argc, char **argv) {
   lastSavedPosition.resize(3); // 3D mocap
   currentPosition.resize(3);
   startPosition.resize(3); // 3D mocap
   imuData.resize(9);      // 9 axes
   currentData.resize(12); // 12 servos
-  accPos = 0.0;
 
   enableCapture = false;
   linAcc_z = 9.81;
@@ -227,11 +233,11 @@ int main(int argc, char **argv) {
   ros::NodeHandle n;
 
   ros::Subscriber imuData_sub = n.subscribe("/dyret/sensor/imu", 100, imuDataCallback);
-  ros::Subscriber gaitInferredPos_sub = n.subscribe("/dyret/dyret_controller/gaitInferredPos", 1000, gaitInferredPos_Callback);
   ros::ServiceServer gaitEvalService = n.advertiseService("get_gait_evaluation", getGaitEvaluationService);
   ros::Subscriber servoStates_sub = n.subscribe("/dyret/state", 1, servoStatesCallback);
   ros::Subscriber sensorPose_sub = n.subscribe("/dyret/sensor/pose", 5, sensorPoseCallback);
-  
+  inferredPositionClient = n.serviceClient<dyret_controller::GetInferredPosition>("/dyret/dyret_controller/getInferredPosition");
+
   while(ros::ok()) ros::spin();
 
 }

@@ -36,6 +36,8 @@ add_service_files(
   FILES
   GetGaitControllerStatus.srv
   GetGaitEvaluation.srv
+  SendPositionCommand.srv
+  ConfigureGait.srv
 )
 
 generate_messages(

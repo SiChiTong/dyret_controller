@@ -32,7 +32,7 @@
 #include "dyret_controller/PositionCommand.h"
 #include "dyret_controller/ActionMessage.h"
 #include "dyret_controller/DistAngMeasurement.h"
-#include "dyret_controller/GaitConfiguration.h"
+#include "dyret_controller/ConfigureGait.h"
 
 #include "dyret_controller/GetGaitControllerStatus.h"
 #include "dyret_controller/GetGaitEvaluation.h"
@@ -83,15 +83,16 @@ void actionMessagesCallback(const dyret_controller::ActionMessage::ConstPtr &msg
     ROS_INFO("Direction is %.2f (%.2f)", lastActionMessage->direction, msg->direction);
 }
 
-void gaitConfigurationCallback(const dyret_controller::GaitConfiguration::ConstPtr &msg) {
+bool gaitConfigurationCallback(dyret_controller::ConfigureGait::Request  &req,
+                               dyret_controller::ConfigureGait::Response &res) {
 
-    ROS_INFO("Got gait configuration message for gait type %s", msg->gaitName.c_str());
-    gaitType = msg->gaitName;
+    ROS_INFO("Got gait configuration message for gait type %s", req.gaitConfiguration.gaitName.c_str());
+    gaitType = req.gaitConfiguration.gaitName;
 
     gaitConfiguration.clear();
-    assert(msg->parameterName.size() == msg->parameterValue.size());
-    for (size_t i = 0; i < msg->parameterName.size(); ++i)
-        gaitConfiguration[msg->parameterName[i]] = msg->parameterValue[i];
+    assert(req.gaitConfiguration.parameterName.size() == req.gaitConfiguration.parameterValue.size());
+    for (size_t i = 0; i < req.gaitConfiguration.parameterName.size(); ++i)
+        gaitConfiguration[req.gaitConfiguration.parameterName[i]] = req.gaitConfiguration.parameterValue[i];
 
 }
 
@@ -168,7 +169,8 @@ int main(int argc, char **argv) {
     ros::ServiceServer gaitControllerStatusService_server = n.advertiseService("get_gait_controller_status", getGaitControllerStatusService);
     // Initialize topics
     ros::Subscriber actionMessages_sub = n.subscribe("/dyret/dyret_controller/actionMessages", 100, actionMessagesCallback);
-    ros::Subscriber gaitConfiguration_sub = n.subscribe("/dyret/dyret_controller/gaitConfiguration", 1, gaitConfigurationCallback);
+    //ros::Subscriber gaitConfiguration_sub = n.subscribe("/dyret/dyret_controller/gaitConfiguration", 1, gaitConfigurationCallback);
+    ros::ServiceServer gaitConfigurationServer = n.advertiseService("/dyret/dyret_controller/gaitConfigurationService", gaitConfigurationCallback);
     ros::Subscriber servoStates_sub = n.subscribe("/dyret/state", 1, servoStatesCallback);
     ros::Publisher poseCommand_pub = n.advertise<dyret_common::Pose>("/dyret/command", 3);
     ros::Publisher gaitInferredPos_pub = n.advertise<dyret_controller::DistAngMeasurement>("/dyret/dyret_controller/gaitInferredPos", 1000);

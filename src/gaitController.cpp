@@ -36,6 +36,7 @@
 
 #include "dyret_controller/GetGaitControllerStatus.h"
 #include "dyret_controller/GetGaitEvaluation.h"
+#include "dyret_controller/SendPositionCommand.h"
 
 #include <dyret_hardware/ActuatorBoardState.h>
 
@@ -172,7 +173,7 @@ int main(int argc, char **argv) {
     ros::Publisher poseCommand_pub = n.advertise<dyret_common::Pose>("/dyret/command", 3);
     ros::Publisher gaitInferredPos_pub = n.advertise<dyret_controller::DistAngMeasurement>("/dyret/dyret_controller/gaitInferredPos", 1000);
     ros::ServiceClient servoConfigClient = n.serviceClient<dyret_common::Configure>("/dyret/configuration");
-    ros::Publisher positionCommand_pub = n.advertise<dyret_controller::PositionCommand>("/dyret/dyret_controller/positionCommand", 1);;
+    ros::ServiceClient positionCommand_pub = n.serviceClient<dyret_controller::SendPositionCommand>("/dyret/dyret_controller/positionCommandService");
 
     waitForRosInit(get_gait_evaluation_client, "get_gait_evaluation");
     waitForRosInit(actionMessages_sub, "/dyret/dyret_controller/actionMessages");

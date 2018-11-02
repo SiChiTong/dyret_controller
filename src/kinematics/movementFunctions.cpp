@@ -10,6 +10,7 @@
 #include "dyret_common/Configure.h"
 
 #include "dyret_controller/PositionCommand.h"
+#include "dyret_controller/SendPositionCommand.h"
 
 #include "movementFunctions.h"
 #include "interpolation.h"
@@ -34,25 +35,25 @@ std::vector<vec3P> currentLegPositions(std::vector<double> servoAnglesInRad, std
   return vectorToReturn;
 }
 
-void moveAllLegsToGlobalPosition(std::vector<vec3P> givenPoints, ros::Publisher givenPositionCommand_pub){
-  dyret_controller::PositionCommand msg;
+void moveAllLegsToGlobalPosition(std::vector<vec3P> givenPoints, ros::ServiceClient givenPositionCommandService){
+  dyret_controller::SendPositionCommand srv;
 
-  for (int i = 0; i < msg.legPosition.size(); i++){
-    msg.legPosition[i].x = givenPoints[i].x();
-    msg.legPosition[i].y = givenPoints[i].y();
-    msg.legPosition[i].z = givenPoints[i].z();
+  for (int i = 0; i < 4; i++){
+    srv.request.positionCommand.legPosition[i].x = givenPoints[i].x();
+    srv.request.positionCommand.legPosition[i].y = givenPoints[i].y();
+    srv.request.positionCommand.legPosition[i].z = givenPoints[i].z();
   }
 
-  givenPositionCommand_pub.publish(msg);
+  givenPositionCommandService.call(srv);
 }
 
 // Open loop interpolation move of 4 legs
 bool interpolatingLegMoveOpenLoop(std::vector<vec3P> givenGoalPositions,
                                   std::vector<vec3P> givenStartPositions,
                                   float givenProgress,
-                                  ros::Publisher givenPositionCommand_pub){
+                                  ros::ServiceClient givenPositionCommandService){
 
-  dyret_controller::PositionCommand msg;
+  dyret_controller::SendPositionCommand srv;
 
   // Check to see which legs have reached their positions
   bool reachedPositions = true;
@@ -69,12 +70,12 @@ bool interpolatingLegMoveOpenLoop(std::vector<vec3P> givenGoalPositions,
   for (int i = 0; i < 4; i++){
     vec3P legPosition = lineInterpolation(givenStartPositions[i], givenGoalPositions[i], givenProgress);
 
-    msg.legPosition[i].x = legPosition.x();
-    msg.legPosition[i].y = legPosition.y();
-    msg.legPosition[i].z = legPosition.z();
+    srv.request.positionCommand.legPosition[i].x = legPosition.x();
+    srv.request.positionCommand.legPosition[i].y = legPosition.y();
+    srv.request.positionCommand.legPosition[i].z = legPosition.z();
   }
 
-  givenPositionCommand_pub.publish(msg);
+  givenPositionCommandService.call(srv);
 
   return false;
 }

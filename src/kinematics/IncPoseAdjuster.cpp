@@ -25,7 +25,7 @@ bool IncPoseAdjuster::Spin(){
       currentPoseStates[2] == FINISHED &&
       currentPoseStates[3] == FINISHED){
 
-      moveAllLegsToGlobalPosition(goalPose, positionCommand_pub);
+      moveAllLegsToGlobalPosition(goalPose, positionCommandService);
 
       reachedPose = true;
       return true;
@@ -46,7 +46,7 @@ bool IncPoseAdjuster::Spin(){
           std::vector<vec3P> tmpPosition = positionArray;
           for (int i = 0; i < 4; i++) tmpPosition[i].points[2] = groundHeight;
 
-          if (interpolatingLegMoveOpenLoop(tmpPosition, positionArray, currentProgress, positionCommand_pub) == true){
+          if (interpolatingLegMoveOpenLoop(tmpPosition, positionArray, currentProgress, positionCommandService) == true){
 
               positionArray = tmpPosition; // We have now reached the new position
 
@@ -109,7 +109,7 @@ bool IncPoseAdjuster::Spin(){
                if (interpolatingLegMoveOpenLoop(add(positionArray, vec3P(currentLean[0], currentLean[1], 0.0)),
                                                 positionArray,
                                                 currentProgress,
-                                                positionCommand_pub) == true){
+                                                positionCommandService) == true){
                    currentPoseStates[legId] = LIFT;
                    printf("L%u: -> lift\n", legId);
                    currentProgress = 0.0;
@@ -130,7 +130,7 @@ bool IncPoseAdjuster::Spin(){
                 if (interpolatingLegMoveOpenLoop(tmpEndPosition,
                                                  tmpStartPosition,
                                                  currentProgress,
-                                                 positionCommand_pub) == true){
+                                                 positionCommandService) == true){
                     currentPoseStates[legId] = LINE_INTERPOLATE;
                     currentProgress = 0.0;
                     printf("L%u: -> LineInterpolate\n", legId);
@@ -152,7 +152,7 @@ bool IncPoseAdjuster::Spin(){
                 if (interpolatingLegMoveOpenLoop(tmpEndPosition,
                                                  tmpStartPosition,
                                                  currentProgress,
-                                                 positionCommand_pub) == true){
+                                                 positionCommandService) == true){
                     currentPoseStates[legId] = STEPDOWN;
                     positionArray[legId] = goalPose[legId]; // This leg is now in the correct position
                     printf("L%u: -> stepDown\n", legId);
@@ -178,7 +178,7 @@ bool IncPoseAdjuster::Spin(){
                 if (interpolatingLegMoveOpenLoop(tmpEndPosition,
                                                  tmpStartPosition,
                                                  currentProgress,
-                                                 positionCommand_pub) == true){
+                                                 positionCommandService) == true){
                   currentProgress = 0.0;
                   currentPoseStates[legId] = LEAN_BACK;
                   positionArray[legId] = goalPose[legId];
@@ -197,7 +197,7 @@ bool IncPoseAdjuster::Spin(){
                 if (interpolatingLegMoveOpenLoop(positionArray,
                                                  tmpStartPosition,
                                                  currentProgress,
-                                                 positionCommand_pub) == true){
+                                                 positionCommandService) == true){
                     currentProgress = 0.0;
                     currentPoseStates[legId] = FINISHED;
                     printf("L%u: -> FINISHED\n", legId);

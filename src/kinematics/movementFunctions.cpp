@@ -35,7 +35,7 @@ std::vector<vec3P> currentLegPositions(std::vector<double> servoAnglesInRad, std
   return vectorToReturn;
 }
 
-void moveAllLegsToGlobalPosition(std::vector<vec3P> givenPoints, ros::ServiceClient givenPositionCommandService){
+void moveAllLegsToGlobalPosition(std::vector<vec3P> givenPoints, ros::ServiceClient* givenPositionCommandService){
   dyret_controller::SendPositionCommand srv;
 
   for (int i = 0; i < 4; i++){
@@ -44,14 +44,14 @@ void moveAllLegsToGlobalPosition(std::vector<vec3P> givenPoints, ros::ServiceCli
     srv.request.positionCommand.legPosition[i].z = givenPoints[i].z();
   }
 
-  givenPositionCommandService.call(srv);
+  givenPositionCommandService->call(srv);
 }
 
 // Open loop interpolation move of 4 legs
 bool interpolatingLegMoveOpenLoop(std::vector<vec3P> givenGoalPositions,
                                   std::vector<vec3P> givenStartPositions,
                                   float givenProgress,
-                                  ros::ServiceClient givenPositionCommandService){
+                                  ros::ServiceClient* givenPositionCommandService){
 
   dyret_controller::SendPositionCommand srv;
 
@@ -75,7 +75,9 @@ bool interpolatingLegMoveOpenLoop(std::vector<vec3P> givenGoalPositions,
     srv.request.positionCommand.legPosition[i].z = legPosition.z();
   }
 
-  givenPositionCommandService.call(srv);
+  if (givenPositionCommandService->call(srv) == false){
+    ROS_ERROR("Error while calling positionCommandService");
+  }
 
   return false;
 }

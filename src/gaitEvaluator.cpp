@@ -175,6 +175,8 @@ bool getGaitEvaluationService(dyret_controller::GetGaitEvaluation::Request  &req
     res.results.push_back(elem.second);
   }
 
+  return true;
+
 }
 
 void sensorPoseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg){

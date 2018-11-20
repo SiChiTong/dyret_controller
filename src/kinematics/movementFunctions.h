@@ -11,9 +11,9 @@ std::vector<vec3P> currentLegPositions(std::vector<double> servoAnglesInRad, std
 bool interpolatingLegMoveOpenLoop(std::vector<vec3P> givenGoalPositions,
                                   std::vector<vec3P> givenStartPositions,
                                   float givenProgress,
-                                  ros::ServiceClient givenPositionCommandService);
+                                  ros::ServiceClient* givenPositionCommandService);
 
-void moveAllLegsToGlobalPosition(std::vector<vec3P> givenPoints, ros::ServiceClient givenPositionCommandService);
+void moveAllLegsToGlobalPosition(std::vector<vec3P> givenPoints, ros::ServiceClient* givenPositionCommandService);
 
 // Config
 bool setServoSpeeds(double givenSpeed, ros::ServiceClient givenServoConfigService);

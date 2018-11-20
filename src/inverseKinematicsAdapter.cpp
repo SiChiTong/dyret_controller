@@ -52,16 +52,6 @@ void sendPositionCommand(std::vector<double> legPositions){
     poseCommand_pub.publish(poseMsg);
 }
 
-void positionCommandTopicCallback(const dyret_controller::PositionCommand::ConstPtr& msg){
-
-    std::vector<double> legPositions = {msg->legPosition[0].x, msg->legPosition[0].y, msg->legPosition[0].z,
-                                        msg->legPosition[1].x, msg->legPosition[1].y, msg->legPosition[1].z,
-                                        msg->legPosition[2].x, msg->legPosition[2].y, msg->legPosition[2].z,
-                                        msg->legPosition[3].x, msg->legPosition[3].y, msg->legPosition[3].z};
-
-    sendPositionCommand(legPositions);
-}
-
 bool positionCommandServiceCallback(dyret_controller::SendPositionCommand::Request  &req,
                                     dyret_controller::SendPositionCommand::Response &res){
 
@@ -71,6 +61,8 @@ bool positionCommandServiceCallback(dyret_controller::SendPositionCommand::Reque
                                         req.positionCommand.legPosition[3].x, req.positionCommand.legPosition[3].y, req.positionCommand.legPosition[3].z};
 
     sendPositionCommand(legPositions);
+
+    return true;
 
 }
 
@@ -84,7 +76,6 @@ void stateCallback(const dyret_common::State::ConstPtr& msg){
     for (int i = 0; i < 12; i++){
       currentLegAngles[i] = msg->revolute[i].position;
     }
-
   }
 
   if (femurActuatorLength < 0.0) femurActuatorLength = 0.0;
@@ -99,7 +90,6 @@ int main(int argc, char **argv){
   poseCommand_pub = n.advertise<dyret_common::Pose>("/dyret/command", 1);
 
   ros::Subscriber state_sub = n.subscribe("/dyret/state", 1, stateCallback);
-  //ros::Subscriber positionCommand_sub = n.subscribe("/dyret/dyret_controller/positionCommand", 1, positionCommandTopicCallback);
   ros::ServiceServer gaitEvalService = n.advertiseService("/dyret/dyret_controller/positionCommandService", positionCommandServiceCallback);
 
   ros::spin();

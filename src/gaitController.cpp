@@ -57,7 +57,7 @@ std::string gaitType;
 std::map<std::string, float> gaitConfiguration;
 
 // This decides if the leg adjustment done in hardware is done in sim as well
-bool initAdjustInSim = false;
+bool initAdjustInSim = true;
 
 double currentInferredPosition = 0.0;
 bool movingForward = true;
@@ -91,7 +91,7 @@ ros::ServiceClient positionCommand_pub;
 IncPoseAdjuster gaitInitAdjuster(
         &servoAnglesInRad,
         &legActuatorLengths,
-        positionCommand_pub);
+        &positionCommand_pub);
 
 bool getGaitControllerStatusService(dyret_controller::GetGaitControllerStatus::Request &req,
                                     dyret_controller::GetGaitControllerStatus::Response &res) {
@@ -174,7 +174,7 @@ bool gaitConfigurationCallback(dyret_controller::ConfigureGait::Request  &req,
 
     // Adjust to the start of the gait only in the real world or if the initAdjustInSim bool is set for testing
     if (ros::Time::isSimTime() && !initAdjustInSim) {
-        moveAllLegsToGlobalPosition(initialGaitPose, positionCommand_pub);
+        moveAllLegsToGlobalPosition(initialGaitPose, &positionCommand_pub);
         gaitInitAdjuster.skip();
         sleep(1);
         startTime = ros::Time::now();
@@ -182,6 +182,7 @@ bool gaitConfigurationCallback(dyret_controller::ConfigureGait::Request  &req,
         gaitInitAdjuster.setPose(initialGaitPose);
     }
 
+    return true;
 }
 
 void servoStatesCallback(const dyret_common::State::ConstPtr &msg) {
@@ -243,6 +244,7 @@ bool inferredPositionCallback(dyret_controller::GetInferredPosition::Request  &r
     res.currentInferredPosition.distance = (float) currentInferredPosition;
     res.currentInferredPosition.absoluteMeasurement = true;
 
+    return true;
 }
 
 ros::Time lastUpdate;
@@ -318,6 +320,8 @@ bool gaitControllerCommandCallback(dyret_controller::GaitControllerCommandServic
     if (req.gaitControllerCommand.gaitControllerCommand == req.gaitControllerCommand.t_spinOnce){
         spinGaitOnce();
     }
+
+    return true;
 }
 
 int main(int argc, char **argv) {
@@ -354,7 +358,7 @@ int main(int argc, char **argv) {
 
     IncPoseAdjuster restPoseAdjuster(&servoAnglesInRad,
                                      &legActuatorLengths,
-                                     positionCommand_pub);
+                                     &positionCommand_pub);
     restPoseAdjuster.setPose(getRestPose());
     restPoseAdjuster.skip();
 
@@ -366,13 +370,13 @@ int main(int argc, char **argv) {
     }
 
     std::vector<vec3P> restPose = getRestPose();
-    moveAllLegsToGlobalPosition(getRestPose(), positionCommand_pub);
+    moveAllLegsToGlobalPosition(getRestPose(), &positionCommand_pub);
 
     ros::Rate loop_rate(5);
-    ros::Rate gaitRate(30);
+    ros::Rate gaitRate(50);
 
     activatedRecording = false;
-    ros::Rate poseAdjusterRate(30);
+    ros::Rate poseAdjusterRate(50);
 
     while (ros::ok()) {
         if (currentAction == dyret_controller::ActionMessage::t_sleep) {
@@ -385,6 +389,7 @@ int main(int argc, char **argv) {
                 if (ros::Time::isSystemTime()) setServoLog(false, servoConfigClient);
                 pauseGaitRecording(get_gait_evaluation_client);
 
+                gaitInitAdjuster.reset();
                 activatedRecording = false;
 
                 if (ros::Time::isSystemTime()) setServoSpeeds(poseAdjustSpeed, servoConfigClient);
@@ -407,7 +412,7 @@ int main(int argc, char **argv) {
                 if (ros::Time::isSystemTime()) setServoSpeeds(poseAdjustSpeed, servoConfigClient);
 
                 if (ros::Time::isSimTime() && !initAdjustInSim) {
-                    moveAllLegsToGlobalPosition(getRestPose(), positionCommand_pub);
+                    moveAllLegsToGlobalPosition(getRestPose(), &positionCommand_pub);
                     restPoseAdjuster.skip();
                     ros::Duration(1).sleep();
                     startTime = ros::Time::now();
@@ -427,7 +432,7 @@ int main(int argc, char **argv) {
 
         } else if (currentAction == dyret_controller::ActionMessage::t_contGait) {
 
-            gaitRate.sleep();
+            //gaitRate.sleep();
 
             // Check for transition
             if (lastAction != dyret_controller::ActionMessage::t_contGait) {

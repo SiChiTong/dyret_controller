@@ -134,8 +134,12 @@ bool getGaitEvaluationService(dyret_controller::GetGaitEvaluation::Request  &req
           currentMeans[i] = currentSums[i] / currentData[i].size();
       }
       averagePowerDraw = std::accumulate(currentMeans.begin(), currentMeans.end(), 0.0f);
-      ampHours = averagePowerDraw * ((((float) accTime) / 60.0f) / 60.0f);
-      powerFitness = (fabs(getInferredPosition()) / 1000.0f) / ampHours; // m / Ah
+      if (averagePowerDraw != 0) {
+          ampHours = averagePowerDraw * ((((float) accTime) / 60.0f) / 60.0f);
+          powerFitness = (fabs(getInferredPosition()) / 1000.0f) / ampHours; // m / Ah
+      } else{
+          powerFitness = 0.0;
+      }
 
       // Calculate speed fitness value:
       float calculatedInferredSpeed = (float) (fabs(getInferredPosition()) / 1000.0f) / (((float) accTime) / 60.0f); // speed in m/min

@@ -9,7 +9,7 @@ class IncPoseAdjuster{
 
   std::vector<double>* servoAnglesInRad;
 
-  ros::Publisher positionCommand_pub;
+  ros::ServiceClient* positionCommandService;
 
   t_poseAdjustState currentPoseStates[4];
   std::vector<vec3P> goalPose;
@@ -25,32 +25,30 @@ class IncPoseAdjuster{
 
   // Parameters for movement:
   const float stepHeight = 40.0;
-  const float leanSpeed = 2.5;
-  const float legMoveSpeed = 5.0;
-  const float stepDownSpeed = 2.0;
-  const float liftSpeed = 5.0;
+  const float leanSpeed = 5;
+  const float legMoveSpeed = 15.0;
+  const float stepDownSpeed = 5.0;
+  const float liftSpeed = 10.0;
 
   float groundHeight;
 
 public:
 
-  IncPoseAdjuster(std::vector<vec3P> givenGoalPose,
-                  std::vector<double>* givenServoAnglesInRad,
+  IncPoseAdjuster(std::vector<double>* givenServoAnglesInRad,
                   std::vector<double>* givenActuatorLengths,
-                  ros::Publisher givenPositionCommand_pub){
+                  ros::ServiceClient* givenPositionCommandService){
     currentProgress = 0.0;
     positionArray.resize(4); // Set size 4
     servoAnglesInRad = givenServoAnglesInRad;
     legActuatorLengths = givenActuatorLengths;
-    goalPose = givenGoalPose;
-    positionCommand_pub = givenPositionCommand_pub;
+    positionCommandService = givenPositionCommandService;
     for (int i = 0; i < 4; i++) currentPoseStates[i] = INIT_STEPDOWN;
     currentProgress = 0.0;
 
     reachedPose = false;
   }
 
-  void setPoseAndActuatorLengths(std::vector<vec3P> givenGoalPose){
+  void setPose(std::vector<vec3P> givenGoalPose){
     goalPose = givenGoalPose;
   }
 

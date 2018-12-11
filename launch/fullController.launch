@@ -2,4 +2,6 @@
   <node pkg="dyret_controller" name="gaitController" type="gaitController" />
   <node pkg="dyret_controller" name="gaitEvaluator" type="gaitEvaluator" />
   <node pkg="dyret_controller" name="inverseKinematicsAdapter" type="inverseKinematicsAdapter" />
+  <node pkg="tonnesfn_experiments" name="dyret_logger" type="dyret_logger" />
+
 </launch>

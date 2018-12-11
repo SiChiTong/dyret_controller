@@ -40,6 +40,8 @@
 #include "dyret_controller/GetInferredPosition.h"
 #include "dyret_controller/GaitControllerCommandService.h"
 
+#include "tonnesfn_experiments/LoggerCommand.h"
+
 #include <dyret_hardware/ActuatorBoardState.h>
 
 using namespace std::chrono;
@@ -87,6 +89,7 @@ WagGenerator wagGenerator;
 ros::Publisher poseCommand_pub;
 ros::Time startTime;
 ros::ServiceClient positionCommand_pub;
+ros::ServiceClient loggerCommandService_client;
 
 IncPoseAdjuster gaitInitAdjuster(
         &servoAnglesInRad,
@@ -201,6 +204,34 @@ void servoStatesCallback(const dyret_common::State::ConstPtr &msg) {
     groundHeight = (float) (groundHeightOffset - ((legActuatorLengths[0] + legActuatorLengths[1]) * groundCorrectionFactor));
 }
 
+bool startLogging(){
+    tonnesfn_experiments::LoggerCommand srv;
+
+    srv.request.command = srv.request.ENABLE_LOGGING;
+
+    if (!loggerCommandService_client.call(srv)) {
+        printf("Error while calling LoggerCommand service\n");
+        ROS_ERROR("Error while calling LoggerCommand service");
+        return false;
+    }
+
+    return true;
+}
+
+bool saveLog(){
+    tonnesfn_experiments::LoggerCommand srv;
+
+    srv.request.command = srv.request.SAVE_LOG;
+
+    if (!loggerCommandService_client.call(srv)) {
+        printf("Error while calling LoggerCommand service\n");
+        ROS_ERROR("Error while calling LoggerCommand service");
+        return false;
+    }
+
+    return true;
+}
+
 void startGaitRecording(ros::ServiceClient get_gait_evaluation_client) {
 
     dyret_controller::GetGaitEvaluation srv;
@@ -211,6 +242,7 @@ void startGaitRecording(ros::ServiceClient get_gait_evaluation_client) {
         ROS_INFO("Called startGaitRecording service\n");
     }
 
+    startLogging();
 }
 
 void pauseGaitRecording(ros::ServiceClient get_gait_evaluation_client) {
@@ -222,6 +254,8 @@ void pauseGaitRecording(ros::ServiceClient get_gait_evaluation_client) {
     if (get_gait_evaluation_client.call(srv)) {
         ROS_INFO("Called pauseGaitRecording service\n");
     }
+
+    saveLog();
 
 }
 
@@ -252,8 +286,8 @@ void spinGaitOnce(){
 
     // Activate gait recording if it has not been done, is done the first time it is run
     if (activatedRecording == false) {
+        ROS_ERROR("Starting gait recording");
         startGaitRecording(get_gait_evaluation_client);
-        if (ros::Time::isSystemTime()) setServoLog(true, servoConfigClient);
         activatedRecording = true;
 
         startTime = ros::Time::now();
@@ -337,6 +371,8 @@ int main(int argc, char **argv) {
     ros::ServiceServer inferredPositionServer = n.advertiseService("/dyret/dyret_controller/getInferredPosition", inferredPositionCallback);
     ros::ServiceServer gaitControllerAction = n.advertiseService("/dyret/dyret_controller/gaitControllerCommandService", gaitControllerCommandCallback);
 
+    loggerCommandService_client = n.serviceClient<tonnesfn_experiments::LoggerCommand>("/dyret/dyret_logger/loggerCommand");
+
     get_gait_evaluation_client = n.serviceClient<dyret_controller::GetGaitEvaluation>("get_gait_evaluation");
     servoConfigClient = n.serviceClient<dyret_common::Configure>("/dyret/configuration");
     positionCommand_pub = n.serviceClient<dyret_controller::SendPositionCommand>("/dyret/dyret_controller/positionCommandService");
@@ -386,7 +422,6 @@ int main(int argc, char **argv) {
 
             // Check for transition
             if (lastAction == dyret_controller::ActionMessage::t_contGait) {
-                if (ros::Time::isSystemTime()) setServoLog(false, servoConfigClient);
                 pauseGaitRecording(get_gait_evaluation_client);
 
                 gaitInitAdjuster.reset();
@@ -400,7 +435,6 @@ int main(int argc, char **argv) {
             // Check for transition from walking
             if (lastAction == dyret_controller::ActionMessage::t_contGait) {
 
-                if (ros::Time::isSystemTime()) setServoLog(false, servoConfigClient);
                 pauseGaitRecording(get_gait_evaluation_client);
 
                 activatedRecording = false;

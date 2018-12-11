@@ -154,14 +154,6 @@ bool setServoSpeeds(double givenSpeed, ros::ServiceClient givenServoConfigServic
   return callConfigurationService(srv, givenServoConfigService);
 }
 
-bool setServoLog(bool enable, ros::ServiceClient givenServoConfigService){
-  dyret_common::Configure srv;
-
-  ROS_ERROR("Set servo log not implemented!");
-
-  return callConfigurationService(srv, givenServoConfigService);
-}
-
 vec3P lockToZ(vec3P givenPosition, double givenZValue){
   return vec3P(givenPosition.points[0], givenPosition.points[1], givenZValue);
 }

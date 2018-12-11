@@ -18,7 +18,8 @@ find_package(catkin REQUIRED COMPONENTS
   message_generation
   genmsg
   dyret_common
-  dyret_hardware
+  dyret_hardware 
+  tonnesfn_experiments
 )
 
 add_message_files(

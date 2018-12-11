@@ -247,6 +247,8 @@ void startGaitRecording(ros::ServiceClient get_gait_evaluation_client) {
 
 void pauseGaitRecording(ros::ServiceClient get_gait_evaluation_client) {
 
+    currentInferredPosition = 0.0;
+
     dyret_controller::GetGaitEvaluation srv;
 
     srv.request.givenCommand = dyret_controller::GetGaitEvaluation::Request::t_pause;
@@ -286,7 +288,6 @@ void spinGaitOnce(){
 
     // Activate gait recording if it has not been done, is done the first time it is run
     if (activatedRecording == false) {
-        ROS_ERROR("Starting gait recording");
         startGaitRecording(get_gait_evaluation_client);
         activatedRecording = true;
 
@@ -295,7 +296,7 @@ void spinGaitOnce(){
         currentInferredPosition = 0.0;
     }
 
-    if ((ros::Time::now() - lastUpdate).toSec() >= 0.033){
+    if ((ros::Time::now() - lastUpdate).toSec() >= 0.02){ //
         lastUpdate = ros::Time::now();
 
         // Get leg positions:
@@ -309,7 +310,7 @@ void spinGaitOnce(){
         double secondsPassed = (ros::Time::now() - startTime).toNSec() / 1000000000.0f;
         float distance = (float) (bSplineGait.getStepLength() * globalGaitFrequency * (secondsPassed));
 
-        if (movingForward) currentInferredPosition = distance; else currentInferredPosition = -distance;
+        currentInferredPosition = distance;
 
         // Generate and send pose message
         dyret_common::Pose msg;

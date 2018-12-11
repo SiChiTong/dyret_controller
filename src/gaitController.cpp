@@ -169,20 +169,16 @@ bool gaitConfigurationCallback(dyret_controller::ConfigureGait::Request  &req,
     double maxFrequency = ((10.0/60.0)*1000.0) / bSplineGait.getStepLength();
     globalGaitFrequency = gaitConfiguration.at("frequency");
 
-    gaitInitAdjuster.setPose(add(bSplineGait.getPosition(0.0, true), wagGenerator.getGaitWagPoint(0.0, true)));
-
-    // Calculate the initial pose of the gait
-    std::vector<vec3P> initialGaitPose = lockToZ(add( bSplineGait.getPosition(0.0, movingForward), wagGenerator.getGaitWagPoint(0.0, movingForward) ),
-                                                 groundHeight);
-
-    // Adjust to the start of the gait only in the real world or if the initAdjustInSim bool is set for testing
+    // Adjust to the start of the gait only in simulation. NOTE: THIS ASSUMES FORWARD MOVEMENT
     if (ros::Time::isSimTime() && !initAdjustInSim) {
+        // Calculate the initial pose of the gait
+        std::vector<vec3P> initialGaitPose = lockToZ(add( bSplineGait.getPosition(0.0, movingForward), wagGenerator.getGaitWagPoint(0.0, movingForward) ),
+                                                     groundHeight);
+
         moveAllLegsToGlobalPosition(initialGaitPose, &positionCommand_pub);
         gaitInitAdjuster.skip();
         sleep(1);
         startTime = ros::Time::now();
-    } else {
-        gaitInitAdjuster.setPose(initialGaitPose);
     }
 
     return true;
@@ -474,9 +470,17 @@ int main(int argc, char **argv) {
                 if (lastActionMessage->direction ==  0) {
                     printf("Moving forward!\n");
                     movingForward = true;
+
+                    std::vector<vec3P> initialGaitPose = lockToZ(add( bSplineGait.getPosition(0.0, movingForward), wagGenerator.getGaitWagPoint(0.0, movingForward) ),
+                                                                 groundHeight);
+                    gaitInitAdjuster.setPose(initialGaitPose);
                 } else {
                     printf("Moving in reverse!\n");
                     movingForward = false;
+
+                    std::vector<vec3P> initialGaitPose = lockToZ(add( bSplineGait.getPosition(0.0, movingForward), wagGenerator.getGaitWagPoint(0.0, movingForward) ),
+                                                                 groundHeight);
+                    gaitInitAdjuster.setPose(initialGaitPose);
                 }
             }
 

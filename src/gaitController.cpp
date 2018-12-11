@@ -310,6 +310,7 @@ void spinGaitOnce(){
 
         // Generate and send pose message
         dyret_common::Pose msg;
+        msg.header.stamp = ros::Time().now();
 
         std::vector<int> servoIds(12);
         for (int i = 0; i < servoIds.size(); i++) servoIds[i] = i;

@@ -19,7 +19,7 @@ find_package(catkin REQUIRED COMPONENTS
   genmsg
   dyret_common
   dyret_hardware 
-  tonnesfn_experiments
+  rosbag
 )
 
 add_message_files(
@@ -42,6 +42,7 @@ add_service_files(
   ConfigureGait.srv
   GetInferredPosition.srv
   GaitControllerCommandService.srv
+  LoggerCommand.srv
 )
 
 generate_messages(
@@ -98,3 +99,12 @@ target_link_libraries(inverseKinematicsAdapter ${catkin_LIBRARIES})
 add_dependencies(inverseKinematicsAdapter
                  ${catkin_EXPORTED_TARGETS}
                  dyret_controller_generate_messages_cpp)
+
+add_executable(dyret_logger
+	       src/dyret_logger.cpp
+              )
+target_link_libraries(dyret_logger ${catkin_LIBRARIES})
+add_dependencies(dyret_logger
+                 ${catkin_EXPORTED_TARGETS}
+                 dyret_controller_generate_messages_cpp)
+

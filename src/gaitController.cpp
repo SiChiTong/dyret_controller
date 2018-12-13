@@ -40,7 +40,7 @@
 #include "dyret_controller/GetInferredPosition.h"
 #include "dyret_controller/GaitControllerCommandService.h"
 
-#include "tonnesfn_experiments/LoggerCommand.h"
+#include "dyret_controller/LoggerCommand.h"
 
 #include <dyret_hardware/ActuatorBoardState.h>
 
@@ -201,7 +201,7 @@ void servoStatesCallback(const dyret_common::State::ConstPtr &msg) {
 }
 
 bool startLogging(){
-    tonnesfn_experiments::LoggerCommand srv;
+    dyret_controller::LoggerCommand srv;
 
     srv.request.command = srv.request.ENABLE_LOGGING;
 
@@ -215,7 +215,7 @@ bool startLogging(){
 }
 
 bool saveLog(){
-    tonnesfn_experiments::LoggerCommand srv;
+    dyret_controller::LoggerCommand srv;
 
     srv.request.command = srv.request.SAVE_LOG;
 
@@ -369,7 +369,7 @@ int main(int argc, char **argv) {
     ros::ServiceServer inferredPositionServer = n.advertiseService("/dyret/dyret_controller/getInferredPosition", inferredPositionCallback);
     ros::ServiceServer gaitControllerAction = n.advertiseService("/dyret/dyret_controller/gaitControllerCommandService", gaitControllerCommandCallback);
 
-    loggerCommandService_client = n.serviceClient<tonnesfn_experiments::LoggerCommand>("/dyret/dyret_logger/loggerCommand");
+    loggerCommandService_client = n.serviceClient<dyret_controller::LoggerCommand>("/dyret/dyret_logger/loggerCommand");
 
     get_gait_evaluation_client = n.serviceClient<dyret_controller::GetGaitEvaluation>("get_gait_evaluation");
     servoConfigClient = n.serviceClient<dyret_common::Configure>("/dyret/configuration");

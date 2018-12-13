@@ -30,7 +30,6 @@
 #include "dyret_common/Configure.h"
 
 #include "dyret_controller/PositionCommand.h"
-#include "dyret_controller/ActionMessage.h"
 #include "dyret_controller/DistAngMeasurement.h"
 #include "dyret_controller/ConfigureGait.h"
 
@@ -47,13 +46,14 @@
 using namespace std::chrono;
 
 unsigned char currentAction;
-dyret_controller::ActionMessage::ConstPtr lastActionMessage;
 
 // Config:
 const double poseAdjustSpeed = 0.08;
 const double gaitServoSpeed = 0.0;
 const float frontOffset = 0.0f;
 const float rearLegOffset = -30.0f;
+
+bool walking = false;
 
 std::string gaitType;
 std::map<std::string, float> gaitConfiguration;
@@ -75,6 +75,8 @@ const float bSplineGaitWagOffset = 0.91;
 const float spreadAmount = 80.0; // was 50
 
 bool activatedRecording;
+
+std::vector<vec3P> startGaitPose;
 
 std::vector<double> pidParameters;
 
@@ -101,14 +103,6 @@ bool getGaitControllerStatusService(dyret_controller::GetGaitControllerStatus::R
     res.gaitControllerStatus.actionType = currentAction;
 
     return true;
-}
-
-void actionMessagesCallback(const dyret_controller::ActionMessage::ConstPtr &msg) {
-    ROS_INFO("Switching currentAction from %u to %u", currentAction, msg->actionType);
-    lastActionMessage = msg;
-    currentAction = msg->actionType;
-
-    ROS_INFO("Direction is %.2f (%.2f)", lastActionMessage->direction, msg->direction);
 }
 
 bool gaitConfigurationCallback(dyret_controller::ConfigureGait::Request  &req,
@@ -165,8 +159,13 @@ bool gaitConfigurationCallback(dyret_controller::ConfigureGait::Request  &req,
         exit(-1);
     }
 
+    // Set initial pose for adjustment
+    movingForward = req.gaitConfiguration.directionForward;
+
+    startGaitPose = lockToZ(add(bSplineGait.getPosition(0.0, movingForward), wagGenerator.getGaitWagPoint(0.0, movingForward)),
+                            groundHeight);
+
     // Limit frequency so speed is below 10m/min:
-    double maxFrequency = ((10.0/60.0)*1000.0) / bSplineGait.getStepLength();
     globalGaitFrequency = gaitConfiguration.at("frequency");
 
     // Adjust to the start of the gait only in simulation. NOTE: THIS ASSUMES FORWARD MOVEMENT
@@ -200,20 +199,6 @@ void servoStatesCallback(const dyret_common::State::ConstPtr &msg) {
     groundHeight = (float) (groundHeightOffset - ((legActuatorLengths[0] + legActuatorLengths[1]) * groundCorrectionFactor));
 }
 
-bool startLogging(){
-    dyret_controller::LoggerCommand srv;
-
-    srv.request.command = srv.request.ENABLE_LOGGING;
-
-    if (!loggerCommandService_client.call(srv)) {
-        printf("Error while calling LoggerCommand service\n");
-        ROS_ERROR("Error while calling LoggerCommand service");
-        return false;
-    }
-
-    return true;
-}
-
 bool saveLog(){
     dyret_controller::LoggerCommand srv;
 
@@ -238,7 +223,6 @@ void startGaitRecording(ros::ServiceClient get_gait_evaluation_client) {
         ROS_INFO("Called startGaitRecording service\n");
     }
 
-    startLogging();
 }
 
 void pauseGaitRecording(ros::ServiceClient get_gait_evaluation_client) {
@@ -284,7 +268,6 @@ void spinGaitOnce(){
 
     // Activate gait recording if it has not been done, is done the first time it is run
     if (activatedRecording == false) {
-        startGaitRecording(get_gait_evaluation_client);
         activatedRecording = true;
 
         startTime = ros::Time::now();
@@ -347,10 +330,49 @@ void spinGaitOnce(){
     }
 }
 
+bool adjustPose(std::vector<vec3P> givenPose){
+    ros::Rate poseAdjusterRate(50);
+
+    IncPoseAdjuster poseAdjuster(&servoAnglesInRad,
+                                 &legActuatorLengths,
+                                 &positionCommand_pub);
+
+    poseAdjuster.setPose(givenPose);
+
+    while (!poseAdjuster.done()) {
+        poseAdjuster.Spin();
+        poseAdjusterRate.sleep();
+    }
+
+    return true;
+}
+
+bool adjustRestPose(){
+    return adjustPose(getRestPose());
+}
+
+bool adjustGaitPose(){
+    return adjustPose(startGaitPose);
+}
+
 bool gaitControllerCommandCallback(dyret_controller::GaitControllerCommandService::Request  &req,
                                    dyret_controller::GaitControllerCommandService::Response &res) {
     if (req.gaitControllerCommand.gaitControllerCommand == req.gaitControllerCommand.t_spinOnce){
         spinGaitOnce();
+    } else if (req.gaitControllerCommand.gaitControllerCommand == req.gaitControllerCommand.t_adjustRestPose){
+        ROS_INFO("Adjusting to restpose");
+        return adjustRestPose();
+    } else if (req.gaitControllerCommand.gaitControllerCommand == req.gaitControllerCommand.t_adjustGaitPose) {
+        ROS_INFO("Adjusting to gaitpose");
+        return adjustGaitPose();
+    } else if (req.gaitControllerCommand.gaitControllerCommand == req.gaitControllerCommand.t_startWalking) {
+        ROS_INFO("Starting to walk");
+        walking = true;
+    } else if (req.gaitControllerCommand.gaitControllerCommand == req.gaitControllerCommand.t_stopWalking) {
+        ROS_INFO("Stopping");
+        walking = false;
+    } else {
+        ROS_ERROR("Unknown gaitControllerCommand");
     }
 
     return true;
@@ -375,13 +397,11 @@ int main(int argc, char **argv) {
     servoConfigClient = n.serviceClient<dyret_common::Configure>("/dyret/configuration");
     positionCommand_pub = n.serviceClient<dyret_controller::SendPositionCommand>("/dyret/dyret_controller/positionCommandService");
 
-    ros::Subscriber actionMessages_sub = n.subscribe("/dyret/dyret_controller/actionMessages", 100, actionMessagesCallback);
     ros::Subscriber servoStates_sub = n.subscribe("/dyret/state", 1, servoStatesCallback);
 
     poseCommand_pub = n.advertise<dyret_common::Pose>("/dyret/command", 3);
 
     waitForRosInit(get_gait_evaluation_client, "get_gait_evaluation");
-    waitForRosInit(actionMessages_sub, "/dyret/dyret_controller/actionMessages");
     waitForRosInit(servoStates_sub, "servoStates");
 
     legActuatorLengths = {0.0, 0.0};
@@ -389,15 +409,6 @@ int main(int argc, char **argv) {
     // Initialize bSplineGait
     globalGaitFrequency = 1.0;
     globalLiftDuration = 0.125;
-
-    IncPoseAdjuster restPoseAdjuster(&servoAnglesInRad,
-                                     &legActuatorLengths,
-                                     &positionCommand_pub);
-    restPoseAdjuster.setPose(getRestPose());
-    restPoseAdjuster.skip();
-
-    int lastAction = dyret_controller::ActionMessage::t_idle;
-    currentAction = dyret_controller::ActionMessage::t_idle;
 
     if (ros::Time::isSystemTime()) { // do not set servo speed in simulation
         setServoSpeeds(0.01, servoConfigClient);
@@ -412,100 +423,15 @@ int main(int argc, char **argv) {
     activatedRecording = false;
     ros::Rate poseAdjusterRate(50);
 
+    // TODO:
+    //   pauseGaitRecording(get_gait_evaluation_client);
+    //   if (ros::Time::isSystemTime()) setServoSpeeds(poseAdjustSpeed, servoConfigClient);
+
     while (ros::ok()) {
-        if (currentAction == dyret_controller::ActionMessage::t_sleep) {
-
-        } else if (currentAction == dyret_controller::ActionMessage::t_idle) {
-            //loop_rate.sleep();
-
-            // Check for transition
-            if (lastAction == dyret_controller::ActionMessage::t_contGait) {
-                pauseGaitRecording(get_gait_evaluation_client);
-
-                gaitInitAdjuster.reset();
-                activatedRecording = false;
-
-                if (ros::Time::isSystemTime()) setServoSpeeds(poseAdjustSpeed, servoConfigClient);
-            }
-
-        } else if (currentAction == dyret_controller::ActionMessage::t_restPose) {
-
-            // Check for transition from walking
-            if (lastAction == dyret_controller::ActionMessage::t_contGait) {
-
-                pauseGaitRecording(get_gait_evaluation_client);
-
-                activatedRecording = false;
-
-            }
-
-            // Check for transition from anything
-            if (lastAction != dyret_controller::ActionMessage::t_restPose){
-                if (ros::Time::isSystemTime()) setServoSpeeds(poseAdjustSpeed, servoConfigClient);
-
-                if (ros::Time::isSimTime() && !initAdjustInSim) {
-                    moveAllLegsToGlobalPosition(getRestPose(), &positionCommand_pub);
-                    restPoseAdjuster.skip();
-                    ros::Duration(1).sleep();
-                    startTime = ros::Time::now();
-                } else {
-                    restPoseAdjuster.setPose(getRestPose());
-                    restPoseAdjuster.reset();
-                }
-            }
-
-            if (restPoseAdjuster.done() == false) {
-                restPoseAdjuster.Spin();
-                poseAdjusterRate.sleep();
-
-            } else {
-                currentAction = dyret_controller::ActionMessage::t_idle;
-            }
-
-        } else if (currentAction == dyret_controller::ActionMessage::t_contGait) {
-
-            //gaitRate.sleep();
-
-            // Check for transition
-            if (lastAction != dyret_controller::ActionMessage::t_contGait) {
-                if (lastActionMessage->direction ==  0) {
-                    printf("Moving forward!\n");
-                    movingForward = true;
-
-                    std::vector<vec3P> initialGaitPose = lockToZ(add( bSplineGait.getPosition(0.0, movingForward), wagGenerator.getGaitWagPoint(0.0, movingForward) ),
-                                                                 groundHeight);
-                    gaitInitAdjuster.setPose(initialGaitPose);
-                } else {
-                    printf("Moving in reverse!\n");
-                    movingForward = false;
-
-                    std::vector<vec3P> initialGaitPose = lockToZ(add( bSplineGait.getPosition(0.0, movingForward), wagGenerator.getGaitWagPoint(0.0, movingForward) ),
-                                                                 groundHeight);
-                    gaitInitAdjuster.setPose(initialGaitPose);
-                }
-            }
-
-            if (gaitInitAdjuster.done() == false) {
-
-                if (ros::Time::isSystemTime() || initAdjustInSim) {
-                    if (gaitInitAdjuster.Spin() == true) {
-                        if (ros::Time::isSystemTime()) setServoSpeeds(gaitServoSpeed, servoConfigClient);
-                    }
-                }
-
-                poseAdjusterRate.sleep();
-
-                startTime = ros::Time::now();
-            } else {
-
-                spinGaitOnce();
-            }
-        } else {
-            ROS_FATAL("Undefined action!");
-            exit(-1);
+        if (walking) {
+            spinGaitOnce();
         }
 
-        lastAction = currentAction; // Save last action to handle transitions
         ros::spinOnce();
 
     }

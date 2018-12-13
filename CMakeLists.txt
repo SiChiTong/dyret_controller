@@ -26,7 +26,6 @@ add_message_files(
   DIRECTORY msg
   FILES
   PositionCommand.msg
-  ActionMessage.msg
   DistAngCommand.msg
   DistAngMeasurement.msg
   GaitControllerStatus.msg

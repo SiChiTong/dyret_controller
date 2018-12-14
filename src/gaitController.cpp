@@ -49,7 +49,6 @@ unsigned char currentAction;
 
 // Config:
 const double poseAdjustSpeed = 0.08;
-const double gaitServoSpeed = 0.0;
 const float frontOffset = 0.0f;
 const float rearLegOffset = -30.0f;
 
@@ -105,82 +104,19 @@ bool getGaitControllerStatusService(dyret_controller::GetGaitControllerStatus::R
     return true;
 }
 
-bool gaitConfigurationCallback(dyret_controller::ConfigureGait::Request  &req,
-                               dyret_controller::ConfigureGait::Response &res) {
+void setLegLengths(float femurLengths, float tibiaLengths) {
+    dyret_common::Pose msg;
 
-    ROS_INFO("Got gait configuration message for gait type %s", req.gaitConfiguration.gaitName.c_str());
+    msg.prismatic.resize(2);
 
-    // Reset vars between runs
-    activatedRecording = false;
-    currentInferredPosition = 0.0;
+    msg.prismatic[0] = femurLengths;
+    msg.prismatic[1] = tibiaLengths;
 
-    gaitType = req.gaitConfiguration.gaitName;
+    poseCommand_pub.publish(msg);
+}
 
-    gaitConfiguration.clear();
-    assert(req.gaitConfiguration.parameterName.size() == req.gaitConfiguration.parameterValue.size());
-    for (size_t i = 0; i < req.gaitConfiguration.parameterName.size(); ++i)
-        gaitConfiguration[req.gaitConfiguration.parameterName[i]] = req.gaitConfiguration.parameterValue[i];
-
-    if (ros::Time::isSystemTime()) setServoSpeeds(poseAdjustSpeed, servoConfigClient);
-    gaitInitAdjuster.reset();
-
-    if (gaitType == "highLevelSplineGait") {
-        // Gait params:
-        globalLiftDuration = gaitConfiguration.at("liftDuration");
-
-        bSplineGait.initHighLevelGait(gaitConfiguration.at("stepHeight"),
-                                      gaitConfiguration.at("stepLength"),
-                                      gaitConfiguration.at("smoothing"),
-                                      groundHeight,
-                                      spreadAmount,
-                                      frontOffset,
-                                      rearLegOffset,
-                                      globalLiftDuration);
-
-        wagGenerator.enableWag(bSplineGaitWagOffset + gaitConfiguration.at("wagPhase"),
-                               gaitConfiguration.at("wagAmplitude_x"),
-                               gaitConfiguration.at("wagAmplitude_y"));
-
-    } else if (gaitType == "lowLevelSplineGait"){
-
-        globalGaitFrequency = gaitConfiguration.at("frequency");
-        globalLiftDuration = gaitConfiguration.at("liftDuration");
-
-        bSplineGait.initLowLevelGait(gaitConfiguration, groundHeight);
-        //if (movingForward) bSplineGait.writeGaitToFile();
-
-        //wagGenerator.enableWag(0.0, 0.0, 0.0);
-        wagGenerator.enableWag(bSplineGaitWagOffset + gaitConfiguration.at("wagPhase"),
-                               gaitConfiguration.at("wagAmplitude_x"),
-                               gaitConfiguration.at("wagAmplitude_y"));
-
-    } else {
-        ROS_FATAL("Unknown gait specified: %s!", gaitType.c_str());
-        exit(-1);
-    }
-
-    // Set initial pose for adjustment
-    movingForward = req.gaitConfiguration.directionForward;
-
-    startGaitPose = lockToZ(add(bSplineGait.getPosition(0.0, movingForward), wagGenerator.getGaitWagPoint(0.0, movingForward)),
-                            groundHeight);
-
-    // Limit frequency so speed is below 10m/min:
-    globalGaitFrequency = gaitConfiguration.at("frequency");
-
-    // Adjust to the start of the gait only in simulation. NOTE: THIS ASSUMES FORWARD MOVEMENT
-    if (ros::Time::isSimTime() && !initAdjustInSim) {
-        // Calculate the initial pose of the gait
-        std::vector<vec3P> initialGaitPose = lockToZ(add( bSplineGait.getPosition(0.0, movingForward), wagGenerator.getGaitWagPoint(0.0, movingForward) ),
-                                                     groundHeight);
-
-        moveAllLegsToGlobalPosition(initialGaitPose, &positionCommand_pub);
-        gaitInitAdjuster.skip();
-        sleep(1);
-        startTime = ros::Time::now();
-    }
-
-    return true;
+bool legsAreLength(float femurLengths, float tibiaLengths) {
+    return ((fabs(femurLengths - legActuatorLengths[0]) < 1.0f) && (fabs(tibiaLengths - legActuatorLengths[1]) < 1.0f));
 }
 
 void servoStatesCallback(const dyret_common::State::ConstPtr &msg) {
@@ -197,48 +133,6 @@ void servoStatesCallback(const dyret_common::State::ConstPtr &msg) {
             (prismaticPositions[1] + prismaticPositions[3] + prismaticPositions[5] + prismaticPositions[7]) / 4.0f;
 
     groundHeight = (float) (groundHeightOffset - ((legActuatorLengths[0] + legActuatorLengths[1]) * groundCorrectionFactor));
-}
-
-bool saveLog(){
-    dyret_controller::LoggerCommand srv;
-
-    srv.request.command = srv.request.SAVE_LOG;
-
-    if (!loggerCommandService_client.call(srv)) {
-        printf("Error while calling LoggerCommand service\n");
-        ROS_ERROR("Error while calling LoggerCommand service");
-        return false;
-    }
-
-    return true;
-}
-
-void startGaitRecording(ros::ServiceClient get_gait_evaluation_client) {
-
-    dyret_controller::GetGaitEvaluation srv;
-
-    srv.request.givenCommand = dyret_controller::GetGaitEvaluation::Request::t_start;
-
-    if (get_gait_evaluation_client.call(srv)) {
-        ROS_INFO("Called startGaitRecording service\n");
-    }
-
-}
-
-void pauseGaitRecording(ros::ServiceClient get_gait_evaluation_client) {
-
-    currentInferredPosition = 0.0;
-
-    dyret_controller::GetGaitEvaluation srv;
-
-    srv.request.givenCommand = dyret_controller::GetGaitEvaluation::Request::t_pause;
-
-    if (get_gait_evaluation_client.call(srv)) {
-        ROS_INFO("Called pauseGaitRecording service\n");
-    }
-
-    saveLog();
-
 }
 
 std::vector<vec3P> getRestPose() {
@@ -355,6 +249,114 @@ bool adjustGaitPose(){
     return adjustPose(startGaitPose);
 }
 
+bool gaitConfigurationCallback(dyret_controller::ConfigureGait::Request  &req,
+                               dyret_controller::ConfigureGait::Response &res) {
+
+    ROS_INFO("Got gait configuration message for gait type %s", req.gaitConfiguration.gaitName.c_str());
+
+    // Set leg lengths and wait until they reach the correct length
+    float femurLength = req.gaitConfiguration.femurLength;
+    float tibiaLength = req.gaitConfiguration.tibiaLength;
+
+    if (req.gaitConfiguration.prepareForGait && (femurLength >= 0 && tibiaLength >= 0)) {
+        ROS_INFO("Setting leg lengths to %.2f and %.2f", femurLength, req.gaitConfiguration.tibiaLength);
+        setLegLengths(femurLength, req.gaitConfiguration.tibiaLength);
+    }
+
+    // Reset vars between runs
+    activatedRecording = false;
+    currentInferredPosition = 0.0;
+
+    gaitType = req.gaitConfiguration.gaitName;
+
+    gaitConfiguration.clear();
+    assert(req.gaitConfiguration.gaitParameterName.size() == req.gaitConfiguration.gaitParameterValue.size());
+    for (size_t i = 0; i < req.gaitConfiguration.gaitParameterName.size(); ++i)
+        gaitConfiguration[req.gaitConfiguration.gaitParameterName[i]] = req.gaitConfiguration.gaitParameterValue[i];
+
+    if (ros::Time::isSystemTime()) setServoSpeeds(poseAdjustSpeed, servoConfigClient);
+    gaitInitAdjuster.reset();
+
+    if (gaitType == "highLevelSplineGait") {
+        // Gait params:
+        globalLiftDuration = gaitConfiguration.at("liftDuration");
+
+        bSplineGait.initHighLevelGait(gaitConfiguration.at("stepHeight"),
+                                      gaitConfiguration.at("stepLength"),
+                                      gaitConfiguration.at("smoothing"),
+                                      groundHeight,
+                                      spreadAmount,
+                                      frontOffset,
+                                      rearLegOffset,
+                                      globalLiftDuration);
+
+        wagGenerator.enableWag(bSplineGaitWagOffset + gaitConfiguration.at("wagPhase"),
+                               gaitConfiguration.at("wagAmplitude_x"),
+                               gaitConfiguration.at("wagAmplitude_y"));
+
+    } else if (gaitType == "lowLevelSplineGait"){
+
+        globalGaitFrequency = gaitConfiguration.at("frequency");
+        globalLiftDuration = gaitConfiguration.at("liftDuration");
+
+        bSplineGait.initLowLevelGait(gaitConfiguration, groundHeight);
+        //if (movingForward) bSplineGait.writeGaitToFile();
+
+        //wagGenerator.enableWag(0.0, 0.0, 0.0);
+        wagGenerator.enableWag(bSplineGaitWagOffset + gaitConfiguration.at("wagPhase"),
+                               gaitConfiguration.at("wagAmplitude_x"),
+                               gaitConfiguration.at("wagAmplitude_y"));
+
+    } else {
+        ROS_FATAL("Unknown gait specified: %s!", gaitType.c_str());
+        exit(-1);
+    }
+
+    // Set initial pose for adjustment
+    movingForward = req.gaitConfiguration.directionForward;
+
+    startGaitPose = lockToZ(add(bSplineGait.getPosition(0.0, movingForward), wagGenerator.getGaitWagPoint(0.0, movingForward)),
+                            groundHeight);
+
+    // Limit frequency so speed is below 10m/min:
+    globalGaitFrequency = gaitConfiguration.at("frequency");
+
+    // Adjust to the start of the gait only in simulation. NOTE: THIS ASSUMES FORWARD MOVEMENT
+    if (ros::Time::isSimTime() && !initAdjustInSim) {
+        // Calculate the initial pose of the gait
+        std::vector<vec3P> initialGaitPose = lockToZ(add( bSplineGait.getPosition(0.0, movingForward), wagGenerator.getGaitWagPoint(0.0, movingForward) ),
+                                                     groundHeight);
+
+        moveAllLegsToGlobalPosition(initialGaitPose, &positionCommand_pub);
+        gaitInitAdjuster.skip();
+        sleep(1);
+        startTime = ros::Time::now();
+    }
+
+    // Adjust gait pose
+    if (req.gaitConfiguration.prepareForGait) {
+        adjustGaitPose();
+    }
+
+    if (req.gaitConfiguration.prepareForGait && (femurLength >= 0 && tibiaLength >= 0)) {
+        int secPassed = 0;
+        ros::spinOnce();
+        while (!legsAreLength(femurLength, tibiaLength)) {
+            ros::spinOnce();
+            sleep(1); //todo: fix for simulation
+            setLegLengths(femurLength, tibiaLength);
+            if (((ros::Time::isSystemTime()) && (secPassed > 90)) || (ros::Time::isSimTime() && (secPassed > 5))) {
+                ROS_ERROR("Timed out waiting for legs to be at length");
+                return false;
+            }
+            secPassed += 1;
+        }
+        ROS_INFO("Leg lengths achieved");
+    }
+
+    return true;
+}
+
 bool gaitControllerCommandCallback(dyret_controller::GaitControllerCommandService::Request  &req,
                                    dyret_controller::GaitControllerCommandService::Response &res) {
     if (req.gaitControllerCommand.gaitControllerCommand == req.gaitControllerCommand.t_spinOnce){
@@ -422,10 +424,6 @@ int main(int argc, char **argv) {
 
     activatedRecording = false;
     ros::Rate poseAdjusterRate(50);
-
-    // TODO:
-    //   pauseGaitRecording(get_gait_evaluation_client);
-    //   if (ros::Time::isSystemTime()) setServoSpeeds(poseAdjustSpeed, servoConfigClient);
 
     while (ros::ok()) {
         if (walking) {

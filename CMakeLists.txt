@@ -13,6 +13,7 @@ set(Boost_USE_STATIC_RUNTIME OFF)
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   std_msgs
+  std_srvs
   geometry_msgs
   sensor_msgs
   message_generation

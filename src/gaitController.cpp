@@ -5,9 +5,9 @@
 
 #include "dyret_common/angleConv.h"
 
-#include "ros/ros.h"
+#include <ros/ros.h>
 #include <ros/console.h>
-#include "std_msgs/String.h"
+#include <std_msgs/String.h>
 #include <unistd.h>
 #include <dynamic_reconfigure/server.h>
 
@@ -43,12 +43,15 @@
 
 #include <dyret_hardware/ActuatorBoardState.h>
 
+#include <std_srvs/Empty.h>
+
 using namespace std::chrono;
 
 unsigned char currentAction;
 
 // Config:
-const double poseAdjustSpeed = 0.08;
+const double poseAdjustSpeed = 0.8f;
+const double gaitSpeed = 0.8f;
 const float frontOffset = 0.0f;
 const float rearLegOffset = -30.0f;
 
@@ -233,6 +236,11 @@ bool adjustPose(std::vector<vec3P> givenPose){
 
     poseAdjuster.setPose(givenPose);
 
+    setServoSpeeds(poseAdjustSpeed, servoConfigClient);
+    ROS_INFO("Set servo speed to %.2f", poseAdjustSpeed);
+
+    usleep(1000);
+
     while (!poseAdjuster.done()) {
         poseAdjuster.Spin();
         poseAdjusterRate.sleep();
@@ -274,7 +282,6 @@ bool gaitConfigurationCallback(dyret_controller::ConfigureGait::Request  &req,
     for (size_t i = 0; i < req.gaitConfiguration.gaitParameterName.size(); ++i)
         gaitConfiguration[req.gaitConfiguration.gaitParameterName[i]] = req.gaitConfiguration.gaitParameterValue[i];
 
-    if (ros::Time::isSystemTime()) setServoSpeeds(poseAdjustSpeed, servoConfigClient);
     gaitInitAdjuster.reset();
 
     if (gaitType == "highLevelSplineGait") {
@@ -321,6 +328,9 @@ bool gaitConfigurationCallback(dyret_controller::ConfigureGait::Request  &req,
     // Limit frequency so speed is below 10m/min:
     globalGaitFrequency = gaitConfiguration.at("frequency");
 
+    setServoSpeeds(poseAdjustSpeed, servoConfigClient);
+    ROS_INFO("Set servo speed to %.2f", poseAdjustSpeed);
+
     // Adjust to the start of the gait only in simulation. NOTE: THIS ASSUMES FORWARD MOVEMENT
     if (ros::Time::isSimTime() && !initAdjustInSim) {
         // Calculate the initial pose of the gait
@@ -354,6 +364,9 @@ bool gaitConfigurationCallback(dyret_controller::ConfigureGait::Request  &req,
         ROS_INFO("Leg lengths achieved");
     }
 
+    setServoSpeeds(gaitSpeed, servoConfigClient);
+    ROS_INFO("Set servo speed to %.2f", gaitSpeed);
+
     return true;
 }
 
@@ -380,6 +393,12 @@ bool gaitControllerCommandCallback(dyret_controller::GaitControllerCommandServic
     return true;
 }
 
+bool restPoseServiceCallback(std_srvs::Empty::Request  &req,
+                             std_srvs::Empty::Response &res) {
+    ROS_INFO("Adjusting to restpose");
+    return adjustRestPose();
+}
+
 int main(int argc, char **argv) {
 
     pidParameters.resize(3 * 3);
@@ -392,6 +411,7 @@ int main(int argc, char **argv) {
     ros::ServiceServer gaitControllerStatusService_server = n.advertiseService("get_gait_controller_status", getGaitControllerStatusService);
     ros::ServiceServer inferredPositionServer = n.advertiseService("/dyret/dyret_controller/getInferredPosition", inferredPositionCallback);
     ros::ServiceServer gaitControllerAction = n.advertiseService("/dyret/dyret_controller/gaitControllerCommandService", gaitControllerCommandCallback);
+    ros::ServiceServer restPoseService = n.advertiseService("/dyret/dyret_controller/restPoseService", restPoseServiceCallback);
 
     loggerCommandService_client = n.serviceClient<dyret_controller::LoggerCommand>("/dyret/dyret_logger/loggerCommand");
 
@@ -412,12 +432,12 @@ int main(int argc, char **argv) {
     globalGaitFrequency = 1.0;
     globalLiftDuration = 0.125;
 
-    if (ros::Time::isSystemTime()) { // do not set servo speed in simulation
+    /*if (ros::Time::isSystemTime()) { // do not set servo speed in simulation
         setServoSpeeds(0.01, servoConfigClient);
     }
 
     std::vector<vec3P> restPose = getRestPose();
-    moveAllLegsToGlobalPosition(getRestPose(), &positionCommand_pub);
+    moveAllLegsToGlobalPosition(getRestPose(), &positionCommand_pub);*/
 
     ros::Rate loop_rate(5);
     ros::Rate gaitRate(50);

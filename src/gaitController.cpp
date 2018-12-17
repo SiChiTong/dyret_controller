@@ -100,6 +100,8 @@ IncPoseAdjuster gaitInitAdjuster(
         &legActuatorLengths,
         &positionCommand_pub);
 
+
+
 bool getGaitControllerStatusService(dyret_controller::GetGaitControllerStatus::Request &req,
                                     dyret_controller::GetGaitControllerStatus::Response &res) {
     res.gaitControllerStatus.actionType = currentAction;
@@ -348,15 +350,19 @@ bool gaitConfigurationCallback(dyret_controller::ConfigureGait::Request  &req,
         adjustGaitPose();
     }
 
+    ros::Time legLengthAdjustmentStart = ros::Time::now();
     if (req.gaitConfiguration.prepareForGait && (femurLength >= 0 && tibiaLength >= 0)) {
-        int secPassed = 0;
+        moveAllLegsToGlobalPosition(startGaitPose, &positionCommand_pub); // Continuously send pose to adjust to leg length change
         ros::spinOnce();
         while (!legsAreLength(femurLength, tibiaLength)) {
             ros::spinOnce();
-            sleep(1); //todo: fix for simulation
+            usleep(10000);
             setLegLengths(femurLength, tibiaLength);
+
+            int secPassed = ros::Time::now().sec - legLengthAdjustmentStart.sec;
+
             if (((ros::Time::isSystemTime()) && (secPassed > 90)) || (ros::Time::isSimTime() && (secPassed > 5))) {
-                ROS_ERROR("Timed out waiting for legs to be at length");
+                ROS_ERROR("Timed out waiting for legs to be at length at %ds", secPassed);
                 return false;
             }
             secPassed += 1;

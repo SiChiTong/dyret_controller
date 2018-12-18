@@ -50,8 +50,8 @@ using namespace std::chrono;
 unsigned char currentAction;
 
 // Config:
-const double poseAdjustSpeed = 0.8f;
-const double gaitSpeed = 0.8f;
+const double poseAdjustSpeed = 0.0f;
+const double gaitSpeed = 0.0f;
 const float frontOffset = 0.0f;
 const float rearLegOffset = -30.0f;
 

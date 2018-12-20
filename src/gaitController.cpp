@@ -238,8 +238,10 @@ bool adjustPose(std::vector<vec3P> givenPose){
 
     poseAdjuster.setPose(givenPose);
 
-    setServoSpeeds(poseAdjustSpeed, servoConfigClient);
-    ROS_INFO("Set servo speed to %.2f", poseAdjustSpeed);
+    if (ros::Time::isSystemTime()){
+        setServoSpeeds(poseAdjustSpeed, servoConfigClient);
+        ROS_INFO("Set servo speed to %.2f", poseAdjustSpeed);
+    }
 
     usleep(1000);
 
@@ -330,8 +332,10 @@ bool gaitConfigurationCallback(dyret_controller::ConfigureGait::Request  &req,
     // Limit frequency so speed is below 10m/min:
     globalGaitFrequency = gaitConfiguration.at("frequency");
 
-    setServoSpeeds(poseAdjustSpeed, servoConfigClient);
-    ROS_INFO("Set servo speed to %.2f", poseAdjustSpeed);
+    if (ros::Time::isSystemTime()){
+        setServoSpeeds(poseAdjustSpeed, servoConfigClient);
+        ROS_INFO("Set servo speed to %.2f", poseAdjustSpeed);
+    }
 
     // Adjust to the start of the gait only in simulation. NOTE: THIS ASSUMES FORWARD MOVEMENT
     if (ros::Time::isSimTime() && !initAdjustInSim) {
@@ -370,8 +374,10 @@ bool gaitConfigurationCallback(dyret_controller::ConfigureGait::Request  &req,
         ROS_INFO("Leg lengths achieved");
     }
 
-    setServoSpeeds(gaitSpeed, servoConfigClient);
-    ROS_INFO("Set servo speed to %.2f", gaitSpeed);
+    if (ros::Time::isSystemTime()){
+        setServoSpeeds(gaitSpeed, servoConfigClient);
+        ROS_INFO("Set servo speed to %.2f", gaitSpeed);
+    }
 
     return true;
 }

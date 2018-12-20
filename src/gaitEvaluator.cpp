@@ -192,6 +192,7 @@ void sensorPoseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg){
 }
 
 void imuDataCallback(const sensor_msgs::Imu::ConstPtr& msg) {
+
   if (enableCapture) {
 
     // Angular velocity
@@ -228,9 +229,9 @@ void servoStatesCallback(const dyret_common::State::ConstPtr& msg){
 int main(int argc, char **argv) {
   lastSavedPosition.resize(3); // 3D mocap
   currentPosition.resize(3);
-  startPosition.resize(3); // 3D mocap
-  imuData.resize(9);      // 9 axes
-  currentData.resize(12); // 12 servos
+  startPosition.resize(3);     // 3D mocap
+  imuData.resize(9);           // 9 axes
+  currentData.resize(12);      // 12 servos
 
   enableCapture = false;
   linAcc_z = 9.81;

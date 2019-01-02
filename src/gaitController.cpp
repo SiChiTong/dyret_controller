@@ -72,6 +72,9 @@ const double groundCorrectionFactor = 0.8;
 float groundHeight = -430.0f;
 std::vector<double> legActuatorLengths;
 
+float receivedFemurLength = 0.0;
+float receivedTibiaLength = 0.0;
+
 const float bSplineGaitWagOffset = 0.91;
 
 const float spreadAmount = 80.0; // was 50
@@ -222,6 +225,10 @@ void spinGaitOnce(){
 
         if (servoIds.size() != 0) {
             msg.revolute = anglesInRad;
+
+            msg.prismatic.resize(2);
+            msg.prismatic[0] = receivedFemurLength;
+            msg.prismatic[1] = receivedTibiaLength;
             poseCommand_pub.publish(msg);
         } else {
             ROS_WARN("Did not send invalid dyn commands!\n");
@@ -269,6 +276,9 @@ bool gaitConfigurationCallback(dyret_controller::ConfigureGait::Request  &req,
     // Set leg lengths and wait until they reach the correct length
     float femurLength = req.gaitConfiguration.femurLength;
     float tibiaLength = req.gaitConfiguration.tibiaLength;
+
+    receivedFemurLength = femurLength;
+    receivedTibiaLength = tibiaLength;
 
     if (req.gaitConfiguration.prepareForGait && (femurLength >= 0 && tibiaLength >= 0)) {
         ROS_INFO("Setting leg lengths to %.2f and %.2f", femurLength, req.gaitConfiguration.tibiaLength);

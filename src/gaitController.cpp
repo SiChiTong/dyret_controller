@@ -283,6 +283,7 @@ bool gaitConfigurationCallback(dyret_controller::ConfigureGait::Request  &req,
     if (req.gaitConfiguration.prepareForGait && (femurLength >= 0 && tibiaLength >= 0)) {
         ROS_INFO("Setting leg lengths to %.2f and %.2f", femurLength, req.gaitConfiguration.tibiaLength);
         setLegLengths(femurLength, req.gaitConfiguration.tibiaLength);
+        if (ros::Time::isSimTime()) ros::Duration(2).sleep();
     }
 
     // Reset vars between runs
@@ -371,7 +372,6 @@ bool gaitConfigurationCallback(dyret_controller::ConfigureGait::Request  &req,
         ros::spinOnce();
 
         if (!ros::Time::isSimTime()){
-
             while (!legsAreLength(femurLength, tibiaLength)) {
                 ros::spinOnce();
                 usleep(10000);

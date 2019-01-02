@@ -367,21 +367,26 @@ bool gaitConfigurationCallback(dyret_controller::ConfigureGait::Request  &req,
     ros::Time legLengthAdjustmentStart = ros::Time::now();
     if (req.gaitConfiguration.prepareForGait && (femurLength >= 0 && tibiaLength >= 0)) {
         moveAllLegsToGlobalPosition(startGaitPose, &positionCommand_pub); // Continuously send pose to adjust to leg length change
+        setLegLengths(femurLength, tibiaLength);
         ros::spinOnce();
-        while (!legsAreLength(femurLength, tibiaLength)) {
-            ros::spinOnce();
-            usleep(10000);
-            setLegLengths(femurLength, tibiaLength);
 
-            int secPassed = ros::Time::now().sec - legLengthAdjustmentStart.sec;
+        if (!ros::Time::isSimTime()){
 
-            if (((ros::Time::isSystemTime()) && (secPassed > 90)) || (ros::Time::isSimTime() && (secPassed > 5))) {
-                ROS_ERROR("Timed out waiting for legs to be at length at %ds", secPassed);
-                return false;
+            while (!legsAreLength(femurLength, tibiaLength)) {
+                ros::spinOnce();
+                usleep(10000);
+                setLegLengths(femurLength, tibiaLength);
+
+                int secPassed = ros::Time::now().sec - legLengthAdjustmentStart.sec;
+
+                if (((ros::Time::isSystemTime()) && (secPassed > 90)) || (ros::Time::isSimTime() && (secPassed > 5))) {
+                    ROS_ERROR("Timed out waiting for legs to be at length at %ds", secPassed);
+                    return false;
+                }
+                secPassed += 1;
             }
-            secPassed += 1;
+            ROS_INFO("Leg lengths achieved");
         }
-        ROS_INFO("Leg lengths achieved");
     }
 
     if (ros::Time::isSystemTime()){

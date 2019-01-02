@@ -40,25 +40,41 @@ bool loggerCommandCallback(dyret_controller::LoggerCommand::Request  &req,
 
 void stateCallback(const dyret_common::State::ConstPtr &msg) {
     if (loggingEnabled){
-        bag.write("/dyret/state", msg->header.stamp, msg);
+        try {
+            bag.write("/dyret/state", msg->header.stamp, msg);
+        } catch (rosbag::BagException e){
+            ROS_ERROR("Exception while writing state message to log: %s", e.what());
+        }
     }
 }
 
 void commandCallback(const dyret_common::Pose::ConstPtr &msg) {
     if (loggingEnabled){
-        bag.write("/dyret/command", msg->header.stamp, msg);
+        try {
+            bag.write("/dyret/command", msg->header.stamp, msg);
+        } catch (rosbag::BagException e){
+            ROS_ERROR("Exception while writing command message to log: %s", e.what());
+        }
     }
 }
 
 void imuCallback(const sensor_msgs::Imu::ConstPtr &msg) {
     if (loggingEnabled){
-        bag.write("/dyret/sensor/imu", msg->header.stamp, msg);
+        try {
+            bag.write("/dyret/sensor/imu", msg->header.stamp, msg);
+        } catch (rosbag::BagException e){
+            ROS_ERROR("Exception while writing imu message to log: %s", e.what());
+        }
     }
 }
 
 void poseCallback(const geometry_msgs::PoseStamped::ConstPtr &msg) {
     if (loggingEnabled){
-        bag.write("/dyret/sensor/pose", msg->header.stamp, msg);
+        try {
+            bag.write("/dyret/sensor/pose", msg->header.stamp, msg);
+        } catch (rosbag::BagException e){
+            ROS_ERROR("Exception while writing pose message to log: %s", e.what());
+        }
     }
 }
 

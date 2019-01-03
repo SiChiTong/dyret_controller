@@ -48,6 +48,7 @@ void sendPositionCommand(std::vector<double> legPositions){
              legAngles[9], legAngles[10], legAngles[11]);
 
     dyret_common::Pose poseMsg;
+    poseMsg.header.stamp = ros::Time().now();
     poseMsg.revolute = legAngles;
     poseCommand_pub.publish(poseMsg);
 }

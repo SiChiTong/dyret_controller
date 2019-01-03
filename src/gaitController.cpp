@@ -115,6 +115,8 @@ bool getGaitControllerStatusService(dyret_controller::GetGaitControllerStatus::R
 void setLegLengths(float femurLengths, float tibiaLengths) {
     dyret_common::Pose msg;
 
+    msg.header.stamp = ros::Time().now();
+
     msg.prismatic.resize(2);
 
     msg.prismatic[0] = femurLengths;

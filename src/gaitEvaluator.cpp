@@ -23,6 +23,8 @@
 #include "dyret_controller/GetInferredPosition.h"
 
 bool enableCapture;
+bool enableLogging = false;
+bool firstLine = true;
 
 std::vector<std::vector<double>> imuData;
 std::vector<std::vector<double>> currentData;
@@ -35,6 +37,8 @@ std::vector<double> currentPosition;
 std::vector<double> lastSavedPosition;
 
 ros::ServiceClient inferredPositionClient;
+
+FILE * fitnessLogFile;
 
 // This function makes sure the given key exists in the map before inserting it
 void setMapValue(std::map<std::string, double> &givenMap, std::string givenKey, double givenValue){
@@ -58,6 +62,112 @@ float getInferredPosition(){
     }
 
     return srv.response.currentInferredPosition.distance;
+}
+
+std::map<std::string, double> getResults(std::map<std::string, double> resultMap, bool useCurrentTime = false){
+
+    double timePassed = accTime;
+
+    if (useCurrentTime){
+        timePassed = (ros::Time::now() - startTime).sec;
+    }
+
+    // Calculate IMU fitness values:
+    std::vector<float> sums(imuData.size());
+    std::vector<float> means(imuData.size());
+    std::vector<float> sq_sums(imuData.size());
+    std::vector<float> SDs(imuData.size());
+    //std::vector<float> SDs_z(imuData.size());
+
+    for (int i = 0; i < imuData.size(); i++){
+        sums[i] = std::accumulate(imuData[i].begin(), imuData[i].end(), 0.0);
+        means[i] = sums[i] / imuData[i].size();
+        sq_sums[i] = std::inner_product(imuData[i].begin(), imuData[i].end(), imuData[i].begin(), 0.0);
+        SDs[i] = std::sqrt(sq_sums[i] / imuData[i].size() - means[i] * means[i]);
+        //SDs_z[i] = std::sqrt(sq_sums[i] / imuData[i].size());
+    }
+
+    // Calculate servo fitness value:
+    std::vector<float> currentSums(currentData.size());
+    std::vector<float> currentMeans(currentData.size());
+    float averagePowerDraw;
+    float ampHours;
+    float powerFitness;
+
+    for (int i = 0; i < currentData.size(); i++){
+        currentSums[i] = std::accumulate(currentData[i].begin(), currentData[i].end(), 0.0f);
+        currentMeans[i] = currentSums[i] / currentData[i].size();
+    }
+    averagePowerDraw = std::accumulate(currentMeans.begin(), currentMeans.end(), 0.0f);
+    if (averagePowerDraw != 0) {
+        ampHours = averagePowerDraw * ((((float) timePassed) / 60.0f) / 60.0f);
+        powerFitness = (fabs(getInferredPosition()) / 1000.0f) / ampHours; // m / Ah
+    } else{
+        powerFitness = 0.0;
+    }
+
+    // Calculate speed fitness value:
+    float calculatedInferredSpeed = (float) (fabs(getInferredPosition()) / 1000.0f) / (((float) timePassed) / 60.0f); // speed in m/min
+
+    float sensorPoseDist = (float) sqrt(pow(startPosition[0] - lastSavedPosition[0],2) + pow(startPosition[1] - lastSavedPosition[1],2) + pow(startPosition[2] - lastSavedPosition[2],2));
+    float sensorPoseDistForward = (float) -(startPosition[1] - lastSavedPosition[1]);
+
+    float sensorPoseSpeed = sensorPoseDist / (((float) timePassed) / 60.0f);
+    float sensorPoseSpeedForward = sensorPoseDistForward / (((float) timePassed) / 60.0f);
+
+    ROS_INFO("Origin: %.2f, %.2f, %.2f\n", startPosition[0], startPosition[1], startPosition[2]);
+    ROS_INFO("End:    %.2f, %.2f, %.2f\n", lastSavedPosition[0], lastSavedPosition[1], startPosition[2]);
+
+    // Calculate mocap fitness value
+    ROS_INFO("Distance: %.2f (S: %.2f)\n", sensorPoseDist, sensorPoseSpeed);
+
+    // Assign fitness values:
+    setMapValue(resultMap, "inferredSpeed", calculatedInferredSpeed);
+    setMapValue(resultMap, "angVel", -(SDs[0] + SDs[1] + SDs[2]));
+    setMapValue(resultMap, "linAcc", -(SDs[3] + SDs[4] + SDs[5]));
+    setMapValue(resultMap, "combAngStab", - (SDs[6] + SDs[7]));
+    setMapValue(resultMap, "power", powerFitness);
+    setMapValue(resultMap, "sensorSpeed", sensorPoseSpeed);
+    setMapValue(resultMap, "combImuStab", resultMap["combAngStab"] + (resultMap["linAcc"] / 50.0f));
+    setMapValue(resultMap, "linAcc_z", (float) linAcc_z);
+    setMapValue(resultMap, "sensorSpeedForward", sensorPoseSpeedForward);
+
+    return resultMap;
+}
+
+std::string getDateString() {
+    time_t t = time(0);   // get time now
+    struct tm *now = localtime(&t);
+
+    std::stringstream ss;
+
+    ss << now->tm_year + 1900
+       << std::setw(2) << std::setfill('0') << now->tm_mon + 1
+       << std::setw(2) << std::setfill('0') << now->tm_mday
+       << std::setw(2) << std::setfill('0') << now->tm_hour
+       << std::setw(2) << std::setfill('0') << now->tm_min
+       << std::setw(2) << std::setfill('0') << now->tm_sec;
+
+    return ss.str();
+
+}
+
+void printMap(std::map<std::string, double> givenMap, std::string givenLeadingString, FILE * givenDestination){
+
+    int i = 0;
+    for(auto elem : givenMap){
+
+        if (isinf(elem.second)){
+            fprintf(givenDestination, (givenLeadingString + "\"%s\": \"INF\"").c_str(), elem.first.c_str());
+        } else if (isnan(elem.second)) {
+            fprintf(givenDestination, (givenLeadingString + "\"%s\": \"NAN\"").c_str(), elem.first.c_str());
+        } else {
+            fprintf(givenDestination, (givenLeadingString + "\"%s\": %f").c_str(), elem.first.c_str(), elem.second);
+        }
+
+        if (i != givenMap.size()-1) fprintf(givenDestination, ",\n"); else fprintf(givenDestination, "\n");
+        i++;
+    }
 }
 
 bool getGaitEvaluationService(dyret_controller::GetGaitEvaluation::Request  &req,
@@ -86,6 +196,13 @@ bool getGaitEvaluationService(dyret_controller::GetGaitEvaluation::Request  &req
 
         for (int i = 0; i < startPosition.size(); i++) startPosition[i] = currentPosition[i];
 
+        if (enableLogging){
+            fitnessLogFile = fopen(std::string("/home/tonnesfn/catkin_ws/customLogs/fitnessEvals/" + getDateString() + "_fitness.csv").c_str(), "w");
+            fprintf(fitnessLogFile, "{\n  \"measurements\": [\n");
+            firstLine = true;
+        }
+
+
         break;
     }
     case (dyret_controller::GetGaitEvaluationRequest::t_pause):
@@ -107,67 +224,22 @@ bool getGaitEvaluationService(dyret_controller::GetGaitEvaluation::Request  &req
     case (dyret_controller::GetGaitEvaluationRequest::t_getResults):
       ROS_INFO("req.t_getResults received\n");
 
-      // Calculate IMU fitness values:
-      std::vector<float> sums(imuData.size());
-      std::vector<float> means(imuData.size());
-      std::vector<float> sq_sums(imuData.size());
-      std::vector<float> SDs(imuData.size());
-      //std::vector<float> SDs_z(imuData.size());
+      results = getResults(results);
 
-      for (int i = 0; i < imuData.size(); i++){
-        sums[i] = std::accumulate(imuData[i].begin(), imuData[i].end(), 0.0);
-        means[i] = sums[i] / imuData[i].size();
-        sq_sums[i] = std::inner_product(imuData[i].begin(), imuData[i].end(), imuData[i].begin(), 0.0);
-        SDs[i] = std::sqrt(sq_sums[i] / imuData[i].size() - means[i] * means[i]);
-        //SDs_z[i] = std::sqrt(sq_sums[i] / imuData[i].size());
+      if (enableLogging){
+          fprintf(fitnessLogFile, "    }\n  ]\n}");
+          fclose(fitnessLogFile);
       }
-
-      // Calculate servo fitness value:
-      std::vector<float> currentSums(currentData.size());
-      std::vector<float> currentMeans(currentData.size());
-      float averagePowerDraw;
-      float ampHours;
-      float powerFitness;
-
-      for (int i = 0; i < currentData.size(); i++){
-          currentSums[i] = std::accumulate(currentData[i].begin(), currentData[i].end(), 0.0f);
-          currentMeans[i] = currentSums[i] / currentData[i].size();
-      }
-      averagePowerDraw = std::accumulate(currentMeans.begin(), currentMeans.end(), 0.0f);
-      if (averagePowerDraw != 0) {
-          ampHours = averagePowerDraw * ((((float) accTime) / 60.0f) / 60.0f);
-          powerFitness = (fabs(getInferredPosition()) / 1000.0f) / ampHours; // m / Ah
-      } else{
-          powerFitness = 0.0;
-      }
-
-      // Calculate speed fitness value:
-      float calculatedInferredSpeed = (float) (fabs(getInferredPosition()) / 1000.0f) / (((float) accTime) / 60.0f); // speed in m/min
-
-      float sensorPoseDist = (float) sqrt(pow(startPosition[0] - lastSavedPosition[0],2) + pow(startPosition[1] - lastSavedPosition[1],2) + pow(startPosition[2] - lastSavedPosition[2],2));
-      float sensorPoseDistForward = (float) -(startPosition[1] - lastSavedPosition[1]);
-
-      float sensorPoseSpeed = sensorPoseDist / (((float) accTime) / 60.0f);
-      float sensorPoseSpeedForward = sensorPoseDistForward / (((float) accTime) / 60.0f);
-
-      ROS_INFO("Origin: %.2f, %.2f, %.2f\n", startPosition[0], startPosition[1], startPosition[2]);
-      ROS_INFO("End:    %.2f, %.2f, %.2f\n", lastSavedPosition[0], lastSavedPosition[1], startPosition[2]);
-
-      // Calculate mocap fitness value
-      ROS_INFO("Distance: %.2f (S: %.2f)\n", sensorPoseDist, sensorPoseSpeed);
-
-      // Assign fitness values:
-      setMapValue(results, "inferredSpeed", calculatedInferredSpeed);
-      setMapValue(results, "angVel", -(SDs[0] + SDs[1] + SDs[2]));
-      setMapValue(results, "linAcc", -(SDs[3] + SDs[4] + SDs[5]));
-      setMapValue(results, "combAngStab", - (SDs[6] + SDs[7] + SDs[8]));
-      setMapValue(results, "power", powerFitness);
-      setMapValue(results, "sensorSpeed", sensorPoseSpeed);
-      setMapValue(results, "combImuStab", results["combAngStab"] + (results["linAcc"] / 50.0f));
-      setMapValue(results, "linAcc_z", (float) linAcc_z);
-      setMapValue(results, "sensorSpeedForward", sensorPoseSpeedForward);
 
       break;
+    case (dyret_controller::GetGaitEvaluationRequest::t_disableLogging):
+        ROS_INFO("Disabled logging");
+        enableLogging = false;
+        break;
+    case (dyret_controller::GetGaitEvaluationRequest::t_enableLogging):
+        ROS_INFO("Enabledlogging");
+        enableLogging = true;
+        break;
   };
 
   for(auto elem : results){
@@ -226,6 +298,31 @@ void servoStatesCallback(const dyret_common::State::ConstPtr& msg){
   }
 }
 
+void logCallback(const ros::TimerEvent&){
+    if (enableLogging && enableCapture){
+        std::map<std::string, double> results = {{"inferredSpeed", 0.0},
+                                                 {"angVel", 0.0},
+                                                 {"linAcc", 0.0},
+                                                 {"combAngStab", 0.0},
+                                                 {"power", 0.0},
+                                                 {"sensorSpeed", 0.0},
+                                                 {"combImuStab", 0.0},
+                                                 {"linAcc_z", 0.0},
+                                                 {"sensorSpeedForward",  0.0}};
+        results = getResults(results, true);
+
+        if (firstLine){
+            firstLine = false;
+            fprintf(fitnessLogFile, "    {\n");
+        } else {
+            fprintf(fitnessLogFile, "    },\n    {\n");
+        }
+
+        fprintf(fitnessLogFile, "      \"msec\": %lu,\n", ros::Time::now().toNSec() / 1000);
+        printMap(results, "      ", fitnessLogFile);
+    }
+}
+
 int main(int argc, char **argv) {
   lastSavedPosition.resize(3); // 3D mocap
   currentPosition.resize(3);
@@ -244,6 +341,8 @@ int main(int argc, char **argv) {
   ros::Subscriber servoStates_sub = n.subscribe("/dyret/state", 1, servoStatesCallback);
   ros::Subscriber sensorPose_sub = n.subscribe("/dyret/sensor/pose", 5, sensorPoseCallback);
   inferredPositionClient = n.serviceClient<dyret_controller::GetInferredPosition>("/dyret/dyret_controller/getInferredPosition");
+
+  ros::Timer timer = n.createTimer(ros::Duration(0.1), logCallback);
 
   while(ros::ok()) ros::spin();
 

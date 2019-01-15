@@ -5,6 +5,7 @@
 #include <signal.h>
 #include <math.h>
 #include <numeric>
+#include <queue>
 
 #include "ros/ros.h"
 #include "sensor_msgs/Imu.h"
@@ -35,6 +36,9 @@ double linAcc_z;
 std::vector<double> startPosition;
 std::vector<double> currentPosition;
 std::vector<double> lastSavedPosition;
+
+std::vector<double> speedQueue;
+const int queueSize = 20;
 
 ros::ServiceClient inferredPositionClient;
 
@@ -107,16 +111,30 @@ std::map<std::string, double> getResults(std::map<std::string, double> resultMap
     }
 
     // Calculate speed fitness value:
-    float calculatedInferredSpeed = (float) (fabs(getInferredPosition()) / 1000.0f) / (((float) timePassed) / 60.0f); // speed in m/min
+    float calculatedInferredSpeed = (fabs(getInferredPosition()) / 1000.0f) / (((float) timePassed) / 60.0f); // speed in m/min
 
-    float sensorPoseDist = (float) sqrt(pow(startPosition[0] - lastSavedPosition[0],2) + pow(startPosition[1] - lastSavedPosition[1],2) + pow(startPosition[2] - lastSavedPosition[2],2));
+    float sensorPoseDist = (float) sqrt(pow(startPosition[0] - lastSavedPosition[0],2) + pow(startPosition[1] - lastSavedPosition[1],2));
     float sensorPoseDistForward = (float) -(startPosition[1] - lastSavedPosition[1]);
 
     float sensorPoseSpeed = sensorPoseDist / (((float) timePassed) / 60.0f);
     float sensorPoseSpeedForward = sensorPoseDistForward / (((float) timePassed) / 60.0f);
 
-    ROS_INFO("Origin: %.2f, %.2f, %.2f\n", startPosition[0], startPosition[1], startPosition[2]);
-    ROS_INFO("End:    %.2f, %.2f, %.2f\n", lastSavedPosition[0], lastSavedPosition[1], startPosition[2]);
+    // Calculate filtered speed:
+
+    double filteredSpeed = 0.0;
+
+    if (speedQueue.size() == queueSize) {
+        unsigned long queueLength = speedQueue.size();
+        double queueSum = 0.0;
+
+        for (auto &n : speedQueue)
+            queueSum += n;
+
+        filteredSpeed = queueSum / (double) queueLength;
+    }
+
+    ROS_INFO("Origin: %.2f, %.2f\n", startPosition[0], startPosition[1]);
+    ROS_INFO("End:    %.2f, %.2f\n", lastSavedPosition[0], lastSavedPosition[1]);
 
     // Calculate mocap fitness value
     ROS_INFO("Distance: %.2f (S: %.2f)\n", sensorPoseDist, sensorPoseSpeed);
@@ -131,6 +149,7 @@ std::map<std::string, double> getResults(std::map<std::string, double> resultMap
     setMapValue(resultMap, "combImuStab", resultMap["combAngStab"] + (resultMap["linAcc"] / 50.0f));
     setMapValue(resultMap, "linAcc_z", (float) linAcc_z);
     setMapValue(resultMap, "sensorSpeedForward", sensorPoseSpeedForward);
+    setMapValue(resultMap, "filteredSpeed", filteredSpeed);
 
     return resultMap;
 }
@@ -181,7 +200,8 @@ bool getGaitEvaluationService(dyret_controller::GetGaitEvaluation::Request  &req
                                            {"sensorSpeed", 0.0},
                                            {"combImuStab", 0.0},
                                            {"linAcc_z", 0.0},
-                                           {"sensorSpeedForward",  0.0}};
+                                           {"sensorSpeedForward",  0.0},
+                                           {"filteredSpeed",  0.0}};
 
   switch (req.givenCommand){
     case (dyret_controller::GetGaitEvaluationRequest::t_getDescriptors):
@@ -202,6 +222,7 @@ bool getGaitEvaluationService(dyret_controller::GetGaitEvaluation::Request  &req
             firstLine = true;
         }
 
+        speedQueue.clear();
 
         break;
     }
@@ -298,18 +319,26 @@ void servoStatesCallback(const dyret_common::State::ConstPtr& msg){
   }
 }
 
-void logCallback(const ros::TimerEvent&){
+void logCallback(const ros::TimerEvent&) {
+
+    std::map<std::string, double> results = {{"inferredSpeed",      0.0},
+                                             {"angVel",             0.0},
+                                             {"linAcc",             0.0},
+                                             {"combAngStab",        0.0},
+                                             {"power",              0.0},
+                                             {"sensorSpeed",        0.0},
+                                             {"combImuStab",        0.0},
+                                             {"linAcc_z",           0.0},
+                                             {"sensorSpeedForward", 0.0},
+                                             {"filteredSpeed",      0.0}};
+    results = getResults(results, true);
+
+    if (!isnan(results["sensorSpeed"])) {
+        speedQueue.push_back(results["sensorSpeed"]);
+        if (speedQueue.size() > queueSize) speedQueue.erase(speedQueue.begin());
+    }
+
     if (enableLogging && enableCapture){
-        std::map<std::string, double> results = {{"inferredSpeed", 0.0},
-                                                 {"angVel", 0.0},
-                                                 {"linAcc", 0.0},
-                                                 {"combAngStab", 0.0},
-                                                 {"power", 0.0},
-                                                 {"sensorSpeed", 0.0},
-                                                 {"combImuStab", 0.0},
-                                                 {"linAcc_z", 0.0},
-                                                 {"sensorSpeedForward",  0.0}};
-        results = getResults(results, true);
 
         if (firstLine){
             firstLine = false;
@@ -321,6 +350,7 @@ void logCallback(const ros::TimerEvent&){
         fprintf(fitnessLogFile, "      \"msec\": %lu,\n", ros::Time::now().toNSec() / 1000);
         printMap(results, "      ", fitnessLogFile);
     }
+
 }
 
 int main(int argc, char **argv) {

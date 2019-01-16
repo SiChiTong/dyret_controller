@@ -270,6 +270,14 @@ bool adjustGaitPose(){
     return adjustPose(startGaitPose);
 }
 
+float getMapValue(std::map<std::string, float> givenMap, std::string givenKey){
+    if (givenMap.find(givenKey) == givenMap.end()) {
+        ROS_ERROR("Could not find key %s", givenKey.c_str());
+    }
+
+    return givenMap.at(givenKey);
+}
+
 bool gaitConfigurationCallback(dyret_controller::ConfigureGait::Request  &req,
                                dyret_controller::ConfigureGait::Response &res) {
 
@@ -303,33 +311,33 @@ bool gaitConfigurationCallback(dyret_controller::ConfigureGait::Request  &req,
 
     if (gaitType == "highLevelSplineGait") {
         // Gait params:
-        globalLiftDuration = gaitConfiguration.at("liftDuration");
+        globalLiftDuration = getMapValue(gaitConfiguration, "liftDuration");
 
-        bSplineGait.initHighLevelGait(gaitConfiguration.at("stepHeight"),
-                                      gaitConfiguration.at("stepLength"),
-                                      gaitConfiguration.at("smoothing"),
+        bSplineGait.initHighLevelGait(getMapValue(gaitConfiguration, "stepHeight"),
+                                      getMapValue(gaitConfiguration, "stepLength"),
+                                      getMapValue(gaitConfiguration, "smoothing"),
                                       groundHeight,
                                       spreadAmount,
                                       frontOffset,
                                       rearLegOffset,
                                       globalLiftDuration);
 
-        wagGenerator.enableWag(bSplineGaitWagOffset + gaitConfiguration.at("wagPhase"),
-                               gaitConfiguration.at("wagAmplitude_x"),
-                               gaitConfiguration.at("wagAmplitude_y"));
+        wagGenerator.enableWag(bSplineGaitWagOffset + getMapValue(gaitConfiguration, "wagPhase"),
+                               getMapValue(gaitConfiguration, "wagAmplitude_x"),
+                               getMapValue(gaitConfiguration, "wagAmplitude_y"));
 
     } else if (gaitType == "lowLevelSplineGait"){
 
-        globalGaitFrequency = gaitConfiguration.at("frequency");
-        globalLiftDuration = gaitConfiguration.at("liftDuration");
+        globalGaitFrequency = getMapValue(gaitConfiguration, "frequency");
+        globalLiftDuration = getMapValue(gaitConfiguration, "liftDuration");
 
         bSplineGait.initLowLevelGait(gaitConfiguration, groundHeight);
         //if (movingForward) bSplineGait.writeGaitToFile();
 
         //wagGenerator.enableWag(0.0, 0.0, 0.0);
-        wagGenerator.enableWag(bSplineGaitWagOffset + gaitConfiguration.at("wagPhase"),
-                               gaitConfiguration.at("wagAmplitude_x"),
-                               gaitConfiguration.at("wagAmplitude_y"));
+        wagGenerator.enableWag(bSplineGaitWagOffset + getMapValue(gaitConfiguration, "wagPhase"),
+                               getMapValue(gaitConfiguration, "wagAmplitude_x"),
+                               getMapValue(gaitConfiguration, "wagAmplitude_y"));
 
     } else {
         ROS_FATAL("Unknown gait specified: %s!", gaitType.c_str());
@@ -343,7 +351,7 @@ bool gaitConfigurationCallback(dyret_controller::ConfigureGait::Request  &req,
                             groundHeight);
 
     // Limit frequency so speed is below 10m/min:
-    globalGaitFrequency = gaitConfiguration.at("frequency");
+    globalGaitFrequency = getMapValue(gaitConfiguration, "frequency");
 
     if (ros::Time::isSystemTime()){
         setServoSpeeds(poseAdjustSpeed, servoConfigClient);

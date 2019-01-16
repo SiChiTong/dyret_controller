@@ -153,16 +153,18 @@ void BSplineGait::initHighLevelGait(double givenStepHeight,
 
 }
 
+float getMapValue(std::map<std::string, float> givenMap, std::string givenKey); // Defined in gaitController.cpp
+
 void BSplineGait::initLowLevelGait(std::map<std::string, float> gaitConfiguration, double givenGroundHeight){
 
-    assert(gaitConfiguration.at("liftDuration") >= 0.05f && gaitConfiguration.at("liftDuration") <= 0.2f); // liftDuration has to be between 5% and 20%
-    assert(gaitConfiguration.at("difficultyFactor") >= 0.0f && gaitConfiguration.at("difficultyFactor") <= 1.0f); // Difficulty factor has to be between 0% and 100%
+    assert(getMapValue(gaitConfiguration, "liftDuration") >= 0.05f && getMapValue(gaitConfiguration, "liftDuration") <= 0.2f); // liftDuration has to be between 5% and 20%
+    assert(getMapValue(gaitConfiguration, "difficultyFactor") >= 0.0f && getMapValue(gaitConfiguration, "difficultyFactor") <= 1.0f); // Difficulty factor has to be between 0% and 100%
 
-    gaitDifficultyFactor = gaitConfiguration.at("difficultyFactor");
+    gaitDifficultyFactor = getMapValue(gaitConfiguration, "difficultyFactor");
 
-    ROS_INFO("Initializing lowLevelGait with difficulty %.1f", gaitConfiguration.at("difficultyFactor"));
+    ROS_INFO("Initializing lowLevelGait with difficulty %.1f", getMapValue(gaitConfiguration, "difficultyFactor"));
 
-    groundPercentGoal = 1.0 - gaitConfiguration.at("liftDuration");
+    groundPercentGoal = 1.0 - getMapValue(gaitConfiguration, "liftDuration");
     groundHeight = givenGroundHeight;
     offsetFront = 0.0;
     spreadAmount = 80.0;
@@ -173,21 +175,21 @@ void BSplineGait::initLowLevelGait(std::map<std::string, float> gaitConfiguratio
     // Calculate gait points (the two ground points need to be first):
     controlPoints.clear();
 
-    if (gaitConfiguration.at("p0_y") > gaitConfiguration.at("p1_y")) {
-      controlPoints.push_back({gaitConfiguration.at("p0_x"), gaitConfiguration.at("p0_y"), (float) givenGroundHeight});
-      controlPoints.push_back({gaitConfiguration.at("p1_x"), gaitConfiguration.at("p1_y"), (float) givenGroundHeight});
+    if (getMapValue(gaitConfiguration, "p0_y") > getMapValue(gaitConfiguration, "p1_y")) {
+      controlPoints.push_back({getMapValue(gaitConfiguration, "p0_x"), getMapValue(gaitConfiguration, "p0_y"), (float) givenGroundHeight});
+      controlPoints.push_back({getMapValue(gaitConfiguration, "p1_x"), getMapValue(gaitConfiguration, "p1_y"), (float) givenGroundHeight});
     } else {
-      controlPoints.push_back({gaitConfiguration.at("p1_x"), gaitConfiguration.at("p1_y"), (float) givenGroundHeight});
-      controlPoints.push_back({gaitConfiguration.at("p0_x"), gaitConfiguration.at("p0_y"), (float) givenGroundHeight});
+      controlPoints.push_back({getMapValue(gaitConfiguration, "p1_x"), getMapValue(gaitConfiguration, "p1_y"), (float) givenGroundHeight});
+      controlPoints.push_back({getMapValue(gaitConfiguration, "p0_x"), getMapValue(gaitConfiguration, "p0_y"), (float) givenGroundHeight});
     }
 
     stepLength = controlPoints[0].y() - controlPoints[1].y();
 
     // Try all combinations of point order to find one without self-intersection:
 
-    std::vector<vec3P> airPoints = {{gaitConfiguration.at("p2_x"), gaitConfiguration.at("p2_y"), (float) givenGroundHeight + gaitConfiguration.at("p2_z")},
-                                    {gaitConfiguration.at("p3_x"), gaitConfiguration.at("p3_y"), (float) givenGroundHeight + gaitConfiguration.at("p3_z")},
-                                    {gaitConfiguration.at("p4_x"), gaitConfiguration.at("p4_y"), (float) givenGroundHeight + gaitConfiguration.at("p4_z")}};
+    std::vector<vec3P> airPoints = {{getMapValue(gaitConfiguration, "p2_x"), getMapValue(gaitConfiguration, "p2_y"), (float) givenGroundHeight + getMapValue(gaitConfiguration, "p2_z")},
+                                    {getMapValue(gaitConfiguration, "p3_x"), getMapValue(gaitConfiguration, "p3_y"), (float) givenGroundHeight + getMapValue(gaitConfiguration, "p3_z")},
+                                    {getMapValue(gaitConfiguration, "p4_x"), getMapValue(gaitConfiguration, "p4_y"), (float) givenGroundHeight + getMapValue(gaitConfiguration, "p4_z")}};
 
     std::vector<int> indexes = {0, 1, 2};
     int i = 0;

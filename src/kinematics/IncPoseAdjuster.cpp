@@ -1,4 +1,5 @@
 #include <math.h>
+#include <algorithm>
 
 #include "IncPoseAdjuster.h"
 
@@ -16,8 +17,12 @@ void printPosition(std::vector<vec3P> givenPosition, std::string givenDescriptio
 }
 
 bool IncPoseAdjuster::Spin(){
-  // Calculate groundHeight:
-  groundHeight = -430 - ((legActuatorLengths[0][0] + legActuatorLengths[0][1]) * 0.8f);
+  // Calculate groundHeight if not explicitly set:
+
+  if (groundHeight == -1) {
+      groundHeight = -430 - ((legActuatorLengths[0][0] + legActuatorLengths[0][1]) * 0.8f);
+  }
+
   for (int i = 0; i < 4; i++) goalPose[i].points[2] = groundHeight; // Update goalPose continuously
 
   if (currentPoseStates[0] == FINISHED &&
@@ -39,12 +44,21 @@ bool IncPoseAdjuster::Spin(){
           printf("INIT_STEPDOWN\n");
 
           // Set goal positions:
-          positionArray = currentLegPositions(*servoAnglesInRad, *legActuatorLengths);;
+          positionArray = currentLegPositions(*servoAnglesInRad, *legActuatorLengths);
+
+          // Find median leg height so all legs can be moved to same height
+          std::vector<double> legHeights = {positionArray[0].z(), positionArray[1].z(), positionArray[2].z(), positionArray[3].z()};
+          std::sort(legHeights.begin(), legHeights.end());
+          legHeights.erase(legHeights.begin());
+          legHeights.pop_back();
+          legHeights.pop_back();
+
+          medianlegHeight = legHeights[0];
 
       } else { // Actually doing the stepping down
 
           std::vector<vec3P> tmpPosition = positionArray;
-          for (int i = 0; i < 4; i++) tmpPosition[i].points[2] = groundHeight;
+          for (int i = 0; i < 4; i++) tmpPosition[i].points[2] = medianlegHeight;
 
           if (interpolatingLegMoveOpenLoop(tmpPosition, positionArray, currentProgress, positionCommandService) == true){
 

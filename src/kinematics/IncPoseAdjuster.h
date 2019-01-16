@@ -30,7 +30,8 @@ class IncPoseAdjuster{
   const float stepDownSpeed = 5.0;
   const float liftSpeed = 10.0;
 
-  float groundHeight;
+  float groundHeight = -1;
+  double medianlegHeight;
 
 public:
 
@@ -50,6 +51,11 @@ public:
 
   void setPose(std::vector<vec3P> givenGoalPose){
     goalPose = givenGoalPose;
+  }
+
+  void setPose(std::vector<vec3P> givenGoalPose, float givenGroundHeight){
+    groundHeight = givenGroundHeight;
+    setPose(givenGoalPose);
   }
 
   bool Spin();

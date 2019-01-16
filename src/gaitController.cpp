@@ -129,6 +129,10 @@ bool legsAreLength(float femurLengths, float tibiaLengths) {
     return ((fabs(femurLengths - legActuatorLengths[0]) < 1.0f) && (fabs(tibiaLengths - legActuatorLengths[1]) < 1.0f));
 }
 
+float getGroundHeight(float givenFemurLength, float givenTibiaLength){
+    return (float) (groundHeightOffset - ((givenFemurLength + givenTibiaLength) * groundCorrectionFactor));
+}
+
 void servoStatesCallback(const dyret_common::State::ConstPtr &msg) {
     for (int i = 0; i < 12; i++) {
         servoAnglesInRad[i] = msg->revolute[i].position;
@@ -142,7 +146,7 @@ void servoStatesCallback(const dyret_common::State::ConstPtr &msg) {
     legActuatorLengths[1] =
             (prismaticPositions[1] + prismaticPositions[3] + prismaticPositions[5] + prismaticPositions[7]) / 4.0f;
 
-    groundHeight = (float) (groundHeightOffset - ((legActuatorLengths[0] + legActuatorLengths[1]) * groundCorrectionFactor));
+    groundHeight = getGroundHeight(legActuatorLengths[0], legActuatorLengths[1]);
 }
 
 std::vector<vec3P> getRestPose() {
@@ -238,14 +242,16 @@ void spinGaitOnce(){
     }
 }
 
-bool adjustPose(std::vector<vec3P> givenPose){
+bool adjustPose(std::vector<vec3P> givenPose, float givenGroundHeight = 0){
     ros::Rate poseAdjusterRate(50);
 
     IncPoseAdjuster poseAdjuster(&servoAnglesInRad,
                                  &legActuatorLengths,
                                  &positionCommand_pub);
 
-    poseAdjuster.setPose(givenPose);
+    if (groundHeight < 0) poseAdjuster.setPose(givenPose, givenGroundHeight);
+    else poseAdjuster.setPose(givenPose);
+
 
     if (ros::Time::isSystemTime()){
         setServoSpeeds(poseAdjustSpeed, servoConfigClient);
@@ -264,6 +270,10 @@ bool adjustPose(std::vector<vec3P> givenPose){
 
 bool adjustRestPose(){
     return adjustPose(getRestPose());
+}
+
+bool adjustGaitPose(float givenGroundHeight){
+    return adjustPose(startGaitPose, givenGroundHeight);
 }
 
 bool adjustGaitPose(){
@@ -290,6 +300,8 @@ bool gaitConfigurationCallback(dyret_controller::ConfigureGait::Request  &req,
     receivedFemurLength = femurLength;
     receivedTibiaLength = tibiaLength;
 
+    float tmpGroundHeight = getGroundHeight(femurLength, tibiaLength);
+
     if (req.gaitConfiguration.prepareForGait && (femurLength >= 0 && tibiaLength >= 0)) {
         ROS_INFO("Setting leg lengths to %.2f and %.2f", femurLength, req.gaitConfiguration.tibiaLength);
         setLegLengths(femurLength, req.gaitConfiguration.tibiaLength);
@@ -310,13 +322,14 @@ bool gaitConfigurationCallback(dyret_controller::ConfigureGait::Request  &req,
     gaitInitAdjuster.reset();
 
     if (gaitType == "highLevelSplineGait") {
-        // Gait params:
         globalLiftDuration = getMapValue(gaitConfiguration, "liftDuration");
+
+
 
         bSplineGait.initHighLevelGait(getMapValue(gaitConfiguration, "stepHeight"),
                                       getMapValue(gaitConfiguration, "stepLength"),
                                       getMapValue(gaitConfiguration, "smoothing"),
-                                      groundHeight,
+                                      tmpGroundHeight,
                                       spreadAmount,
                                       frontOffset,
                                       rearLegOffset,
@@ -331,10 +344,8 @@ bool gaitConfigurationCallback(dyret_controller::ConfigureGait::Request  &req,
         globalGaitFrequency = getMapValue(gaitConfiguration, "frequency");
         globalLiftDuration = getMapValue(gaitConfiguration, "liftDuration");
 
-        bSplineGait.initLowLevelGait(gaitConfiguration, groundHeight);
-        //if (movingForward) bSplineGait.writeGaitToFile();
+        bSplineGait.initLowLevelGait(gaitConfiguration, tmpGroundHeight);
 
-        //wagGenerator.enableWag(0.0, 0.0, 0.0);
         wagGenerator.enableWag(bSplineGaitWagOffset + getMapValue(gaitConfiguration, "wagPhase"),
                                getMapValue(gaitConfiguration, "wagAmplitude_x"),
                                getMapValue(gaitConfiguration, "wagAmplitude_y"));
@@ -348,7 +359,7 @@ bool gaitConfigurationCallback(dyret_controller::ConfigureGait::Request  &req,
     movingForward = req.gaitConfiguration.directionForward;
 
     startGaitPose = lockToZ(add(bSplineGait.getPosition(0.0, movingForward), wagGenerator.getGaitWagPoint(0.0, movingForward)),
-                            groundHeight);
+                            tmpGroundHeight);
 
     // Limit frequency so speed is below 10m/min:
     globalGaitFrequency = getMapValue(gaitConfiguration, "frequency");
@@ -362,7 +373,7 @@ bool gaitConfigurationCallback(dyret_controller::ConfigureGait::Request  &req,
     if (ros::Time::isSimTime() && !initAdjustInSim) {
         // Calculate the initial pose of the gait
         std::vector<vec3P> initialGaitPose = lockToZ(add( bSplineGait.getPosition(0.0, movingForward), wagGenerator.getGaitWagPoint(0.0, movingForward) ),
-                                                     groundHeight);
+                                                     tmpGroundHeight);
 
         moveAllLegsToGlobalPosition(initialGaitPose, &positionCommand_pub);
         gaitInitAdjuster.skip();
@@ -372,7 +383,7 @@ bool gaitConfigurationCallback(dyret_controller::ConfigureGait::Request  &req,
 
     // Adjust gait pose
     if (req.gaitConfiguration.prepareForGait) {
-        adjustGaitPose();
+        adjustGaitPose(tmpGroundHeight);
     }
 
     ros::Time legLengthAdjustmentStart = ros::Time::now();
@@ -386,6 +397,7 @@ bool gaitConfigurationCallback(dyret_controller::ConfigureGait::Request  &req,
                 ros::spinOnce();
                 usleep(10000);
                 setLegLengths(femurLength, tibiaLength);
+                moveAllLegsToGlobalPosition(startGaitPose, &positionCommand_pub); // Continuously send pose to adjust to leg length change
 
                 int secPassed = ros::Time::now().sec - legLengthAdjustmentStart.sec;
 
@@ -393,10 +405,11 @@ bool gaitConfigurationCallback(dyret_controller::ConfigureGait::Request  &req,
                     ROS_ERROR("Timed out waiting for legs to be at length at %ds", secPassed);
                     return false;
                 }
-                secPassed += 1;
             }
             ROS_INFO("Leg lengths achieved");
         }
+
+        sleep(1); // Wait one second for leg length to finish
     }
 
     if (ros::Time::isSystemTime()){

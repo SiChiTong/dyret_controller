@@ -133,11 +133,11 @@ std::map<std::string, double> getResults(std::map<std::string, double> resultMap
         filteredSpeed = queueSum / (double) queueLength;
     }
 
-    ROS_INFO("Origin: %.2f, %.2f\n", startPosition[0], startPosition[1]);
-    ROS_INFO("End:    %.2f, %.2f\n", lastSavedPosition[0], lastSavedPosition[1]);
+    //ROS_INFO("Origin: %.2f, %.2f\n", startPosition[0], startPosition[1]);
+    //ROS_INFO("End:    %.2f, %.2f\n", lastSavedPosition[0], lastSavedPosition[1]);
 
     // Calculate mocap fitness value
-    ROS_INFO("Distance: %.2f (S: %.2f)\n", sensorPoseDist, sensorPoseSpeed);
+    //ROS_INFO("Distance: %.2f (S: %.2f)\n", sensorPoseDist, sensorPoseSpeed);
 
     // Assign fitness values:
     setMapValue(resultMap, "inferredSpeed", calculatedInferredSpeed);

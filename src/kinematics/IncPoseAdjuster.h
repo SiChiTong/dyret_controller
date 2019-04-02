@@ -27,8 +27,8 @@ class IncPoseAdjuster{
   const float stepHeight = 40.0;
   const float leanSpeed = 5;
   const float legMoveSpeed = 15.0;
-  const float stepDownSpeed = 5.0;
-  const float liftSpeed = 10.0;
+  const float stepDownSpeed = 2.5;
+  const float liftSpeed = 5.0;
 
   float groundHeight = -1;
   double medianlegHeight;

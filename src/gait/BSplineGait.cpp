@@ -20,8 +20,7 @@ std::string getDateString() {
 
 }
 
-// todo: Fix this so it doesnt crash if the log directory doesnt exist
-void BSplineGait::writeGaitToFile(){
+void BSplineGait::writeGaitToFile(std::string logFilePath){
   // Write spline to file:
   float numberOfPointsToGenerate = 1000.0;
 
@@ -29,7 +28,7 @@ void BSplineGait::writeGaitToFile(){
 
   // Save raw points:
   FILE * fp;
-  fp = fopen(std::string("/home/tonnesfn/catkin_ws/customLogs/lowLevelSplineGait/" + dateString + "_" + std::to_string(gaitDifficultyFactor) + "_raw.csv").c_str(), "w");
+  fp = fopen((logFilePath + "_raw.csv").c_str(), "w");
 
   for (int i = 0; i < numberOfPointsToGenerate; i++) {
     float scaled = (float) (totalLength / numberOfPointsToGenerate) * i;
@@ -46,7 +45,7 @@ void BSplineGait::writeGaitToFile(){
   fclose(fp);
 
   // Save control points:
-  fp = fopen(std::string("/home/tonnesfn/catkin_ws/customLogs/lowLevelSplineGait/" + dateString + "_" + std::to_string(gaitDifficultyFactor) + "_cnt.csv").c_str(), "w");
+  fp = fopen((logFilePath + "_cnt.csv").c_str(), "w");
 
   for (int i = 0; i < controlPoints.size(); i++) {
     fprintf(fp, "%.2f, %.2f, %.2f\n", controlPoints[i].x(), controlPoints[i].y(), controlPoints[i].z());
@@ -56,7 +55,7 @@ void BSplineGait::writeGaitToFile(){
   fclose(fp);
 
   // Save description:
-  fp = fopen(std::string("/home/tonnesfn/catkin_ws/customLogs/lowLevelSplineGait/" + dateString + "_" + std::to_string(gaitDifficultyFactor) + ".txt").c_str(), "w");
+  fp = fopen((logFilePath + ".txt").c_str(), "w");
 
   fprintf(fp, "%s", gaitDescriptionString.c_str());
 

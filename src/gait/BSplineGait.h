@@ -46,6 +46,6 @@ class BSplineGait {
 
     double getStepLength() { return stepLength;}
 
-    void writeGaitToFile();
+    void writeGaitToFile(std::string logFilePath);
 
 };

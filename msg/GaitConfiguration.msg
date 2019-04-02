@@ -4,6 +4,9 @@
 # The type of gait to use
 string gaitName
 
+# Path to the logFile
+string logFilePath
+
 # True when moving forward, false for reverse walking
 bool directionForward
 

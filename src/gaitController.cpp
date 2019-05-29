@@ -303,8 +303,8 @@ bool gaitConfigurationCallback(dyret_controller::ConfigureGait::Request  &req,
     float tmpGroundHeight = getGroundHeight(femurLength, tibiaLength);
 
     if (req.gaitConfiguration.prepareForGait && (femurLength >= 0 && tibiaLength >= 0)) {
-        ROS_INFO("Setting leg lengths to %.2f and %.2f", femurLength, req.gaitConfiguration.tibiaLength);
-        setLegLengths(femurLength, req.gaitConfiguration.tibiaLength);
+        ROS_INFO("Setting leg lengths to %.2f and %.2f", femurLength, tibiaLength);
+        setLegLengths(femurLength, tibiaLength);
         if (ros::Time::isSimTime()) ros::Duration(2).sleep();
     }
 

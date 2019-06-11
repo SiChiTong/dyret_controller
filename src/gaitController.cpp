@@ -71,6 +71,7 @@ const double groundHeightOffset = -430;
 const double groundCorrectionFactor = 0.8;
 float groundHeight = -430.0f;
 std::vector<double> legActuatorLengths;
+std::vector<double> legActuatorErrors;
 
 float receivedFemurLength = 0.0;
 float receivedTibiaLength = 0.0;
@@ -141,12 +142,25 @@ void servoStatesCallback(const dyret_common::State::ConstPtr &msg) {
     for (int i = 0; i < prismaticPositions.size(); i++) {
         prismaticPositions[i] = msg->prismatic[i].position;
     }
+
     legActuatorLengths[0] =
             (prismaticPositions[0] + prismaticPositions[2] + prismaticPositions[4] + prismaticPositions[6]) / 4.0f;
     legActuatorLengths[1] =
             (prismaticPositions[1] + prismaticPositions[3] + prismaticPositions[5] + prismaticPositions[7]) / 4.0f;
 
     groundHeight = getGroundHeight(legActuatorLengths[0], legActuatorLengths[1]);
+
+    std::vector<double> prismaticErrors(8);
+
+    for (int i = 0; i < prismaticErrors.size(); i++){
+        prismaticErrors[i] = msg->prismatic[i].error;
+    }
+
+    legActuatorErrors[0] =
+            (prismaticErrors[0] + prismaticErrors[2] + prismaticErrors[4] + prismaticErrors[6]) / 4.0f;
+    legActuatorErrors[1] =
+            (prismaticErrors[1] + prismaticErrors[3] + prismaticErrors[5] + prismaticErrors[7]) / 4.0f;
+
 }
 
 std::vector<vec3P> getRestPose() {
@@ -244,6 +258,13 @@ void spinGaitOnce(){
 
 bool adjustPose(std::vector<vec3P> givenPose, float givenGroundHeight = 0){
     ros::Rate poseAdjusterRate(50);
+
+    // Wait for leg length to be close enough so we dont get any IK errors
+
+    do {
+        ros::Duration(0.5).sleep();
+        ros::spinOnce();
+    } while(fabs(legActuatorErrors[0]) > 10.0 || fabs(legActuatorErrors[1]) > 10.0);
 
     IncPoseAdjuster poseAdjuster(&servoAnglesInRad,
                                  &legActuatorLengths,
@@ -485,6 +506,7 @@ int main(int argc, char **argv) {
     waitForRosInit(servoStates_sub, "servoStates");
 
     legActuatorLengths = {0.0, 0.0};
+    legActuatorErrors = {0.0, 0.0};
 
     // Initialize bSplineGait
     globalGaitFrequency = 1.0;

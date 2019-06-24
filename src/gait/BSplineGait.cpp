@@ -243,6 +243,8 @@ void BSplineGait::initLowLevelGait(std::map<std::string, float> gaitConfiguratio
     for(auto elem : gaitConfiguration){
         gaitDescriptionString += std::string("    ") + elem.first.c_str() + ": " + std::to_string(elem.second) + "\n";
     }
+
+    ROS_INFO("Done initializing gait");
 }
 
 std::vector<vec3P> BSplineGait::getPosition(double givenTime, bool walkingForwards) {

@@ -19,6 +19,10 @@
 #include "forwardKinematics.h"
 #include "inverseKinematics.h"
 
+vec3P doLegLengthCorrection(vec3P givenLegPosition, int givenLegIndex){
+    return givenLegPosition;
+}
+
 vec3P currentLegPos(int legId, std::vector<double> servoAnglesInRad, std::vector<double> legActuatorLengths){
   vec3P position = forwardKinematics(servoAnglesInRad[3*legId], servoAnglesInRad[(3*legId)+1], servoAnglesInRad[(3*legId)+2], 0.0f, legActuatorLengths[0], legActuatorLengths[1]);
 

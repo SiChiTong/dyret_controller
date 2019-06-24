@@ -15,8 +15,8 @@ bool directionForward
 bool prepareForGait
 
 # Lengths given in MM, -1 when not setting leg lengths
-float32 femurLength
-float32 tibiaLength
+float32[] femurLengths
+float32[] tibiaLengths
 
 # These contain all parameters for the chosen gait
 string[] gaitParameterName

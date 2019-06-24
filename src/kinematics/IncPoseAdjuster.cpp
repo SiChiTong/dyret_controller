@@ -20,6 +20,7 @@ bool IncPoseAdjuster::Spin(){
   // Calculate groundHeight if not explicitly set:
 
   if (groundHeight == -1) {
+      ROS_ERROR("GROUND HEIGHT NOT SET IN INCPOSEADJUSTER");
       groundHeight = -430 - ((legActuatorLengths[0][0] + legActuatorLengths[0][1]) * 0.8f);
   }
 

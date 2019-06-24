@@ -3,8 +3,8 @@
 #include "kinematicFunctions.h"
 
 // Reading
-vec3P currentLegPos(int legId, std::vector<double> servoAnglesInRad, std::vector<double> legActuatorLengths);
-std::vector<vec3P> currentLegPositions(std::vector<double> servoAnglesInRad, std::vector<double> legLengths);
+vec3P currentLegPos(int legId, std::vector<double> servoAnglesInRad, std::vector<float> legActuatorLengths);
+std::vector<vec3P> currentLegPositions(std::vector<double> servoAnglesInRad, std::vector<float> legLengths);
 
 
 // Open loop interpolation move of all four legs

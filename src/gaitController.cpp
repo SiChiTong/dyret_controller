@@ -70,8 +70,8 @@ double globalLiftDuration;
 const double groundHeightOffset = -430;
 const double groundCorrectionFactor = 0.8;
 float groundHeight = -430.0f;
-std::vector<double> legActuatorLengths;
-std::vector<double> legActuatorErrors;
+std::vector<float> legActuatorLengths;
+std::vector<float> legActuatorErrors;
 
 std::vector<float> receivedFemurLengths = {0.0};
 std::vector<float> receivedTibiaLengths = {0.0};
@@ -147,8 +147,17 @@ bool legsAreFinishedReconfiguring(){
     return (fabs(legActuatorErrors[0]) < 1.0 && fabs(legActuatorErrors[1]) < 1.0);
 }
 
-float getGroundHeight(float givenFemurLength, float givenTibiaLength){
-    return (float) (groundHeightOffset - ((givenFemurLength + givenTibiaLength) * groundCorrectionFactor));
+float getGroundHeight(std::vector<float> givenFemurLengths, std::vector<float> givenTibiaLengths){
+
+    if (givenFemurLengths.size() == 1 && givenTibiaLengths.size() == 1) {
+        return (float) (groundHeightOffset - ((givenFemurLengths[0] + givenTibiaLengths[0]) * groundCorrectionFactor));
+    } else if (givenFemurLengths.size() == 2 && givenTibiaLengths.size() == 2) {
+        return (float) (groundHeightOffset - (((givenFemurLengths[0] + givenTibiaLengths[0] + givenFemurLengths[1] + givenTibiaLengths[1])/2) * groundCorrectionFactor));
+    } else {
+        ROS_ERROR("Unknown femur/tibia length vector size");
+    }
+
+    return (float) groundHeightOffset;
 }
 
 void servoStatesCallback(const dyret_common::State::ConstPtr &msg) {
@@ -165,7 +174,7 @@ void servoStatesCallback(const dyret_common::State::ConstPtr &msg) {
     legActuatorLengths[1] =
             (prismaticPositions[1] + prismaticPositions[3] + prismaticPositions[5] + prismaticPositions[7]) / 4.0f;
 
-    groundHeight = getGroundHeight(legActuatorLengths[0], legActuatorLengths[1]);
+    groundHeight = getGroundHeight(legActuatorLengths, legActuatorLengths);
 
     std::vector<double> prismaticErrors(8);
 
@@ -355,7 +364,7 @@ bool gaitConfigurationCallback(dyret_controller::ConfigureGait::Request  &req,
     receivedFemurLengths = femurLengths;
     receivedTibiaLengths = tibiaLengths;
 
-    float tmpGroundHeight = getGroundHeight(femurLengths[0], tibiaLengths[0]); //todo
+    float tmpGroundHeight = getGroundHeight(femurLengths, tibiaLengths);
 
     if (req.gaitConfiguration.prepareForGait && (femurLengths[0] >= 0 && tibiaLengths[0] >= 0)) { //todo
         ROS_INFO("Setting leg lengths to %.2f and %.2f", femurLengths[0], tibiaLengths[0]); //todo

@@ -17,7 +17,7 @@ class IncPoseAdjuster{
   std::vector<vec3P> positionArray;
   std::vector<double> currentLean = {0.0, 0.0};
 
-  std::vector<double>* legActuatorLengths;
+  std::vector<float>* legActuatorLengths;
 
   static constexpr int stateTransitionDelay = 0;
 
@@ -36,7 +36,7 @@ class IncPoseAdjuster{
 public:
 
   IncPoseAdjuster(std::vector<double>* givenServoAnglesInRad,
-                  std::vector<double>* givenActuatorLengths,
+                  std::vector<float>* givenActuatorLengths,
                   ros::ServiceClient* givenPositionCommandService){
     currentProgress = 0.0;
     positionArray.resize(4); // Set size 4

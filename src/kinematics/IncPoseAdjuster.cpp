@@ -53,7 +53,7 @@ bool IncPoseAdjuster::Spin(){
       } else { // Actually doing the stepping down
 
           std::vector<vec3P> tmpPosition = positionArray;
-          for (int i = 0; i < 4; i++) tmpPosition[i].points[2] = medianlegHeight;
+          for (int i = 0; i < 4; i++) tmpPosition[i].points[2] = groundHeights[i];
 
           if (interpolatingLegMoveOpenLoop(tmpPosition, positionArray, currentProgress, positionCommandService) == true){
 

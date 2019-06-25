@@ -5,6 +5,7 @@
 
 #include "dyret_common/Pose.h"
 #include "dyret_common/Configuration.h"
+#include "dyret_common/dimensions.h"
 #include "dyret_common/angleConv.h"
 #include "dyret_common/wait_for_ros.h"
 #include "dyret_common/Configure.h"
@@ -19,10 +20,32 @@
 #include "forwardKinematics.h"
 #include "inverseKinematics.h"
 
-vec3P doLegLengthCorrection(vec3P givenLegPosition, int givenLegIndex, std::array<double, 8> givenPrismaticCommands){
-//    double angle =
+vec3P doLegLengthCorrection(vec3P givenLegPosition, int givenLegIndex, std::array<double, 8> givenPrismaticCommands, std::array<double, 4> givenGroundHeights){
+    // Find the angle between the legs
+    double legLengthDifference = givenGroundHeights[0] - givenGroundHeights[2];
+    double angle = atan2(legLengthDifference, frameLength);
 
-    return givenLegPosition;
+    //fprintf(stderr, "Front: %.3f, Back: %.3f, diff: %.3f, angle: %.3f, groundHeight: %.3f\n", givenGroundHeights[0], givenGroundHeights[2], legLengthDifference, angle, givenGroundHeights[givenLegIndex]);
+
+    // Translate point to origin
+    double y = givenLegPosition.y();
+    double z = givenLegPosition.z();
+    double z_new = z - givenGroundHeights[givenLegIndex];
+
+    //fprintf(stderr, "Original: (%.2f, %.2f) => Translated (%.2f, %.2f)\n", y, z, y, z_new);
+
+    // Rotate point
+    double y_m = y * cos(angle) - z_new * sin(angle);
+    double z_m = z_new * cos(angle) + y * sin(angle);
+
+    // Translate back
+    double z_m_new = z_m + givenGroundHeights[givenLegIndex];
+
+    //fprintf(stderr, "Rotated: (%.2f, %.2f) => Translated (%.2f, %.2f)\n\n", y_m, z_m, y_m, z_m_new);
+
+    vec3P rotatedLegPosition = vec3P(givenLegPosition.x(), y_m, z_m_new);
+
+    return rotatedLegPosition;
 }
 
 vec3P currentLegPos(int legId, std::vector<double> servoAnglesInRad, std::array<double, 8> legLengths){

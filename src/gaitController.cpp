@@ -258,7 +258,7 @@ void spinGaitOnce(){
 
             vec3P legPosition = add(globalLegPositions[i], wag);
 
-            legPosition = doLegLengthCorrection(legPosition, i, prismaticCommands);
+            legPosition = doLegLengthCorrection(legPosition, i, prismaticCommands, groundHeights);
 
             std::vector<double> inverseReturn = inverseKinematics::calculateInverseKinematics(legPosition.x(),
                                                                                               legPosition.y(),

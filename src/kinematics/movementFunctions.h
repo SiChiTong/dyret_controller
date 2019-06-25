@@ -23,4 +23,4 @@ bool setServoPIDs(std::vector<double> givenPIDs, ros::ServiceClient givenServoCo
 vec3P lockToZ(vec3P givenPosition, double givenZValue);
 std::vector<vec3P> lockToZ(std::vector<vec3P> givenPositions, std::array<double, 4> givenZValues);
 
-vec3P doLegLengthCorrection(vec3P givenLegPosition, int givenLegIndex, std::array<double, 8> givenPrismaticCommands);
+vec3P doLegLengthCorrection(vec3P givenLegPosition, int givenLegIndex, std::array<double, 8> givenPrismaticCommands, std::array<double, 4> givenGroundHeights);

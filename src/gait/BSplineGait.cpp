@@ -156,12 +156,6 @@ float getMapValue(std::map<std::string, float> givenMap, std::string givenKey); 
 
 void BSplineGait::initLowLevelGait(std::map<std::string, float> gaitConfiguration, std::array<double, 4> givenGroundHeights){
 
-    fprintf(stderr, "initLowLevelGait: ");
-    for (int i = 0; i < 4; i++){
-        fprintf(stderr, "%.2f ", givenGroundHeights[i]);
-    }
-    fprintf(stderr, "\n\n");
-
     assert(getMapValue(gaitConfiguration, "liftDuration") >= 0.05f && getMapValue(gaitConfiguration, "liftDuration") <= 0.2f); // liftDuration has to be between 5% and 20%
     assert(getMapValue(gaitConfiguration, "difficultyFactor") >= 0.0f && getMapValue(gaitConfiguration, "difficultyFactor") <= 1.0f); // Difficulty factor has to be between 0% and 100%
 

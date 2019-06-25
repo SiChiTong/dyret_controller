@@ -16,8 +16,7 @@ ros::Publisher poseCommand_pub;
 
 std::vector<float> currentLegAngles(12);
 
-double femurActuatorLength = 0.0;
-double tibiaActuatorLength = 0.0;
+std::array<double, 8> prismaticPosition;
 
 void sendPositionCommand(std::vector<double> legPositions){
     std::vector<float> legAngles;
@@ -28,8 +27,8 @@ void sendPositionCommand(std::vector<double> legPositions){
                                                                                                     legPositions[(i*3)+1],
                                                                                                     legPositions[(i*3)+2],
                                                                                                     i,
-                                                                                                    femurActuatorLength,
-                                                                                                    tibiaActuatorLength);
+                                                                                                    prismaticPosition[i*2],
+                                                                                                    prismaticPosition[(i*2)+1]);
         legAngles.insert(legAngles.end(), inverseKinematicsReturn.begin(), inverseKinematicsReturn.end());
 
     }
@@ -68,9 +67,9 @@ bool positionCommandServiceCallback(dyret_controller::SendPositionCommand::Reque
 }
 
 void stateCallback(const dyret_common::State::ConstPtr& msg){
-  if (msg->prismatic.size() == 8){
-    femurActuatorLength = (msg->prismatic[0].position + msg->prismatic[2].position + msg->prismatic[4].position + msg->prismatic[6].position) / 4.0f;
-    tibiaActuatorLength = (msg->prismatic[1].position + msg->prismatic[3].position + msg->prismatic[5].position + msg->prismatic[7].position) / 4.0f;
+  for (int i = 0; i < msg->prismatic.size(); i++){
+      if (msg->prismatic[i].position > 0.0) prismaticPosition[i] = msg->prismatic[i].position;
+      else prismaticPosition[i] = 0.0;
   }
 
   if (msg->revolute.size() == 12){
@@ -79,8 +78,6 @@ void stateCallback(const dyret_common::State::ConstPtr& msg){
     }
   }
 
-  if (femurActuatorLength < 0.0) femurActuatorLength = 0.0;
-  if (tibiaActuatorLength < 0.0) tibiaActuatorLength = 0.0;
 }
 
 int main(int argc, char **argv){

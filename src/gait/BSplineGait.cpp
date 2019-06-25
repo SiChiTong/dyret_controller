@@ -36,7 +36,7 @@ void BSplineGait::writeGaitToFile(std::string logFilePath){
     Vector3 currentPoint = bSpline->getPosition(ArcLength::solveLengthCyclic(*bSpline, 0.0f, scaled));
 
     double z = currentPoint[2];
-    if (z < groundHeight) z = groundHeight; // Add same ground limit we have in getPosition
+    //if (z < groundHeight) z = groundHeight; // Add same ground limit we have in getPosition //todo: Do we need this?
 
     fprintf(fp, "%.2f, %.2f, %.2f\n", scaled, currentPoint[1], z);
 
@@ -80,7 +80,7 @@ void BSplineGait::writeGaitToFile(std::vector<vec3P> customPoints, LoopingCubicH
         Vector3 currentPoint = customSpline.getPosition(ArcLength::solveLengthCyclic(customSpline, 0.0f, scaled));
 
         double z = currentPoint[2];
-        if (z < groundHeight) z = groundHeight; // Add same ground limit we have in getPosition
+        //if (z < groundHeight) z = groundHeight; // Add same ground limit we have in getPosition //todo: Do we need this?
 
         fprintf(fp, "%.2f, %.2f, %.2f\n", scaled, currentPoint[1], z);
 
@@ -105,7 +105,7 @@ void BSplineGait::writeGaitToFile(std::vector<vec3P> customPoints, LoopingCubicH
 void BSplineGait::initHighLevelGait(double givenStepHeight,
                                     double givenStepLength,
                                     double givenSmoothing,
-                                    double givenGroundHeight,
+                                    std::array<double, 4> givenGroundHeights,
                                     double givenSpread,
                                     double givenOffsetFront,
                                     double givenRearLegOffset,
@@ -117,18 +117,18 @@ void BSplineGait::initHighLevelGait(double givenStepHeight,
     stepLength = givenStepLength;
     offsetFront = givenOffsetFront;
     spreadAmount = givenSpread;
-    groundHeight = givenGroundHeight;
+    groundHeights = givenGroundHeights;
     rearLegOffset = givenRearLegOffset;
     groundPercentGoal = 1.0 - givenLiftDuration;
 
     // Calculate gait points (the two ground points need to be first):
     controlPoints =
     {
-        { 0.0f, (float)                    (givenStepLength/2.0f), (float)                            givenGroundHeight }, // Front ground
-        { 0.0f, (float)                   -(givenStepLength/2.0f), (float)                            givenGroundHeight }, // Back ground
-        { 0.0f, (float)                 -((givenStepLength/2.0f)), (float) (givenGroundHeight + (givenStepHeight/1.5f)) }, // Back smoothing
-        { 0.0f,                                              0.0f, (float)        (givenGroundHeight + givenStepHeight) }, // Top
-        { 0.0f, (float) ((givenStepLength/2.0f) + givenSmoothing), (float) (givenGroundHeight + (givenStepHeight/4.0f)) }, // Front smoothing
+        { 0.0f, (float)                    (givenStepLength/2.0f), (float)                 0.0f }, // Front ground
+        { 0.0f, (float)                   -(givenStepLength/2.0f), (float)                 0.0f }, // Back ground
+        { 0.0f, (float)                 -((givenStepLength/2.0f)), (float) givenStepHeight/1.5f }, // Back smoothing
+        { 0.0f,                                              0.0f, (float)      givenStepHeight }, // Top
+        { 0.0f, (float) ((givenStepLength/2.0f) + givenSmoothing), (float) givenStepHeight/4.0f }, // Front smoothing
     };
 
     // Make the spline object:
@@ -154,7 +154,13 @@ void BSplineGait::initHighLevelGait(double givenStepHeight,
 
 float getMapValue(std::map<std::string, float> givenMap, std::string givenKey); // Defined in gaitController.cpp
 
-void BSplineGait::initLowLevelGait(std::map<std::string, float> gaitConfiguration, double givenGroundHeight){
+void BSplineGait::initLowLevelGait(std::map<std::string, float> gaitConfiguration, std::array<double, 4> givenGroundHeights){
+
+    fprintf(stderr, "initLowLevelGait: ");
+    for (int i = 0; i < 4; i++){
+        fprintf(stderr, "%.2f ", givenGroundHeights[i]);
+    }
+    fprintf(stderr, "\n\n");
 
     assert(getMapValue(gaitConfiguration, "liftDuration") >= 0.05f && getMapValue(gaitConfiguration, "liftDuration") <= 0.2f); // liftDuration has to be between 5% and 20%
     assert(getMapValue(gaitConfiguration, "difficultyFactor") >= 0.0f && getMapValue(gaitConfiguration, "difficultyFactor") <= 1.0f); // Difficulty factor has to be between 0% and 100%
@@ -164,31 +170,30 @@ void BSplineGait::initLowLevelGait(std::map<std::string, float> gaitConfiguratio
     ROS_INFO("Initializing lowLevelGait with difficulty %.1f", getMapValue(gaitConfiguration, "difficultyFactor"));
 
     groundPercentGoal = 1.0 - getMapValue(gaitConfiguration, "liftDuration");
-    groundHeight = givenGroundHeight;
+    groundHeights = givenGroundHeights;
     offsetFront = 0.0;
     spreadAmount = 80.0;
     rearLegOffset = -30.0;
     totalLength = 99999.0; // Init length
 
-
     // Calculate gait points (the two ground points need to be first):
     controlPoints.clear();
 
     if (getMapValue(gaitConfiguration, "p0_y") > getMapValue(gaitConfiguration, "p1_y")) {
-      controlPoints.push_back({getMapValue(gaitConfiguration, "p0_x"), getMapValue(gaitConfiguration, "p0_y"), (float) givenGroundHeight});
-      controlPoints.push_back({getMapValue(gaitConfiguration, "p1_x"), getMapValue(gaitConfiguration, "p1_y"), (float) givenGroundHeight});
+      controlPoints.push_back({getMapValue(gaitConfiguration, "p0_x"), getMapValue(gaitConfiguration, "p0_y"), 0.0f});
+      controlPoints.push_back({getMapValue(gaitConfiguration, "p1_x"), getMapValue(gaitConfiguration, "p1_y"), 0.0f});
     } else {
-      controlPoints.push_back({getMapValue(gaitConfiguration, "p1_x"), getMapValue(gaitConfiguration, "p1_y"), (float) givenGroundHeight});
-      controlPoints.push_back({getMapValue(gaitConfiguration, "p0_x"), getMapValue(gaitConfiguration, "p0_y"), (float) givenGroundHeight});
+      controlPoints.push_back({getMapValue(gaitConfiguration, "p1_x"), getMapValue(gaitConfiguration, "p1_y"), 0.0f});
+      controlPoints.push_back({getMapValue(gaitConfiguration, "p0_x"), getMapValue(gaitConfiguration, "p0_y"), 0.0f});
     }
 
     stepLength = controlPoints[0].y() - controlPoints[1].y();
 
     // Try all combinations of point order to find one without self-intersection:
 
-    std::vector<vec3P> airPoints = {{getMapValue(gaitConfiguration, "p2_x"), getMapValue(gaitConfiguration, "p2_y"), (float) givenGroundHeight + getMapValue(gaitConfiguration, "p2_z")},
-                                    {getMapValue(gaitConfiguration, "p3_x"), getMapValue(gaitConfiguration, "p3_y"), (float) givenGroundHeight + getMapValue(gaitConfiguration, "p3_z")},
-                                    {getMapValue(gaitConfiguration, "p4_x"), getMapValue(gaitConfiguration, "p4_y"), (float) givenGroundHeight + getMapValue(gaitConfiguration, "p4_z")}};
+    std::vector<vec3P> airPoints = {{getMapValue(gaitConfiguration, "p2_x"), getMapValue(gaitConfiguration, "p2_y"), (float) getMapValue(gaitConfiguration, "p2_z")},
+                                    {getMapValue(gaitConfiguration, "p3_x"), getMapValue(gaitConfiguration, "p3_y"), (float) getMapValue(gaitConfiguration, "p3_z")},
+                                    {getMapValue(gaitConfiguration, "p4_x"), getMapValue(gaitConfiguration, "p4_y"), (float) getMapValue(gaitConfiguration, "p4_z")}};
 
     std::vector<int> indexes = {0, 1, 2};
     int i = 0;
@@ -283,8 +288,11 @@ std::vector<vec3P> BSplineGait::getPosition(double givenTime, bool walkingForwar
 		// Apply spread
 		vecRet[0] = vecRet[0] - spreadAmount;
 
+		// Apply ground height:
+		vecRet[2] += groundHeights[i];
+
 		// Make sure the point we got from the spline object is not lower than the groundHeight
-		if (vecRet[2] < groundHeight) vecRet[2] = groundHeight;
+		if (vecRet[2] < groundHeights[i]) vecRet[2] = groundHeights[i];
 
 		vectorToReturn[i] = vec3P(vecRet[0], vecRet[1], vecRet[2]);
 	}

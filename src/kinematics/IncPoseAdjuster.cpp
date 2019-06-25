@@ -17,14 +17,8 @@ void printPosition(std::vector<vec3P> givenPosition, std::string givenDescriptio
 }
 
 bool IncPoseAdjuster::Spin(){
-  // Calculate groundHeight if not explicitly set:
 
-  if (groundHeight == -1) {
-      ROS_ERROR("GROUND HEIGHT NOT SET IN INCPOSEADJUSTER");
-      groundHeight = -430 - ((legActuatorLengths[0][0] + legActuatorLengths[0][1]) * 0.8f);
-  }
-
-  for (int i = 0; i < 4; i++) goalPose[i].points[2] = groundHeight; // Update goalPose continuously
+  for (int i = 0; i < 4; i++) goalPose[i].points[2] = groundHeights[i]; // Update goalPose continuously
 
   if (currentPoseStates[0] == FINISHED &&
       currentPoseStates[1] == FINISHED &&

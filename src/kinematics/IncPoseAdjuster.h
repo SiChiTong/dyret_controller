@@ -17,7 +17,7 @@ class IncPoseAdjuster{
   std::vector<vec3P> positionArray;
   std::vector<double> currentLean = {0.0, 0.0};
 
-  std::vector<float>* legActuatorLengths;
+  std::array<double, 8>* legActuatorLengths;
 
   static constexpr int stateTransitionDelay = 0;
 
@@ -30,18 +30,18 @@ class IncPoseAdjuster{
   const float stepDownSpeed = 2.5;
   const float liftSpeed = 5.0;
 
-  float groundHeight = -1;
+  std::array<double, 4> groundHeights;
   double medianlegHeight;
 
 public:
 
   IncPoseAdjuster(std::vector<double>* givenServoAnglesInRad,
-                  std::vector<float>* givenActuatorLengths,
+                  std::array<double, 8>* givenPrismaticPositions,
                   ros::ServiceClient* givenPositionCommandService){
     currentProgress = 0.0;
     positionArray.resize(4); // Set size 4
     servoAnglesInRad = givenServoAnglesInRad;
-    legActuatorLengths = givenActuatorLengths;
+    legActuatorLengths = givenPrismaticPositions;
     positionCommandService = givenPositionCommandService;
     for (int i = 0; i < 4; i++) currentPoseStates[i] = INIT_STEPDOWN;
     currentProgress = 0.0;
@@ -53,8 +53,8 @@ public:
     goalPose = givenGoalPose;
   }
 
-  void setPose(std::vector<vec3P> givenGoalPose, float givenGroundHeight){
-    groundHeight = givenGroundHeight;
+  void setPose(std::vector<vec3P> givenGoalPose, std::array<double, 4> givenGroundHeights){
+    groundHeights = givenGroundHeights;
     setPose(givenGoalPose);
   }
 

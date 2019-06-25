@@ -20,10 +20,11 @@ class BSplineGait {
     double offsetFront;
     double totalLength;
     double spreadAmount;
-    double groundHeight;
     double rearLegOffset;
     double groundPercentGoal; //Time spent on the ground (minimum 3/4 = 75%)
     double gaitDifficultyFactor = -1;
+
+    std::array<double, 4> groundHeights;
 
     std::string gaitDescriptionString;
     std::vector<vec3P> controlPoints;
@@ -34,13 +35,13 @@ class BSplineGait {
     void initHighLevelGait(double stepHeight,
                            double stepLength,
                            double smoothing,
-                           double givenGroundHeight,
+                           std::array<double, 4> givenGroundHeights,
                            double givenSpread,
                            double givenOffsetFront,
                            double rearLegOffset,
                            double givenLiftDuration);
 
-    void initLowLevelGait(std::map<std::string, float> gaitConfiguration, double givenGroundHeight);
+    void initLowLevelGait(std::map<std::string, float> gaitConfiguration, std::array<double, 4> givenGroundHeights);
 
     std::vector<vec3P> getPosition(double givenTime, bool walkingForwards);
 

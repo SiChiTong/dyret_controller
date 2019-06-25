@@ -19,17 +19,19 @@
 #include "forwardKinematics.h"
 #include "inverseKinematics.h"
 
-vec3P doLegLengthCorrection(vec3P givenLegPosition, int givenLegIndex){
+vec3P doLegLengthCorrection(vec3P givenLegPosition, int givenLegIndex, std::array<double, 8> givenPrismaticCommands){
+//    double angle =
+
     return givenLegPosition;
 }
 
-vec3P currentLegPos(int legId, std::vector<double> servoAnglesInRad, std::vector<float> legActuatorLengths){
-  vec3P position = forwardKinematics(servoAnglesInRad[3*legId], servoAnglesInRad[(3*legId)+1], servoAnglesInRad[(3*legId)+2], 0.0f, legActuatorLengths[0], legActuatorLengths[1]);
+vec3P currentLegPos(int legId, std::vector<double> servoAnglesInRad, std::array<double, 8> legLengths){
+  vec3P position = forwardKinematics(servoAnglesInRad[3*legId], servoAnglesInRad[(3*legId)+1], servoAnglesInRad[(3*legId)+2], 0.0f, legLengths[2*legId], legLengths[(2*legId)+1]);
 
   return position;
 }
 
-std::vector<vec3P> currentLegPositions(std::vector<double> servoAnglesInRad, std::vector<float> legLengths){
+std::vector<vec3P> currentLegPositions(std::vector<double> servoAnglesInRad, std::array<double, 8> legLengths){
   std::vector<vec3P> vectorToReturn(4);
 
   for (int i = 0; i < 4; i++){
@@ -162,11 +164,11 @@ vec3P lockToZ(vec3P givenPosition, double givenZValue){
   return vec3P(givenPosition.points[0], givenPosition.points[1], givenZValue);
 }
 
-std::vector<vec3P> lockToZ(std::vector<vec3P> givenPositions, double givenZValue){
+std::vector<vec3P> lockToZ(std::vector<vec3P> givenPositions, std::array<double, 4> givenZValues){
   std::vector<vec3P> pointsToReturn(givenPositions.size());
 
   for (int i = 0; i < givenPositions.size(); i++){
-      pointsToReturn[i] = lockToZ(givenPositions[i], givenZValue);
+      pointsToReturn[i] = lockToZ(givenPositions[i], givenZValues[i]);
   }
 
   return pointsToReturn;

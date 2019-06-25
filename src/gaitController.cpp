@@ -69,12 +69,6 @@ double globalGaitFrequency;
 double globalLiftDuration;
 const double groundHeightOffset = -430;
 const double groundCorrectionFactor = 0.8;
-float groundHeight = -430.0f;
-std::vector<float> legActuatorLengths;
-std::vector<float> legActuatorErrors;
-
-std::vector<float> receivedFemurLengths = {0.0};
-std::vector<float> receivedTibiaLengths = {0.0};
 
 const float bSplineGaitWagOffset = 0.91;
 
@@ -87,7 +81,12 @@ std::vector<vec3P> startGaitPose;
 std::vector<double> pidParameters;
 
 std::vector<double> servoAnglesInRad(12);
-std::vector<double> prismaticPositions(8);
+
+std::array<double, 4> groundHeights = {-430.0f, -430.0f, -430.0f, -430.0f};
+
+std::array<double, 8> prismaticPositions;
+std::array<double, 8> prismaticErrors;
+std::array<double, 8> prismaticCommands;
 
 // Public stuff
 ros::ServiceClient get_gait_evaluation_client;
@@ -101,7 +100,7 @@ ros::ServiceClient loggerCommandService_client;
 
 IncPoseAdjuster gaitInitAdjuster(
         &servoAnglesInRad,
-        &legActuatorLengths,
+        &prismaticCommands,
         &positionCommand_pub);
 
 
@@ -139,25 +138,37 @@ void setLegLengths(std::vector<float> femurLengths, std::vector<float> tibiaLeng
     poseCommand_pub.publish(msg);
 }
 
-bool legsAreFinishedReconfiguring(){
+void setLegLengths(std::array<double, 8> givenPrismaticCommands) {
+    dyret_common::Pose msg;
 
-    ros::Duration(0.1).sleep();
-    ros::spinOnce();
+    msg.header.stamp = ros::Time().now();
 
-    return (fabs(legActuatorErrors[0]) < 1.0 && fabs(legActuatorErrors[1]) < 1.0);
-}
+    msg.prismatic.resize(givenPrismaticCommands.size());
 
-float getGroundHeight(std::vector<float> givenFemurLengths, std::vector<float> givenTibiaLengths){
-
-    if (givenFemurLengths.size() == 1 && givenTibiaLengths.size() == 1) {
-        return (float) (groundHeightOffset - ((givenFemurLengths[0] + givenTibiaLengths[0]) * groundCorrectionFactor));
-    } else if (givenFemurLengths.size() == 2 && givenTibiaLengths.size() == 2) {
-        return (float) (groundHeightOffset - (((givenFemurLengths[0] + givenTibiaLengths[0] + givenFemurLengths[1] + givenTibiaLengths[1])/2) * groundCorrectionFactor));
-    } else {
-        ROS_ERROR("Unknown femur/tibia length vector size");
+    for (int i = 0; i < givenPrismaticCommands.size(); i++){
+        msg.prismatic[i] = (float) givenPrismaticCommands[i];
     }
 
-    return (float) groundHeightOffset;
+    poseCommand_pub.publish(msg);
+}
+
+bool allLegsAreCloserThan(float givenMargin){
+
+    // Sleep and spin to receive a new message with the error
+    ros::Duration(0.15).sleep();
+    ros::spinOnce();
+
+    for (int i = 0; i < prismaticErrors.size(); i++){
+        if (fabs(prismaticErrors[i]) > givenMargin) return false;
+    }
+
+    return true;
+}
+
+float getGroundHeight(float givenFemurLength, float givenTibiaLength){
+
+    return (float) (groundHeightOffset - ((givenFemurLength + givenTibiaLength) * groundCorrectionFactor));
+
 }
 
 void servoStatesCallback(const dyret_common::State::ConstPtr &msg) {
@@ -169,33 +180,23 @@ void servoStatesCallback(const dyret_common::State::ConstPtr &msg) {
         prismaticPositions[i] = msg->prismatic[i].position;
     }
 
-    legActuatorLengths[0] =
-            (prismaticPositions[0] + prismaticPositions[2] + prismaticPositions[4] + prismaticPositions[6]) / 4.0f;
-    legActuatorLengths[1] =
-            (prismaticPositions[1] + prismaticPositions[3] + prismaticPositions[5] + prismaticPositions[7]) / 4.0f;
-
-    groundHeight = getGroundHeight(legActuatorLengths, legActuatorLengths);
-
-    std::vector<double> prismaticErrors(8);
+    for (int i = 0; i < 4; i++){
+        groundHeights[i] = getGroundHeight(prismaticPositions[i*2], prismaticPositions[(i*2)+1]);
+    }
 
     for (int i = 0; i < prismaticErrors.size(); i++){
         prismaticErrors[i] = msg->prismatic[i].error;
     }
-
-    legActuatorErrors[0] =
-            (prismaticErrors[0] + prismaticErrors[2] + prismaticErrors[4] + prismaticErrors[6]) / 4.0f;
-    legActuatorErrors[1] =
-            (prismaticErrors[1] + prismaticErrors[3] + prismaticErrors[5] + prismaticErrors[7]) / 4.0f;
 
 }
 
 std::vector<vec3P> getRestPose() {
     const float frontOffset = 0.0;
 
-    const std::vector<vec3P> restPose = {{-spreadAmount, frontOffset, groundHeight},
-                                         {spreadAmount,  frontOffset, groundHeight},
-                                         {spreadAmount,  frontOffset, groundHeight},
-                                         {-spreadAmount, frontOffset, groundHeight}};
+    const std::vector<vec3P> restPose = {{-spreadAmount, frontOffset, (float) groundHeights[0]},
+                                         {spreadAmount,  frontOffset, (float) groundHeights[1]},
+                                         {spreadAmount,  frontOffset, (float) groundHeights[2]},
+                                         {-spreadAmount, frontOffset, (float) groundHeights[3]}}; //todo: do we use groundHeight here, or just the set height?
 
     return restPose;
 }
@@ -250,21 +251,21 @@ void spinGaitOnce(){
 
         vec3P wag = wagGenerator.getGaitWagPoint(currentRelativeTime * globalGaitFrequency, movingForward);
 
-        std::vector<vec3P> currentPositions = currentLegPositions(servoAnglesInRad, legActuatorLengths);
+        std::vector<vec3P> currentPositions = currentLegPositions(servoAnglesInRad, prismaticPositions);
 
         // Get IK solutions for each leg:
         for (int i = 0; i < 4; i++) { // For each leg
 
             vec3P legPosition = add(globalLegPositions[i], wag);
 
-            legPosition = doLegLengthCorrection(legPosition, i);
+            legPosition = doLegLengthCorrection(legPosition, i, prismaticCommands);
 
             std::vector<double> inverseReturn = inverseKinematics::calculateInverseKinematics(legPosition.x(),
                                                                                               legPosition.y(),
                                                                                               legPosition.z(),
                                                                                               i,
-                                                                                              legActuatorLengths[0],
-                                                                                              legActuatorLengths[1]);
+                                                                                              prismaticPositions[i*2],
+                                                                                              prismaticPositions[(i*2)+1]);
             for (int j = 0; j < 3; j++) {
                 anglesInRad.push_back(inverseReturn[j]);
             }
@@ -272,24 +273,13 @@ void spinGaitOnce(){
         }
 
         if (servoIds.size() != 0) {
+            // Set revolute joints positions:
             msg.revolute = anglesInRad;
 
-            if (receivedFemurLengths.size() == 1 && receivedTibiaLengths.size() == 1){
-                msg.prismatic.resize(2);
-                msg.prismatic[0] = receivedFemurLengths[0];
-                msg.prismatic[1] = receivedTibiaLengths[0];
-            } else if (receivedFemurLengths.size() == 2 && receivedTibiaLengths.size() == 2){
-                msg.prismatic.resize(8);
-                msg.prismatic[0] = receivedFemurLengths[0];
-                msg.prismatic[1] = receivedTibiaLengths[0];
-                msg.prismatic[2] = receivedFemurLengths[0];
-                msg.prismatic[3] = receivedTibiaLengths[0];
-                msg.prismatic[4] = receivedFemurLengths[1];
-                msg.prismatic[5] = receivedTibiaLengths[1];
-                msg.prismatic[6] = receivedFemurLengths[1];
-                msg.prismatic[7] = receivedTibiaLengths[1];
-            } else {
-                ROS_ERROR("Invalid femur/tibia length message size!");
+            // Set prismamtic joints positions:
+            msg.prismatic.resize(prismaticCommands.size());
+            for (int i = 0; i < prismaticCommands.size(); i++){
+                msg.prismatic[i] = prismaticCommands[i];
             }
 
             poseCommand_pub.publish(msg);
@@ -299,7 +289,7 @@ void spinGaitOnce(){
     }
 }
 
-bool adjustPose(std::vector<vec3P> givenPose, float givenGroundHeight = 0){
+bool adjustPose(std::vector<vec3P> givenPose, std::array<double, 4> givenGroundHeight){
     ros::Rate poseAdjusterRate(50);
 
     // Wait for leg length to be close enough so we dont get any IK errors
@@ -307,14 +297,13 @@ bool adjustPose(std::vector<vec3P> givenPose, float givenGroundHeight = 0){
     do {
         ros::Duration(0.1).sleep();
         ros::spinOnce();
-    } while(fabs(legActuatorErrors[0]) > 10.0 || fabs(legActuatorErrors[1]) > 10.0);
+    } while(!allLegsAreCloserThan(10.0f));
 
     IncPoseAdjuster poseAdjuster(&servoAnglesInRad,
-                                 &legActuatorLengths,
+                                 &prismaticPositions,
                                  &positionCommand_pub);
 
-    if (groundHeight < 0) poseAdjuster.setPose(givenPose, givenGroundHeight);
-    else poseAdjuster.setPose(givenPose);
+    poseAdjuster.setPose(givenPose, givenGroundHeight);
 
 
     if (ros::Time::isSystemTime()){
@@ -333,15 +322,15 @@ bool adjustPose(std::vector<vec3P> givenPose, float givenGroundHeight = 0){
 }
 
 bool adjustRestPose(){
-    return adjustPose(getRestPose());
+    return adjustPose(getRestPose(), groundHeights);
 }
 
-bool adjustGaitPose(float givenGroundHeight){
+bool adjustGaitPose(std::array<double, 4> givenGroundHeight){
     return adjustPose(startGaitPose, givenGroundHeight);
 }
 
 bool adjustGaitPose(){
-    return adjustPose(startGaitPose);
+    return adjustPose(startGaitPose, groundHeights);
 }
 
 float getMapValue(std::map<std::string, float> givenMap, std::string givenKey){
@@ -358,17 +347,30 @@ bool gaitConfigurationCallback(dyret_controller::ConfigureGait::Request  &req,
     ROS_INFO("Got gait configuration message for gait type %s", req.gaitConfiguration.gaitName.c_str());
 
     // Set leg lengths and wait until they reach the correct length
-    std::vector<float> femurLengths = req.gaitConfiguration.femurLengths;
-    std::vector<float> tibiaLengths = req.gaitConfiguration.tibiaLengths;
+    if (req.gaitConfiguration.femurLengths.size() == 1 && req.gaitConfiguration.tibiaLengths.size() == 1){
+        prismaticCommands = {req.gaitConfiguration.femurLengths[0], req.gaitConfiguration.tibiaLengths[0],
+                             req.gaitConfiguration.femurLengths[0], req.gaitConfiguration.tibiaLengths[0],
+                             req.gaitConfiguration.femurLengths[0], req.gaitConfiguration.tibiaLengths[0],
+                             req.gaitConfiguration.femurLengths[0], req.gaitConfiguration.tibiaLengths[0]};
+    } else if (req.gaitConfiguration.femurLengths.size() == 4 && req.gaitConfiguration.tibiaLengths.size() == 4){
+        prismaticCommands = {req.gaitConfiguration.femurLengths[0], req.gaitConfiguration.tibiaLengths[0],
+                             req.gaitConfiguration.femurLengths[1], req.gaitConfiguration.tibiaLengths[1],
+                             req.gaitConfiguration.femurLengths[2], req.gaitConfiguration.tibiaLengths[2],
+                             req.gaitConfiguration.femurLengths[3], req.gaitConfiguration.tibiaLengths[3]};
+    } else {
+        ROS_ERROR("Unsupported leg length vector size in gait configuration message");
+        prismaticCommands = {0, 0, 0, 0, 0, 0, 0, 0};
+    }
 
-    receivedFemurLengths = femurLengths;
-    receivedTibiaLengths = tibiaLengths;
 
-    float tmpGroundHeight = getGroundHeight(femurLengths, tibiaLengths);
+    std::array<double,4> tmpGroundHeights;
 
-    if (req.gaitConfiguration.prepareForGait && (femurLengths[0] >= 0 && tibiaLengths[0] >= 0)) { //todo
-        ROS_INFO("Setting leg lengths to %.2f and %.2f", femurLengths[0], tibiaLengths[0]); //todo
-        setLegLengths(femurLengths, tibiaLengths);
+    for (int i = 0; i < 4; i++) {
+        tmpGroundHeights[i] = getGroundHeight(prismaticCommands[i * 2], prismaticCommands[(i * 2) + 1]);
+    }
+
+    if (req.gaitConfiguration.prepareForGait) {
+        setLegLengths(prismaticCommands);
         if (ros::Time::isSimTime()) ros::Duration(2).sleep();
     }
 
@@ -393,7 +395,7 @@ bool gaitConfigurationCallback(dyret_controller::ConfigureGait::Request  &req,
         bSplineGait.initHighLevelGait(getMapValue(gaitConfiguration, "stepHeight"),
                                       getMapValue(gaitConfiguration, "stepLength"),
                                       getMapValue(gaitConfiguration, "smoothing"),
-                                      tmpGroundHeight,
+                                      tmpGroundHeights,
                                       spreadAmount,
                                       frontOffset,
                                       rearLegOffset,
@@ -412,7 +414,7 @@ bool gaitConfigurationCallback(dyret_controller::ConfigureGait::Request  &req,
         globalGaitFrequency = getMapValue(gaitConfiguration, "frequency");
         globalLiftDuration = getMapValue(gaitConfiguration, "liftDuration");
 
-        bSplineGait.initLowLevelGait(gaitConfiguration, tmpGroundHeight);
+        bSplineGait.initLowLevelGait(gaitConfiguration, tmpGroundHeights);
 
         wagGenerator.enableWag(bSplineGaitWagOffset + getMapValue(gaitConfiguration, "wagPhase"),
                                getMapValue(gaitConfiguration, "wagAmplitude_x"),
@@ -431,7 +433,7 @@ bool gaitConfigurationCallback(dyret_controller::ConfigureGait::Request  &req,
     movingForward = req.gaitConfiguration.directionForward;
 
     startGaitPose = lockToZ(add(bSplineGait.getPosition(0.0, movingForward), wagGenerator.getGaitWagPoint(0.0, movingForward)),
-                            tmpGroundHeight);
+                            tmpGroundHeights);
 
     // Limit frequency so speed is below 10m/min:
     globalGaitFrequency = getMapValue(gaitConfiguration, "frequency");
@@ -445,7 +447,7 @@ bool gaitConfigurationCallback(dyret_controller::ConfigureGait::Request  &req,
     if (ros::Time::isSimTime() && !initAdjustInSim) {
         // Calculate the initial pose of the gait
         std::vector<vec3P> initialGaitPose = lockToZ(add( bSplineGait.getPosition(0.0, movingForward), wagGenerator.getGaitWagPoint(0.0, movingForward) ),
-                                                     tmpGroundHeight);
+                                                     tmpGroundHeights);
 
         moveAllLegsToGlobalPosition(initialGaitPose, &positionCommand_pub);
         gaitInitAdjuster.skip();
@@ -455,24 +457,24 @@ bool gaitConfigurationCallback(dyret_controller::ConfigureGait::Request  &req,
 
     // Adjust gait pose
     if (req.gaitConfiguration.prepareForGait) {
-        adjustGaitPose(tmpGroundHeight);
+        adjustGaitPose(tmpGroundHeights);
     }
 
     ros::Time legLengthAdjustmentStart = ros::Time::now();
-    if (req.gaitConfiguration.prepareForGait && (femurLengths[0] >= 0 && tibiaLengths[0] >= 0)) {  //todo
+    if (req.gaitConfiguration.prepareForGait) {
         moveAllLegsToGlobalPosition(startGaitPose, &positionCommand_pub); // Continuously send pose to adjust to leg length change
 
-        setLegLengths(femurLengths, tibiaLengths);
+        setLegLengths(prismaticCommands);
 
         ros::spinOnce();
 
         if (!ros::Time::isSimTime()){
 
-            while (!legsAreFinishedReconfiguring()) {
+            while (!allLegsAreCloserThan(1.0f)) {
 
                 ros::spinOnce();
                 usleep(10000);
-                setLegLengths(femurLengths, tibiaLengths);
+                setLegLengths(prismaticCommands);
 
                 moveAllLegsToGlobalPosition(startGaitPose, &positionCommand_pub); // Continuously send pose to adjust to leg length change
 
@@ -552,9 +554,6 @@ int main(int argc, char **argv) {
 
     waitForRosInit(get_gait_evaluation_client, "get_gait_evaluation");
     waitForRosInit(servoStates_sub, "servoStates");
-
-    legActuatorLengths = {0.0, 0.0};
-    legActuatorErrors = {0.0, 0.0};
 
     // Initialize bSplineGait
     globalGaitFrequency = 1.0;

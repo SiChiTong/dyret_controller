@@ -344,7 +344,7 @@ float getMapValue(std::map<std::string, float> givenMap, std::string givenKey){
 bool gaitConfigurationCallback(dyret_controller::ConfigureGait::Request  &req,
                                dyret_controller::ConfigureGait::Response &res) {
 
-    ROS_INFO("Got gait configuration message for gait type %s", req.gaitConfiguration.gaitName.c_str());
+    ROS_INFO("Got gait configuration message for gait type %s", req.gaitConfiguration.gaitType.c_str());
 
     // Set leg lengths and wait until they reach the correct length
     if (req.gaitConfiguration.femurLengths.size() == 1 && req.gaitConfiguration.tibiaLengths.size() == 1){
@@ -378,7 +378,7 @@ bool gaitConfigurationCallback(dyret_controller::ConfigureGait::Request  &req,
     activatedRecording = false;
     currentInferredPosition = 0.0;
 
-    gaitType = req.gaitConfiguration.gaitName;
+    gaitType = req.gaitConfiguration.gaitType;
 
     gaitConfiguration.clear();
     assert(req.gaitConfiguration.gaitParameterName.size() == req.gaitConfiguration.gaitParameterValue.size());
@@ -409,7 +409,7 @@ bool gaitConfigurationCallback(dyret_controller::ConfigureGait::Request  &req,
           bSplineGait.writeGaitToFile(req.gaitConfiguration.logFilePath);
         }
 
-    } else if (gaitType == "lowLevelSplineGait"){
+    } else if (gaitType == "lowLevelSplineGait") {
 
         globalGaitFrequency = getMapValue(gaitConfiguration, "frequency");
         globalLiftDuration = getMapValue(gaitConfiguration, "liftDuration");
@@ -420,9 +420,16 @@ bool gaitConfigurationCallback(dyret_controller::ConfigureGait::Request  &req,
                                getMapValue(gaitConfiguration, "wagAmplitude_x"),
                                getMapValue(gaitConfiguration, "wagAmplitude_y"));
 
-        /*if (!req.gaitConfiguration.logFilePath.empty()) {
-          bSplineGait.writeGaitToFile(req.gaitConfiguration.logFilePath);
-        }*/
+    } else if (gaitType == "lowLevelAdvancedSplineGait"){
+
+        globalGaitFrequency = getMapValue(gaitConfiguration, "frequency");
+        globalLiftDuration = getMapValue(gaitConfiguration, "liftDuration");
+
+        bSplineGait.initLowLevelGait(gaitConfiguration, tmpGroundHeights);
+
+        wagGenerator.enableWag(bSplineGaitWagOffset + getMapValue(gaitConfiguration, "wagPhase"),
+                               getMapValue(gaitConfiguration, "wagAmplitude_x"),
+                               getMapValue(gaitConfiguration, "wagAmplitude_y"));
 
     } else {
         ROS_FATAL("Unknown gait specified: %s!", gaitType.c_str());

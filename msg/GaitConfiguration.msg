@@ -2,7 +2,7 @@
 #
 
 # The type of gait to use
-string gaitName
+string gaitType
 
 # Path to the logFile
 string logFilePath

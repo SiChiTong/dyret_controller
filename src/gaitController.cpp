@@ -258,7 +258,10 @@ void spinGaitOnce(){
 
             vec3P legPosition = add(globalLegPositions[i], wag);
 
-            legPosition = doLegLengthCorrection(legPosition, i, prismaticCommands, groundHeights);
+            // Only do leg length correction for lowLevelAdvancedSplineGait, which is the only gait with support for multiple leg lengths
+            if (gaitType == "lowLevelAdvancedSplineGait") {
+                legPosition = doLegLengthCorrection(legPosition, i, prismaticCommands, groundHeights);
+            }
 
             std::vector<double> inverseReturn = inverseKinematics::calculateInverseKinematics(legPosition.x(),
                                                                                               legPosition.y(),
@@ -389,8 +392,6 @@ bool gaitConfigurationCallback(dyret_controller::ConfigureGait::Request  &req,
 
     if (gaitType == "highLevelSplineGait") {
         globalLiftDuration = getMapValue(gaitConfiguration, "liftDuration");
-
-
 
         bSplineGait.initHighLevelGait(getMapValue(gaitConfiguration, "stepHeight"),
                                       getMapValue(gaitConfiguration, "stepLength"),

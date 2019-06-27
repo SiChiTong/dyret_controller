@@ -92,6 +92,7 @@ std::array<double, 8> prismaticCommands;
 ros::ServiceClient get_gait_evaluation_client;
 ros::ServiceClient servoConfigClient;
 BSplineGait bSplineGait;
+BSplineGait bSplineGait_rear;
 WagGenerator wagGenerator;
 ros::Publisher poseCommand_pub;
 ros::Time startTime;
@@ -233,6 +234,12 @@ void spinGaitOnce(){
         std::vector<vec3P> globalLegPositions(4);
 
         globalLegPositions = bSplineGait.getPosition(currentRelativeTime * globalGaitFrequency, movingForward);
+
+        if (gaitType == "lowLevelAdvancedSplineGait") {
+            std::vector<vec3P> globalLegPositionsRear = bSplineGait_rear.getPosition(currentRelativeTime * globalGaitFrequency, movingForward);
+            globalLegPositions[2] = globalLegPositionsRear[2];
+            globalLegPositions[3] = globalLegPositionsRear[3];
+        }
 
         // Set currentInferredPosition:
         double secondsPassed = (ros::Time::now() - startTime).toNSec() / 1000000000.0f;
@@ -430,7 +437,47 @@ bool gaitConfigurationCallback(dyret_controller::ConfigureGait::Request  &req,
         globalGaitFrequency = getMapValue(gaitConfiguration, "frequency");
         globalLiftDuration = getMapValue(gaitConfiguration, "liftDuration");
 
-        bSplineGait.initLowLevelGait(gaitConfiguration, tmpGroundHeights);
+        // Convert to separate phenotype maps:
+        std::map<std::string, float> frontGaitConfiguration = {{"wagPhase",         getMapValue(gaitConfiguration, "wagPhase")},
+                                                               {"wagAmplitude_x",   getMapValue(gaitConfiguration, "wagAmplitude_x")},
+                                                               {"wagAmplitude_y",   getMapValue(gaitConfiguration, "wagAmplitude_y")},
+                                                               {"liftDuration",     getMapValue(gaitConfiguration, "liftDuration")},
+                                                               {"difficultyFactor", getMapValue(gaitConfiguration, "difficultyFactor")},
+                                                               {"p0_x",             0.0f},
+                                                               {"p0_y",             getMapValue(gaitConfiguration, "p0_y")},
+                                                               {"p1_x",             0.0f},
+                                                               {"p1_y",             getMapValue(gaitConfiguration, "p1_y")},
+                                                               {"p2_x",             getMapValue(gaitConfiguration, "p2_x_front")},
+                                                               {"p2_y",             getMapValue(gaitConfiguration, "p2_y_front")},
+                                                               {"p2_z",             getMapValue(gaitConfiguration, "p2_z_front")},
+                                                               {"p3_x",             getMapValue(gaitConfiguration, "p3_x_front")},
+                                                               {"p3_y",             getMapValue(gaitConfiguration, "p3_y_front")},
+                                                               {"p3_z",             getMapValue(gaitConfiguration, "p3_z_front")},
+                                                               {"p4_x",             getMapValue(gaitConfiguration, "p4_x_front")},
+                                                               {"p4_y",             getMapValue(gaitConfiguration, "p4_y_front")},
+                                                               {"p4_z",             getMapValue(gaitConfiguration, "p4_z_front")}};
+
+        std::map<std::string, float> rearGaitConfiguration = {{"wagPhase",         getMapValue(gaitConfiguration, "wagPhase")},
+                                                              {"wagAmplitude_x",   getMapValue(gaitConfiguration, "wagAmplitude_x")},
+                                                              {"wagAmplitude_y",   getMapValue(gaitConfiguration, "wagAmplitude_y")},
+                                                              {"liftDuration",     getMapValue(gaitConfiguration, "liftDuration")},
+                                                              {"difficultyFactor", getMapValue(gaitConfiguration, "difficultyFactor")},
+                                                              {"p0_x",             0.0f},
+                                                              {"p0_y",             getMapValue(gaitConfiguration, "p0_y")},
+                                                              {"p1_x",             0.0f},
+                                                              {"p1_y",             getMapValue(gaitConfiguration, "p1_y")},
+                                                              {"p2_x",             getMapValue(gaitConfiguration, "p2_x_rear")},
+                                                              {"p2_y",             getMapValue(gaitConfiguration, "p2_y_rear")},
+                                                              {"p2_z",             getMapValue(gaitConfiguration, "p2_z_rear")},
+                                                              {"p3_x",             getMapValue(gaitConfiguration, "p3_x_rear")},
+                                                              {"p3_y",             getMapValue(gaitConfiguration, "p3_y_rear")},
+                                                              {"p3_z",             getMapValue(gaitConfiguration, "p3_z_rear")},
+                                                              {"p4_x",             getMapValue(gaitConfiguration, "p4_x_rear")},
+                                                              {"p4_y",             getMapValue(gaitConfiguration, "p4_y_rear")},
+                                                              {"p4_z",             getMapValue(gaitConfiguration, "p4_z_rear")}};
+
+        bSplineGait.initLowLevelGait(frontGaitConfiguration, tmpGroundHeights);
+        bSplineGait_rear.initLowLevelGait(rearGaitConfiguration, tmpGroundHeights);
 
         wagGenerator.enableWag(bSplineGaitWagOffset + getMapValue(gaitConfiguration, "wagPhase"),
                                getMapValue(gaitConfiguration, "wagAmplitude_x"),
@@ -448,8 +495,14 @@ bool gaitConfigurationCallback(dyret_controller::ConfigureGait::Request  &req,
     // Set initial pose for adjustment
     movingForward = req.gaitConfiguration.directionForward;
 
-    startGaitPose = lockToZ(add(bSplineGait.getPosition(0.0, movingForward), wagGenerator.getGaitWagPoint(0.0, movingForward)),
-                            tmpGroundHeights);
+    // Calculate startpose for all four legs or two at a time
+    startGaitPose = lockToZ(add(bSplineGait.getPosition(0.0, movingForward), wagGenerator.getGaitWagPoint(0.0, movingForward)), tmpGroundHeights);
+
+    if (gaitType == "lowLevelAdvancedSplineGait") {
+        std::vector<vec3P> startGaitPoseRear = lockToZ(add(bSplineGait_rear.getPosition(0.0, movingForward), wagGenerator.getGaitWagPoint(0.0, movingForward)), tmpGroundHeights);;
+        startGaitPose[2] = startGaitPoseRear[2];
+        startGaitPose[3] = startGaitPoseRear[3];
+    }
 
     // Limit frequency so speed is below 10m/min:
     globalGaitFrequency = getMapValue(gaitConfiguration, "frequency");
@@ -462,8 +515,13 @@ bool gaitConfigurationCallback(dyret_controller::ConfigureGait::Request  &req,
     // Adjust to the start of the gait only in simulation. NOTE: THIS ASSUMES FORWARD MOVEMENT
     if (ros::Time::isSimTime() && !initAdjustInSim) {
         // Calculate the initial pose of the gait
-        std::vector<vec3P> initialGaitPose = lockToZ(add( bSplineGait.getPosition(0.0, movingForward), wagGenerator.getGaitWagPoint(0.0, movingForward) ),
-                                                     tmpGroundHeights);
+        std::vector <vec3P> initialGaitPose = lockToZ(add(bSplineGait.getPosition(0.0, movingForward), wagGenerator.getGaitWagPoint(0.0, movingForward)), tmpGroundHeights);
+
+        if (gaitType == "lowLevelAdvancedSplineGait") {
+            std::vector <vec3P> initialGaitPoseRear = lockToZ(add(bSplineGait_rear.getPosition(0.0, movingForward), wagGenerator.getGaitWagPoint(0.0, movingForward)), tmpGroundHeights);
+            initialGaitPose[2] = initialGaitPoseRear[2];
+            initialGaitPose[3] = initialGaitPoseRear[3];
+        }
 
         moveAllLegsToGlobalPosition(initialGaitPose, &positionCommand_pub);
         gaitInitAdjuster.skip();

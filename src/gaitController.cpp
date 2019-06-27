@@ -405,9 +405,9 @@ bool gaitConfigurationCallback(dyret_controller::ConfigureGait::Request  &req,
                                getMapValue(gaitConfiguration, "wagAmplitude_x"),
                                getMapValue(gaitConfiguration, "wagAmplitude_y"));
 
-        if (!req.gaitConfiguration.logFilePath.empty()) {
+        /*if (!req.gaitConfiguration.logFilePath.empty()) {
           bSplineGait.writeGaitToFile(req.gaitConfiguration.logFilePath);
-        }
+        }*/
 
     } else if (gaitType == "lowLevelSplineGait") {
 
@@ -420,6 +420,10 @@ bool gaitConfigurationCallback(dyret_controller::ConfigureGait::Request  &req,
                                getMapValue(gaitConfiguration, "wagAmplitude_x"),
                                getMapValue(gaitConfiguration, "wagAmplitude_y"));
 
+        /*if (!req.gaitConfiguration.logFilePath.empty()) {
+            bSplineGait.writeGaitToFile(req.gaitConfiguration.logFilePath);
+        }*/
+
     } else if (gaitType == "lowLevelAdvancedSplineGait"){
 
         globalGaitFrequency = getMapValue(gaitConfiguration, "frequency");
@@ -430,6 +434,10 @@ bool gaitConfigurationCallback(dyret_controller::ConfigureGait::Request  &req,
         wagGenerator.enableWag(bSplineGaitWagOffset + getMapValue(gaitConfiguration, "wagPhase"),
                                getMapValue(gaitConfiguration, "wagAmplitude_x"),
                                getMapValue(gaitConfiguration, "wagAmplitude_y"));
+
+        /*if (!req.gaitConfiguration.logFilePath.empty()) {
+            bSplineGait.writeGaitToFile(req.gaitConfiguration.logFilePath);
+        }*/
 
     } else {
         ROS_FATAL("Unknown gait specified: %s!", gaitType.c_str());

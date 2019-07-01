@@ -70,6 +70,11 @@ double globalLiftDuration;
 const double groundHeightOffset = -430;
 const double groundCorrectionFactor = 0.8;
 
+
+double gaitTimingOffset = 0.0; // Offset to allow for lining up different frequency gaits
+double globalTime;
+double globalTimeAtChange = 0.0;
+
 const float bSplineGaitWagOffset = 0.91;
 
 const float spreadAmount = 80.0; // was 50
@@ -233,10 +238,25 @@ void spinGaitOnce(){
                 (ros::Time::now() - startTime).toNSec() / 1000000.0; // Given in milliseconds
         std::vector<vec3P> globalLegPositions(4);
 
-        globalLegPositions = bSplineGait.getPosition(currentRelativeTime * globalGaitFrequency, movingForward);
+        globalTime = (currentRelativeTime * globalGaitFrequency) - gaitTimingOffset;
+
+        if (globalTimeAtChange != 0.0){ // There has been a gait reconfiguration
+            fprintf(stderr, "Global time: %.2f, globalTimeAtChange: %.2f\n", globalTime, globalTimeAtChange);
+            fprintf(stderr, "Old gaitTimingOffset: %.2f\n", gaitTimingOffset);
+
+            gaitTimingOffset = globalTime + gaitTimingOffset - globalTimeAtChange;
+
+            fprintf(stderr, "New gaitTimingOffset: %.2f\n", gaitTimingOffset);
+
+            globalTime = (currentRelativeTime * globalGaitFrequency) - gaitTimingOffset;
+
+            globalTimeAtChange = 0.0;
+        }
+
+        globalLegPositions = bSplineGait.getPosition(globalTime, movingForward);
 
         if (gaitType == "lowLevelAdvancedSplineGait") {
-            std::vector<vec3P> globalLegPositionsRear = bSplineGait_rear.getPosition(currentRelativeTime * globalGaitFrequency, movingForward);
+            std::vector<vec3P> globalLegPositionsRear = bSplineGait_rear.getPosition(globalTime, movingForward);
             globalLegPositions[2] = globalLegPositionsRear[2];
             globalLegPositions[3] = globalLegPositionsRear[3];
         }
@@ -256,7 +276,7 @@ void spinGaitOnce(){
 
         std::vector<float> anglesInRad;
 
-        vec3P wag = wagGenerator.getGaitWagPoint(currentRelativeTime * globalGaitFrequency, movingForward);
+        vec3P wag = wagGenerator.getGaitWagPoint(globalTime, movingForward);
 
         std::vector<vec3P> currentPositions = currentLegPositions(servoAnglesInRad, prismaticPositions);
 
@@ -355,6 +375,12 @@ bool gaitConfigurationCallback(dyret_controller::ConfigureGait::Request  &req,
                                dyret_controller::ConfigureGait::Response &res) {
 
     ROS_INFO("Got gait configuration message for gait type %s", req.gaitConfiguration.gaitType.c_str());
+
+    if (req.gaitConfiguration.liveUpdate) {
+        globalTimeAtChange = globalTime;
+    } else {
+        gaitTimingOffset = 0.0;
+    }
 
     if (req.gaitConfiguration.liveUpdate == false) {
         // Set leg lengths and wait until they reach the correct length

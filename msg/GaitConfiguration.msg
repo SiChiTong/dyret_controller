@@ -4,6 +4,9 @@
 # The type of gait to use
 string gaitType
 
+# Specifies if this should be an update to a gait that is currently being used
+bool liveUpdate
+
 # Path to the logFile
 string logFilePath
 

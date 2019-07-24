@@ -9,6 +9,8 @@
 #include "geometry_msgs/WrenchStamped.h"
 #include "sensor_msgs/PointCloud2.h"
 #include "sensor_msgs/Image.h"
+#include  "sensor_msgs/CompressedImage.h"
+
 #include "dyret_controller/LoggerCommand.h"
 
 rosbag::Bag bag;
@@ -101,20 +103,20 @@ void pointcloudCallback(const sensor_msgs::PointCloud2::ConstPtr &msg) {
     }
 }
 
-void depthImageCallback(const sensor_msgs::Image::ConstPtr &msg) {
+void depthImageCallback(const sensor_msgs::CompressedImage::ConstPtr &msg) {
     if (loggingEnabled){
         try {
-            bag.write("/dyret/sensor/camera/depth", msg->header.stamp, msg);
+            bag.write("/dyret/sensor/camera/depth/compressed", msg->header.stamp, msg);
         } catch (rosbag::BagException e){
             ROS_ERROR("Exception while writing depth image message to log: %s", e.what());
         }
     }
 }
 
-void colorImageCallback(const sensor_msgs::Image::ConstPtr &msg) {
+void colorImageCallback(const sensor_msgs::CompressedImage::ConstPtr &msg) {
     if (loggingEnabled){
         try {
-            bag.write("/dyret/sensor/camera/color", msg->header.stamp, msg);
+            bag.write("/dyret/sensor/camera/color/compressed", msg->header.stamp, msg);
         } catch (rosbag::BagException e){
             ROS_ERROR("Exception while writing color image message to log: %s", e.what());
         }
@@ -137,9 +139,9 @@ int main(int argc, char **argv) {
   ros::Subscriber optoforce_fl_sub = n.subscribe<geometry_msgs::WrenchStamped>("/dyret/sensor/contact/fl", 100, boost::bind(optoforceCallback, _1, "fl"));
   ros::Subscriber optoforce_fr_sub = n.subscribe<geometry_msgs::WrenchStamped>("/dyret/sensor/contact/fr", 100, boost::bind(optoforceCallback, _1, "fr"));
 
-  ros::Subscriber pointcloud_sub = n.subscribe("/dyret/sensor/camera/pointcloud", 100, pointcloudCallback);
-  ros::Subscriber depthimage_sub = n.subscribe("/dyret/sensor/camera/depth", 100, depthImageCallback);
-  ros::Subscriber colorimage_sub = n.subscribe("/dyret/sensor/camera/color", 100, colorImageCallback);
+  //ros::Subscriber pointcloud_sub = n.subscribe("/dyret/sensor/camera/pointcloud", 100, pointcloudCallback);
+  ros::Subscriber depthimage_sub = n.subscribe("/dyret/sensor/camera/depth/compressed", 100, depthImageCallback);
+  ros::Subscriber colorimage_sub = n.subscribe("/dyret/sensor/camera/color/compressed", 100, colorImageCallback);
 
   ROS_INFO("dyret_logger running");
 

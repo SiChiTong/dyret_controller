@@ -6,6 +6,7 @@
 #include "dyret_common/Pose.h"
 #include "sensor_msgs/Imu.h"
 #include "geometry_msgs/PoseStamped.h"
+#include "geometry_msgs/WrenchStamped.h"
 #include "dyret_controller/LoggerCommand.h"
 
 rosbag::Bag bag;
@@ -78,6 +79,16 @@ void poseCallback(const geometry_msgs::PoseStamped::ConstPtr &msg) {
     }
 }
 
+void optoforceCallback(const geometry_msgs::WrenchStamped::ConstPtr &msg, const std::string &topic) {
+    if (loggingEnabled){
+        try {
+            bag.write("/dyret/sensor/contact/" + topic, msg->header.stamp, msg);
+        } catch (rosbag::BagException e){
+            ROS_ERROR("Exception while writing pose message to log: %s", e.what());
+        }
+    }
+}
+
 int main(int argc, char **argv) {
   ros::init(argc, argv, "dyret_logger");
   ros::NodeHandle n;
@@ -88,6 +99,11 @@ int main(int argc, char **argv) {
   ros::Subscriber command_sub = n.subscribe("/dyret/command", 100, commandCallback);
   ros::Subscriber imu_sub = n.subscribe("/dyret/sensor/imu", 100, imuCallback);
   ros::Subscriber pose_sub = n.subscribe("/dyret/sensor/pose", 100, poseCallback);
+
+  ros::Subscriber optoforce_bl_sub = n.subscribe<geometry_msgs::WrenchStamped>("/dyret/sensor/contact/bl", 100, boost::bind(optoforceCallback, _1, "bl"));
+  ros::Subscriber optoforce_br_sub = n.subscribe<geometry_msgs::WrenchStamped>("/dyret/sensor/contact/br", 100, boost::bind(optoforceCallback, _1, "br"));
+  ros::Subscriber optoforce_fl_sub = n.subscribe<geometry_msgs::WrenchStamped>("/dyret/sensor/contact/fl", 100, boost::bind(optoforceCallback, _1, "fl"));
+  ros::Subscriber optoforce_fr_sub = n.subscribe<geometry_msgs::WrenchStamped>("/dyret/sensor/contact/fr", 100, boost::bind(optoforceCallback, _1, "fr"));
 
   ROS_INFO("dyret_logger running");
 

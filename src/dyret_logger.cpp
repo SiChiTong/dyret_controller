@@ -7,6 +7,8 @@
 #include "sensor_msgs/Imu.h"
 #include "geometry_msgs/PoseStamped.h"
 #include "geometry_msgs/WrenchStamped.h"
+#include "sensor_msgs/PointCloud2.h"
+#include "sensor_msgs/Image.h"
 #include "dyret_controller/LoggerCommand.h"
 
 rosbag::Bag bag;
@@ -84,7 +86,37 @@ void optoforceCallback(const geometry_msgs::WrenchStamped::ConstPtr &msg, const 
         try {
             bag.write("/dyret/sensor/contact/" + topic, msg->header.stamp, msg);
         } catch (rosbag::BagException e){
-            ROS_ERROR("Exception while writing pose message to log: %s", e.what());
+            ROS_ERROR("Exception while writing optoforce message to log: %s", e.what());
+        }
+    }
+}
+
+void pointcloudCallback(const sensor_msgs::PointCloud2::ConstPtr &msg) {
+    if (loggingEnabled){
+        try {
+            bag.write("/dyret/sensor/camera/pointcloud", msg->header.stamp, msg);
+        } catch (rosbag::BagException e){
+            ROS_ERROR("Exception while writing pointcloud message to log: %s", e.what());
+        }
+    }
+}
+
+void depthImageCallback(const sensor_msgs::Image::ConstPtr &msg) {
+    if (loggingEnabled){
+        try {
+            bag.write("/dyret/sensor/camera/depth", msg->header.stamp, msg);
+        } catch (rosbag::BagException e){
+            ROS_ERROR("Exception while writing depth image message to log: %s", e.what());
+        }
+    }
+}
+
+void colorImageCallback(const sensor_msgs::Image::ConstPtr &msg) {
+    if (loggingEnabled){
+        try {
+            bag.write("/dyret/sensor/camera/color", msg->header.stamp, msg);
+        } catch (rosbag::BagException e){
+            ROS_ERROR("Exception while writing color image message to log: %s", e.what());
         }
     }
 }
@@ -104,6 +136,10 @@ int main(int argc, char **argv) {
   ros::Subscriber optoforce_br_sub = n.subscribe<geometry_msgs::WrenchStamped>("/dyret/sensor/contact/br", 100, boost::bind(optoforceCallback, _1, "br"));
   ros::Subscriber optoforce_fl_sub = n.subscribe<geometry_msgs::WrenchStamped>("/dyret/sensor/contact/fl", 100, boost::bind(optoforceCallback, _1, "fl"));
   ros::Subscriber optoforce_fr_sub = n.subscribe<geometry_msgs::WrenchStamped>("/dyret/sensor/contact/fr", 100, boost::bind(optoforceCallback, _1, "fr"));
+
+  ros::Subscriber pointcloud_sub = n.subscribe("/dyret/sensor/camera/pointcloud", 100, pointcloudCallback);
+  ros::Subscriber depthimage_sub = n.subscribe("/dyret/sensor/camera/depth", 100, depthImageCallback);
+  ros::Subscriber colorimage_sub = n.subscribe("/dyret/sensor/camera/color", 100, colorImageCallback);
 
   ROS_INFO("dyret_logger running");
 

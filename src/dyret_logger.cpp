@@ -24,7 +24,7 @@ bool loggerCommandCallback(dyret_controller::LoggerCommand::Request  &req,
     if (req.command == req.INIT_LOG){
         ROS_INFO("Received INIT_LOG command with path \"%s\" and individual \"%s\"", req.logPath.c_str(), req.individual.c_str());
         bag.open(bagPath.c_str(), rosbag::bagmode::Write);
-        bag.setCompression(rosbag::CompressionType::BZ2);
+        bag.setCompression(rosbag::CompressionType::LZ4);
     } else if (req.command == req.ENABLE_LOGGING){
         ROS_INFO("Received START_LOGGING command");
         loggingEnabled = true;
@@ -139,9 +139,9 @@ int main(int argc, char **argv) {
   ros::Subscriber optoforce_fl_sub = n.subscribe<geometry_msgs::WrenchStamped>("/dyret/sensor/contact/fl", 100, boost::bind(optoforceCallback, _1, "fl"));
   ros::Subscriber optoforce_fr_sub = n.subscribe<geometry_msgs::WrenchStamped>("/dyret/sensor/contact/fr", 100, boost::bind(optoforceCallback, _1, "fr"));
 
-  //ros::Subscriber pointcloud_sub = n.subscribe("/dyret/sensor/camera/pointcloud", 100, pointcloudCallback);
-  ros::Subscriber depthimage_sub = n.subscribe("/dyret/sensor/camera/depth", 100, depthImageCallback);
-  ros::Subscriber colorimage_sub = n.subscribe("/dyret/sensor/camera/color/compressed", 100, colorImageCallback);
+  ros::Subscriber pointcloud_sub = n.subscribe("/dyret/sensor/camera/pointcloud", 1, pointcloudCallback);
+  //ros::Subscriber depthimage_sub = n.subscribe("/dyret/sensor/camera/depth", 1, depthImageCallback);
+  //ros::Subscriber colorimage_sub = n.subscribe("/dyret/sensor/camera/color/compressed", 1, colorImageCallback);
 
   ROS_INFO("dyret_logger running");
 

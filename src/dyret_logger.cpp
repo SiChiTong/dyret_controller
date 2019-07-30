@@ -15,6 +15,7 @@
 
 rosbag::Bag bag;
 bool loggingEnabled = false;
+bool alreadySavedImage = false;
 
 bool loggerCommandCallback(dyret_controller::LoggerCommand::Request  &req,
                            dyret_controller::LoggerCommand::Response &res) {
@@ -25,12 +26,13 @@ bool loggerCommandCallback(dyret_controller::LoggerCommand::Request  &req,
         ROS_INFO("Received INIT_LOG command with path \"%s\" and individual \"%s\"", req.logPath.c_str(), req.individual.c_str());
         bag.open(bagPath.c_str(), rosbag::bagmode::Write);
         bag.setCompression(rosbag::CompressionType::LZ4);
+        alreadySavedImage = false;
     } else if (req.command == req.ENABLE_LOGGING){
         ROS_INFO("Received START_LOGGING command");
         loggingEnabled = true;
     } else if (req.command == req.DISABLE_LOGGING){
         ROS_INFO("Received DISABLE_LOGGING command");
-        loggingEnabled = true;
+        loggingEnabled = false;
     } else if (req.command == req.SAVE_LOG) {
         ROS_INFO("Received SAVE_LOG command");
         loggingEnabled = false;
@@ -114,9 +116,10 @@ void depthImageCallback(const sensor_msgs::Image::ConstPtr &msg) {
 }
 
 void colorImageCallback(const sensor_msgs::CompressedImage::ConstPtr &msg) {
-    if (loggingEnabled){
+    if (loggingEnabled && !alreadySavedImage){
         try {
             bag.write("/dyret/sensor/camera/color/compressed", msg->header.stamp, msg);
+            alreadySavedImage = true;
         } catch (rosbag::BagException e){
             ROS_ERROR("Exception while writing color image message to log: %s", e.what());
         }
@@ -141,7 +144,7 @@ int main(int argc, char **argv) {
 
   ros::Subscriber pointcloud_sub = n.subscribe("/dyret/sensor/camera/pointcloud", 1, pointcloudCallback);
   //ros::Subscriber depthimage_sub = n.subscribe("/dyret/sensor/camera/depth", 1, depthImageCallback);
-  //ros::Subscriber colorimage_sub = n.subscribe("/dyret/sensor/camera/color/compressed", 1, colorImageCallback);
+  ros::Subscriber colorimage_sub = n.subscribe("/dyret/sensor/camera/color/compressed", 1, colorImageCallback);
 
   ROS_INFO("dyret_logger running");
 

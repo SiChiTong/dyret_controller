@@ -18,6 +18,7 @@ bool loggingEnabled = false;
 bool alreadySavedImage = false;
 
 ros::Time lastSavedDepthTime;
+ros::Time lastSavedColorTime;
 
 bool loggerCommandCallback(dyret_controller::LoggerCommand::Request  &req,
                            dyret_controller::LoggerCommand::Response &res) {
@@ -108,14 +109,14 @@ void pointcloudCallback(const sensor_msgs::PointCloud2::ConstPtr &msg) {
 }
 
 // Only save the depth image once a second
-void depthImageCallback(const sensor_msgs::CompressedImage::ConstPtr &msg) {
+void depthImageCallback(const sensor_msgs::Image::ConstPtr &msg) {
     if (loggingEnabled){
         ros::Time currentTime = ros::Time::now();
         if ((currentTime - lastSavedDepthTime) > ros::Duration(1)) {
             lastSavedDepthTime = currentTime;
 
             try {
-                bag.write("/dyret/sensor/camera/depth/compressed", msg->header.stamp, msg);
+                bag.write("/dyret/sensor/camera/depth", msg->header.stamp, msg);
             } catch (rosbag::BagException e) {
                 ROS_ERROR("Exception while writing depth image message to log: %s", e.what());
             }
@@ -124,12 +125,17 @@ void depthImageCallback(const sensor_msgs::CompressedImage::ConstPtr &msg) {
 }
 
 void colorImageCallback(const sensor_msgs::CompressedImage::ConstPtr &msg) {
-    if (loggingEnabled && !alreadySavedImage){
-        try {
-            bag.write("/dyret/sensor/camera/color/compressed", msg->header.stamp, msg);
-            alreadySavedImage = true;
-        } catch (rosbag::BagException e){
-            ROS_ERROR("Exception while writing color image message to log: %s", e.what());
+    if (loggingEnabled){
+        ros::Time currentTime = ros::Time::now();
+        if ((currentTime - lastSavedColorTime) > ros::Duration(1)) {
+            lastSavedColorTime = currentTime;
+
+            try {
+                bag.write("/dyret/sensor/camera/color/compressed", msg->header.stamp, msg);
+                alreadySavedImage = true;
+            } catch (rosbag::BagException e) {
+                ROS_ERROR("Exception while writing color image message to log: %s", e.what());
+            }
         }
     }
 }
@@ -137,8 +143,6 @@ void colorImageCallback(const sensor_msgs::CompressedImage::ConstPtr &msg) {
 int main(int argc, char **argv) {
   ros::init(argc, argv, "dyret_logger");
   ros::NodeHandle n;
-
-  lastSavedDepthTime = ros::Time::now();
 
   ros::ServiceServer loggerCommandServer = n.advertiseService("/dyret/dyret_logger/loggerCommand", loggerCommandCallback);
 
@@ -153,10 +157,13 @@ int main(int argc, char **argv) {
   ros::Subscriber optoforce_fr_sub = n.subscribe<geometry_msgs::WrenchStamped>("/dyret/sensor/raw/contact/fr", 100, boost::bind(optoforceCallback, _1, "fr"));
 
   ros::Subscriber pointcloud_sub = n.subscribe("/dyret/sensor/camera/pointcloud", 1, pointcloudCallback);
-  ros::Subscriber depthimage_sub = n.subscribe("/dyret/sensor/camera/depth/compressed", 1, depthImageCallback);
+  ros::Subscriber depthimage_sub = n.subscribe("/dyret/sensor/camera/depth", 1, depthImageCallback);
   ros::Subscriber colorimage_sub = n.subscribe("/dyret/sensor/camera/color/compressed", 1, colorImageCallback);
 
   ROS_INFO("dyret_logger running");
+
+  lastSavedDepthTime = ros::Time::now();
+  lastSavedColorTime = ros::Time::now();
 
   ros::spin();
 

@@ -17,6 +17,8 @@ rosbag::Bag bag;
 bool loggingEnabled = false;
 bool alreadySavedImage = false;
 
+ros::Time lastSavedDepthTime;
+
 bool loggerCommandCallback(dyret_controller::LoggerCommand::Request  &req,
                            dyret_controller::LoggerCommand::Response &res) {
 
@@ -105,12 +107,18 @@ void pointcloudCallback(const sensor_msgs::PointCloud2::ConstPtr &msg) {
     }
 }
 
-void depthImageCallback(const sensor_msgs::Image::ConstPtr &msg) {
+// Only save the depth image once a second
+void depthImageCallback(const sensor_msgs::CompressedImage::ConstPtr &msg) {
     if (loggingEnabled){
-        try {
-            bag.write("/dyret/sensor/camera/depth", msg->header.stamp, msg);
-        } catch (rosbag::BagException e){
-            ROS_ERROR("Exception while writing depth image message to log: %s", e.what());
+        ros::Time currentTime = ros::Time::now();
+        if ((currentTime - lastSavedDepthTime) > ros::Duration(1)) {
+            lastSavedDepthTime = currentTime;
+
+            try {
+                bag.write("/dyret/sensor/camera/depth/compressed", msg->header.stamp, msg);
+            } catch (rosbag::BagException e) {
+                ROS_ERROR("Exception while writing depth image message to log: %s", e.what());
+            }
         }
     }
 }
@@ -130,6 +138,8 @@ int main(int argc, char **argv) {
   ros::init(argc, argv, "dyret_logger");
   ros::NodeHandle n;
 
+  lastSavedDepthTime = ros::Time::now();
+
   ros::ServiceServer loggerCommandServer = n.advertiseService("/dyret/dyret_logger/loggerCommand", loggerCommandCallback);
 
   ros::Subscriber state_sub = n.subscribe("/dyret/state", 100, stateCallback);
@@ -143,7 +153,7 @@ int main(int argc, char **argv) {
   ros::Subscriber optoforce_fr_sub = n.subscribe<geometry_msgs::WrenchStamped>("/dyret/sensor/raw/contact/fr", 100, boost::bind(optoforceCallback, _1, "fr"));
 
   ros::Subscriber pointcloud_sub = n.subscribe("/dyret/sensor/camera/pointcloud", 1, pointcloudCallback);
-  //ros::Subscriber depthimage_sub = n.subscribe("/dyret/sensor/camera/depth", 1, depthImageCallback);
+  ros::Subscriber depthimage_sub = n.subscribe("/dyret/sensor/camera/depth/compressed", 1, depthImageCallback);
   ros::Subscriber colorimage_sub = n.subscribe("/dyret/sensor/camera/color/compressed", 1, colorImageCallback);
 
   ROS_INFO("dyret_logger running");

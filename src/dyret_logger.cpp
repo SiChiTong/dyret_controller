@@ -91,7 +91,7 @@ void poseCallback(const geometry_msgs::PoseStamped::ConstPtr &msg) {
 void optoforceCallback(const geometry_msgs::WrenchStamped::ConstPtr &msg, const std::string &topic) {
     if (loggingEnabled){
         try {
-            bag.write("/dyret/sensor/raw/contact/" + topic, msg->header.stamp, msg);
+            bag.write(topic, msg->header.stamp, msg);
         } catch (rosbag::BagException e){
             ROS_ERROR("Exception while writing optoforce message to log: %s", e.what());
         }
@@ -151,10 +151,15 @@ int main(int argc, char **argv) {
   ros::Subscriber imu_sub = n.subscribe("/dyret/sensor/imu", 100, imuCallback);
   ros::Subscriber pose_sub = n.subscribe("/dyret/sensor/pose", 100, poseCallback);
 
-  ros::Subscriber optoforce_bl_sub = n.subscribe<geometry_msgs::WrenchStamped>("/dyret/sensor/raw/contact/bl", 100, boost::bind(optoforceCallback, _1, "bl"));
-  ros::Subscriber optoforce_br_sub = n.subscribe<geometry_msgs::WrenchStamped>("/dyret/sensor/raw/contact/br", 100, boost::bind(optoforceCallback, _1, "br"));
-  ros::Subscriber optoforce_fl_sub = n.subscribe<geometry_msgs::WrenchStamped>("/dyret/sensor/raw/contact/fl", 100, boost::bind(optoforceCallback, _1, "fl"));
-  ros::Subscriber optoforce_fr_sub = n.subscribe<geometry_msgs::WrenchStamped>("/dyret/sensor/raw/contact/fr", 100, boost::bind(optoforceCallback, _1, "fr"));
+  ros::Subscriber optoforce_bl_raw_sub = n.subscribe<geometry_msgs::WrenchStamped>("/dyret/sensor/raw/contact/bl", 100, boost::bind(optoforceCallback, _1, "/dyret/sensor/raw/contact/bl"));
+  ros::Subscriber optoforce_br_raw_sub = n.subscribe<geometry_msgs::WrenchStamped>("/dyret/sensor/raw/contact/br", 100, boost::bind(optoforceCallback, _1, "/dyret/sensor/raw/contact/br"));
+  ros::Subscriber optoforce_fl_raw_sub = n.subscribe<geometry_msgs::WrenchStamped>("/dyret/sensor/raw/contact/fl", 100, boost::bind(optoforceCallback, _1, "/dyret/sensor/raw/contact/fl"));
+  ros::Subscriber optoforce_fr_raw_sub = n.subscribe<geometry_msgs::WrenchStamped>("/dyret/sensor/raw/contact/fr", 100, boost::bind(optoforceCallback, _1, "/dyret/sensor/raw/contact/fr"));
+
+  ros::Subscriber optoforce_bl_sub = n.subscribe<geometry_msgs::WrenchStamped>("/dyret/sensor/contact/bl", 100, boost::bind(optoforceCallback, _1, "/dyret/sensor/contact/bl"));
+  ros::Subscriber optoforce_br_sub = n.subscribe<geometry_msgs::WrenchStamped>("/dyret/sensor/contact/br", 100, boost::bind(optoforceCallback, _1, "/dyret/sensor/contact/br"));
+  ros::Subscriber optoforce_fl_sub = n.subscribe<geometry_msgs::WrenchStamped>("/dyret/sensor/contact/fl", 100, boost::bind(optoforceCallback, _1, "/dyret/sensor/contact/fl"));
+  ros::Subscriber optoforce_fr_sub = n.subscribe<geometry_msgs::WrenchStamped>("/dyret/sensor/contact/fr", 100, boost::bind(optoforceCallback, _1, "/dyret/sensor/contact/fr"));
 
   ros::Subscriber pointcloud_sub = n.subscribe("/dyret/sensor/camera/pointcloud", 1, pointcloudCallback);
   ros::Subscriber depthimage_sub = n.subscribe("/dyret/sensor/camera/depth", 1, depthImageCallback);

@@ -71,8 +71,11 @@ void BSplineGait::writeGaitToFile(std::vector<vec3P> customPoints, LoopingCubicH
     std::string dateString = getDateString();
 
     // Save raw points:
+    std::stringstream ss;
+    ss << getenv("HOME") << "/catkin_ws/customLogs/lowLevelSplineGait/" << std::to_string(index) << "_" << std::to_string(gaitDifficultyFactor) << "_raw.csv";
+
     FILE * fp;
-    fp = fopen(std::string("/home/tonnesfn/catkin_ws/customLogs/lowLevelSplineGait/" + std::to_string(index) + "_" + std::to_string(gaitDifficultyFactor) + "_raw.csv").c_str(), "w");
+    fp = fopen(ss.str().c_str(), "w");
 
     for (int i = 0; i < numberOfPointsToGenerate; i++) {
         float scaled = (float) (customSpline.totalLength() / numberOfPointsToGenerate) * i;

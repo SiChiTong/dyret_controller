@@ -177,21 +177,35 @@ void BSplineGait::initLowLevelGait(std::map<std::string, float> gaitConfiguratio
     // Calculate gait points (the two ground points need to be first):
     controlPoints.clear();
 
+    float groundCenterPoint = (getMapValue(gaitConfiguration, "p0_y") + getMapValue(gaitConfiguration, "p1_y")) / 2.0;
+
+    fprintf(stderr, "p0: %.2f, p1: %.2f, mid: %.2f, p0_n: %.2f, p1_n: %.2f\n", getMapValue(gaitConfiguration, "p0_y"),
+                                                                               getMapValue(gaitConfiguration, "p1_y"),
+                                                                               groundCenterPoint,
+                                                                               ((getMapValue(gaitConfiguration, "p0_y") - groundCenterPoint) * scalingFactor) + groundCenterPoint,
+                                                                               ((getMapValue(gaitConfiguration, "p1_y") - groundCenterPoint) * scalingFactor) + groundCenterPoint
+                                                                               );
+
     if (getMapValue(gaitConfiguration, "p0_y") > getMapValue(gaitConfiguration, "p1_y")) {
-      controlPoints.push_back({getMapValue(gaitConfiguration, "p0_x") * scalingFactor, getMapValue(gaitConfiguration, "p0_y") * scalingFactor, 0.0f});
-      controlPoints.push_back({getMapValue(gaitConfiguration, "p1_x") * scalingFactor, getMapValue(gaitConfiguration, "p1_y") * scalingFactor, 0.0f});
+      controlPoints.push_back({getMapValue(gaitConfiguration, "p0_x") * scalingFactor, ((getMapValue(gaitConfiguration, "p0_y") - groundCenterPoint) * scalingFactor) + groundCenterPoint, 0.0f});
+      controlPoints.push_back({getMapValue(gaitConfiguration, "p1_x") * scalingFactor, ((getMapValue(gaitConfiguration, "p1_y") - groundCenterPoint) * scalingFactor) + groundCenterPoint, 0.0f});
     } else {
-      controlPoints.push_back({getMapValue(gaitConfiguration, "p1_x") * scalingFactor, getMapValue(gaitConfiguration, "p1_y") * scalingFactor, 0.0f});
-      controlPoints.push_back({getMapValue(gaitConfiguration, "p0_x") * scalingFactor, getMapValue(gaitConfiguration, "p0_y") * scalingFactor, 0.0f});
+      controlPoints.push_back({getMapValue(gaitConfiguration, "p1_x") * scalingFactor, ((getMapValue(gaitConfiguration, "p1_y") - groundCenterPoint) * scalingFactor) + groundCenterPoint, 0.0f});
+      controlPoints.push_back({getMapValue(gaitConfiguration, "p0_x") * scalingFactor, ((getMapValue(gaitConfiguration, "p0_y") - groundCenterPoint) * scalingFactor) + groundCenterPoint, 0.0f});
     }
 
     stepLength = controlPoints[0].y() - controlPoints[1].y();
 
     // Try all combinations of point order to find one without self-intersection:
-
-    std::vector<vec3P> airPoints = {{getMapValue(gaitConfiguration, "p2_x") * scalingFactor, getMapValue(gaitConfiguration, "p2_y") * scalingFactor, (float) getMapValue(gaitConfiguration, "p2_z") * scalingFactor},
-                                    {getMapValue(gaitConfiguration, "p3_x") * scalingFactor, getMapValue(gaitConfiguration, "p3_y") * scalingFactor, (float) getMapValue(gaitConfiguration, "p3_z") * scalingFactor},
-                                    {getMapValue(gaitConfiguration, "p4_x") * scalingFactor, getMapValue(gaitConfiguration, "p4_y") * scalingFactor, (float) getMapValue(gaitConfiguration, "p4_z") * scalingFactor}};
+    std::vector<vec3P> airPoints = {{getMapValue(gaitConfiguration, "p2_x") * scalingFactor,
+                                     ((getMapValue(gaitConfiguration, "p2_y") - groundCenterPoint) * scalingFactor) + groundCenterPoint,
+                                     (float) getMapValue(gaitConfiguration, "p2_z") * scalingFactor},
+                                    {getMapValue(gaitConfiguration, "p3_x") * scalingFactor,
+                                     ((getMapValue(gaitConfiguration, "p3_y") - groundCenterPoint) * scalingFactor) + groundCenterPoint,
+                                     (float) getMapValue(gaitConfiguration, "p3_z") * scalingFactor},
+                                    {getMapValue(gaitConfiguration, "p4_x") * scalingFactor,
+                                     ((getMapValue(gaitConfiguration, "p4_y") - groundCenterPoint) * scalingFactor) + groundCenterPoint,
+                                     (float) getMapValue(gaitConfiguration, "p4_z") * scalingFactor}};
 
     std::vector<int> indexes = {0, 1, 2};
     int i = 0;

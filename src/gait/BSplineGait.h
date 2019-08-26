@@ -21,8 +21,9 @@ class BSplineGait {
     double totalLength;
     double spreadAmount;
     double rearLegOffset;
-    double groundPercentGoal; //Time spent on the ground (minimum 3/4 = 75%)
+    double groundPercentGoal; // Time spent on the ground (minimum 3/4 = 75%)
     double gaitDifficultyFactor = -1;
+    float scalingFactor = 1.0;
 
     std::array<double, 4> groundHeights;
 

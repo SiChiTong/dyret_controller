@@ -167,6 +167,7 @@ void BSplineGait::initLowLevelGait(std::map<std::string, float> gaitConfiguratio
     ROS_INFO("Initializing lowLevelGait with difficulty %.1f", getMapValue(gaitConfiguration, "difficultyFactor"));
 
     groundPercentGoal = 1.0 - getMapValue(gaitConfiguration, "liftDuration");
+    scalingFactor = getMapValue(gaitConfiguration, "splineScalingFactor");
     groundHeights = givenGroundHeights;
     offsetFront = 0.0;
     spreadAmount = 80.0;
@@ -177,20 +178,20 @@ void BSplineGait::initLowLevelGait(std::map<std::string, float> gaitConfiguratio
     controlPoints.clear();
 
     if (getMapValue(gaitConfiguration, "p0_y") > getMapValue(gaitConfiguration, "p1_y")) {
-      controlPoints.push_back({getMapValue(gaitConfiguration, "p0_x"), getMapValue(gaitConfiguration, "p0_y"), 0.0f});
-      controlPoints.push_back({getMapValue(gaitConfiguration, "p1_x"), getMapValue(gaitConfiguration, "p1_y"), 0.0f});
+      controlPoints.push_back({getMapValue(gaitConfiguration, "p0_x") * scalingFactor, getMapValue(gaitConfiguration, "p0_y") * scalingFactor, 0.0f});
+      controlPoints.push_back({getMapValue(gaitConfiguration, "p1_x") * scalingFactor, getMapValue(gaitConfiguration, "p1_y") * scalingFactor, 0.0f});
     } else {
-      controlPoints.push_back({getMapValue(gaitConfiguration, "p1_x"), getMapValue(gaitConfiguration, "p1_y"), 0.0f});
-      controlPoints.push_back({getMapValue(gaitConfiguration, "p0_x"), getMapValue(gaitConfiguration, "p0_y"), 0.0f});
+      controlPoints.push_back({getMapValue(gaitConfiguration, "p1_x") * scalingFactor, getMapValue(gaitConfiguration, "p1_y") * scalingFactor, 0.0f});
+      controlPoints.push_back({getMapValue(gaitConfiguration, "p0_x") * scalingFactor, getMapValue(gaitConfiguration, "p0_y") * scalingFactor, 0.0f});
     }
 
     stepLength = controlPoints[0].y() - controlPoints[1].y();
 
     // Try all combinations of point order to find one without self-intersection:
 
-    std::vector<vec3P> airPoints = {{getMapValue(gaitConfiguration, "p2_x"), getMapValue(gaitConfiguration, "p2_y"), (float) getMapValue(gaitConfiguration, "p2_z")},
-                                    {getMapValue(gaitConfiguration, "p3_x"), getMapValue(gaitConfiguration, "p3_y"), (float) getMapValue(gaitConfiguration, "p3_z")},
-                                    {getMapValue(gaitConfiguration, "p4_x"), getMapValue(gaitConfiguration, "p4_y"), (float) getMapValue(gaitConfiguration, "p4_z")}};
+    std::vector<vec3P> airPoints = {{getMapValue(gaitConfiguration, "p2_x") * scalingFactor, getMapValue(gaitConfiguration, "p2_y") * scalingFactor, (float) getMapValue(gaitConfiguration, "p2_z") * scalingFactor},
+                                    {getMapValue(gaitConfiguration, "p3_x") * scalingFactor, getMapValue(gaitConfiguration, "p3_y") * scalingFactor, (float) getMapValue(gaitConfiguration, "p3_z") * scalingFactor},
+                                    {getMapValue(gaitConfiguration, "p4_x") * scalingFactor, getMapValue(gaitConfiguration, "p4_y") * scalingFactor, (float) getMapValue(gaitConfiguration, "p4_z") * scalingFactor}};
 
     std::vector<int> indexes = {0, 1, 2};
     int i = 0;

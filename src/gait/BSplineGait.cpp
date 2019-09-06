@@ -208,7 +208,6 @@ void BSplineGait::initLowLevelGait(std::map<std::string, float> gaitConfiguratio
                                      (float) getMapValue(gaitConfiguration, "p4_z") * scalingFactor}};
 
     std::vector<int> indexes = {0, 1, 2};
-    int i = 0;
 
     do {
 
@@ -244,8 +243,7 @@ void BSplineGait::initLowLevelGait(std::map<std::string, float> gaitConfiguratio
         } else {
             delete(tmpBSpline);
         }
-
-        i+=1;
+        
     } while (std::next_permutation(indexes.begin(), indexes.end()));
 
     gaitDescriptionString.clear();

@@ -67,7 +67,7 @@ double currentInferredPosition = 0.0;
 bool movingForward = true;
 double globalGaitFrequency;
 double globalLiftDuration;
-const double groundHeightOffset = -480;
+const double groundHeightOffset = -470.0f;
 const double groundCorrectionFactor = 0.8;
 
 

@@ -171,7 +171,7 @@ void BSplineGait::initLowLevelGait(std::map<std::string, float> gaitConfiguratio
     groundHeights = givenGroundHeights;
     offsetFront = 0.0;
     spreadAmount = 80.0;
-    rearLegOffset = -30.0;
+    rearLegOffset = 0.0; // was -30
     totalLength = 99999.0; // Init length
 
     // Calculate gait points (the two ground points need to be first):
@@ -305,7 +305,11 @@ std::vector<vec3P> BSplineGait::getPosition(double givenTime, bool walkingForwar
 		if (vecRet[2] < groundHeights[i]) vecRet[2] = groundHeights[i];
 
 		vectorToReturn[i] = vec3P(vecRet[0], vecRet[1], vecRet[2]);
+
+		//printf("%.2f, %.2f, %.2f\n", vecRet[0], vecRet[1], vecRet[2]);
 	}
+
+	//printf("\n");
 
 	// Add rearLegOffset to the back two legs, depending on which way the robot is walking
 	if (walkingForwards == true){

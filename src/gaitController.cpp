@@ -53,7 +53,7 @@ unsigned char currentAction;
 const double poseAdjustSpeed = 0.0f;
 const double gaitSpeed = 0.0f;
 const float frontOffset = 0.0f;
-const float rearLegOffset = -30.0f;
+const float rearLegOffset = 0.0f; // was -30
 
 bool walking = false;
 

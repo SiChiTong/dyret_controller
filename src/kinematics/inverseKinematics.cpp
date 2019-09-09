@@ -96,7 +96,8 @@ std::vector<double> calculateInverseKinematics(double x, double y, double z, int
   // Delete invalid solutions
   if ((L13_1 > L12_corrected + L23_corrected) || (L13_1 + L12_corrected < L23_corrected)) {
     // Delete first two solutions
-    ROS_ERROR("No valid inverse kinematics solutions");
+    ROS_ERROR("inverseKinematics: No valid inverse kinematics solutions for (%.2f, %.2f, %.2f)", x, y, z);
+    return std::vector<double>();
     solutions.erase(solutions.begin());
     solutions.erase(solutions.begin());
   }

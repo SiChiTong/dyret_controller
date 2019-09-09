@@ -179,12 +179,12 @@ void BSplineGait::initLowLevelGait(std::map<std::string, float> gaitConfiguratio
 
     float groundCenterPoint = (getMapValue(gaitConfiguration, "p0_y") + getMapValue(gaitConfiguration, "p1_y")) / 2.0;
 
-    fprintf(stderr, "p0: %.2f, p1: %.2f, mid: %.2f, p0_n: %.2f, p1_n: %.2f\n", getMapValue(gaitConfiguration, "p0_y"),
+    /*fprintf(stderr, "p0: %.2f, p1: %.2f, mid: %.2f, p0_n: %.2f, p1_n: %.2f\n", getMapValue(gaitConfiguration, "p0_y"),
                                                                                getMapValue(gaitConfiguration, "p1_y"),
                                                                                groundCenterPoint,
                                                                                ((getMapValue(gaitConfiguration, "p0_y") - groundCenterPoint) * scalingFactor) + groundCenterPoint,
                                                                                ((getMapValue(gaitConfiguration, "p1_y") - groundCenterPoint) * scalingFactor) + groundCenterPoint
-                                                                               );
+                                                                               );*/
 
     if (getMapValue(gaitConfiguration, "p0_y") > getMapValue(gaitConfiguration, "p1_y")) {
       controlPoints.push_back({getMapValue(gaitConfiguration, "p0_x") * scalingFactor, ((getMapValue(gaitConfiguration, "p0_y") - groundCenterPoint) * scalingFactor) + groundCenterPoint, 0.0f});

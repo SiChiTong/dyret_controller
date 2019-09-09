@@ -280,6 +280,8 @@ void spinGaitOnce(){
 
         std::vector<vec3P> currentPositions = currentLegPositions(servoAnglesInRad, prismaticPositions);
 
+        bool validSolution = true;
+
         // Get IK solutions for each leg:
         for (int i = 0; i < 4; i++) { // For each leg
 
@@ -296,25 +298,39 @@ void spinGaitOnce(){
                                                                                               i,
                                                                                               prismaticPositions[i*2],
                                                                                               prismaticPositions[(i*2)+1]);
+
+            if (inverseReturn.size() == 0){
+                ROS_ERROR("Not sending invalid kinematics return");
+                validSolution = false;
+                break;
+            }
+
             for (int j = 0; j < 3; j++) {
                 anglesInRad.push_back(inverseReturn[j]);
             }
 
+            printf("%.2f, %.2f, %.2f => %.2f, %.2f, %.2f\n", legPosition.x(), legPosition.y(), legPosition.z(), inverseReturn[0], inverseReturn[1], inverseReturn[2]);
+
         }
 
-        if (servoIds.size() != 0) {
-            // Set revolute joints positions:
-            msg.revolute = anglesInRad;
+        printf("\n");
 
-            // Set prismamtic joints positions:
-            msg.prismatic.resize(prismaticCommands.size());
-            for (int i = 0; i < prismaticCommands.size(); i++){
-                msg.prismatic[i] = prismaticCommands[i];
+        if (validSolution) {
+
+            if (servoIds.size() != 0) {
+                // Set revolute joints positions:
+                msg.revolute = anglesInRad;
+
+                // Set prismamtic joints positions:
+                msg.prismatic.resize(prismaticCommands.size());
+                for (int i = 0; i < prismaticCommands.size(); i++) {
+                    msg.prismatic[i] = prismaticCommands[i];
+                }
+
+                poseCommand_pub.publish(msg);
+            } else {
+                ROS_WARN("Did not send invalid dyn commands!\n");
             }
-
-            poseCommand_pub.publish(msg);
-        } else {
-            ROS_WARN("Did not send invalid dyn commands!\n");
         }
     }
 }

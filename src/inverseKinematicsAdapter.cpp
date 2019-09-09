@@ -21,6 +21,8 @@ std::array<double, 8> prismaticPosition;
 void sendPositionCommand(std::vector<double> legPositions){
     std::vector<float> legAngles;
 
+    bool validSolution = true;
+
     for (int i = 0; i < 4; i++){
         // Get inverse kinematics solution for current leg
         std::vector<double> inverseKinematicsReturn = inverseKinematics::calculateInverseKinematics(legPositions[i*3],
@@ -29,6 +31,12 @@ void sendPositionCommand(std::vector<double> legPositions){
                                                                                                     i,
                                                                                                     prismaticPosition[i*2],
                                                                                                     prismaticPosition[(i*2)+1]);
+
+        if (inverseKinematicsReturn.size() == 0){
+            validSolution = false;
+            break;
+        }
+
         legAngles.insert(legAngles.end(), inverseKinematicsReturn.begin(), inverseKinematicsReturn.end());
 
     }
@@ -39,17 +47,21 @@ void sendPositionCommand(std::vector<double> legPositions){
         rosStringStream << "\n\tId " << i << ": " << legPositions[i*3] << ", " << legPositions[(i*3)+1] << ", " << legPositions[(i*3)+2];
     }
 
-    ROS_INFO("%s\nCalculated angles:\n\t%.2f, %.2f, %.2f\n\t%.2f, %.2f, %.2f\n\t%.2f, %.2f, %.2f\n\t%.2f, %.2f, %.2f\n\t",
-             rosStringStream.str().c_str(),
-             legAngles[0],  legAngles[1],  legAngles[2],
-             legAngles[3],  legAngles[4],  legAngles[5],
-             legAngles[6],  legAngles[7],  legAngles[8],
-             legAngles[9], legAngles[10], legAngles[11]);
+    if (validSolution){
+        ROS_INFO("%s\nCalculated angles:\n\t%.2f, %.2f, %.2f\n\t%.2f, %.2f, %.2f\n\t%.2f, %.2f, %.2f\n\t%.2f, %.2f, %.2f\n\t",
+                 rosStringStream.str().c_str(),
+                 legAngles[0],  legAngles[1],  legAngles[2],
+                 legAngles[3],  legAngles[4],  legAngles[5],
+                 legAngles[6],  legAngles[7],  legAngles[8],
+                 legAngles[9], legAngles[10], legAngles[11]);
 
-    dyret_common::Pose poseMsg;
-    poseMsg.header.stamp = ros::Time().now();
-    poseMsg.revolute = legAngles;
-    poseCommand_pub.publish(poseMsg);
+        dyret_common::Pose poseMsg;
+        poseMsg.header.stamp = ros::Time().now();
+        poseMsg.revolute = legAngles;
+        poseCommand_pub.publish(poseMsg);
+    } else {
+        ROS_WARN("InverseKinematicsAdapter:\n%s\n\tNo valid IK solution found", rosStringStream.str().c_str());
+    }
 }
 
 bool positionCommandServiceCallback(dyret_controller::SendPositionCommand::Request  &req,

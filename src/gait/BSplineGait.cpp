@@ -36,7 +36,7 @@ void BSplineGait::writeGaitToFile(std::string logFilePath){
     Vector3 currentPoint = bSpline->getPosition(ArcLength::solveLengthCyclic(*bSpline, 0.0f, scaled));
 
     double z = currentPoint[2];
-    //if (z < groundHeight) z = groundHeight; // Add same ground limit we have in getPosition //todo: Do we need this?
+    //if (z < groundHeight) z = groundHeight; // Add same ground limit we have in getPosition
 
     fprintf(fp, "%.2f, %.2f, %.2f\n", scaled, currentPoint[1], z);
 
@@ -243,7 +243,7 @@ void BSplineGait::initLowLevelGait(std::map<std::string, float> gaitConfiguratio
         } else {
             delete(tmpBSpline);
         }
-        
+
     } while (std::next_permutation(indexes.begin(), indexes.end()));
 
     gaitDescriptionString.clear();

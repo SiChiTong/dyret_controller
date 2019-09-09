@@ -67,7 +67,7 @@ double currentInferredPosition = 0.0;
 bool movingForward = true;
 double globalGaitFrequency;
 double globalLiftDuration;
-const double groundHeightOffset = -430;
+const double groundHeightOffset = -480;
 const double groundCorrectionFactor = 0.8;
 
 
@@ -87,7 +87,7 @@ std::vector<double> pidParameters;
 
 std::vector<double> servoAnglesInRad(12);
 
-std::array<double, 4> groundHeights = {-430.0f, -430.0f, -430.0f, -430.0f};
+std::array<double, 4> groundHeights = {groundHeightOffset, groundHeightOffset, groundHeightOffset, groundHeightOffset};
 
 std::array<double, 8> prismaticPositions;
 std::array<double, 8> prismaticErrors;

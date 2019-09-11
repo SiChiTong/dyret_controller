@@ -49,6 +49,10 @@ double roundNum(double originalNumber, int decimals) {
 
 std::vector<double> calculateInverseKinematics(double x, double y, double z, int legId, double femurActuatorLength, double tibiaActuatorLength) {
 
+  if (isnan(x) || isnan(y) || isnan(z)){
+      ROS_ERROR("Inversekinematics: isnan true for (%.2f, %.2f, %.2f)", x, y, z);
+  }
+
   if (femurActuatorLength < 0.0) femurActuatorLength = 0.0;
   if (tibiaActuatorLength < 0.0) tibiaActuatorLength = 0.0;
 

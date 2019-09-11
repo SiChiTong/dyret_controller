@@ -197,13 +197,13 @@ void BSplineGait::initLowLevelGait(std::map<std::string, float> gaitConfiguratio
     // Try all combinations of point order to find one without self-intersection:
     std::vector<vec3P> airPoints = {{getMapValue(gaitConfiguration, "p2_x") * scalingFactor,
                                      ((getMapValue(gaitConfiguration, "p2_y") - groundCenterPoint) * scalingFactor) + groundCenterPoint,
-                                     (float) getMapValue(gaitConfiguration, "p2_z") + ((scalingFactor-1.0) * zHeightOffset)},
+                                     (float) getMapValue(gaitConfiguration, "p2_z")},
                                     {getMapValue(gaitConfiguration, "p3_x") * scalingFactor,
                                      ((getMapValue(gaitConfiguration, "p3_y") - groundCenterPoint) * scalingFactor) + groundCenterPoint,
-                                     (float) getMapValue(gaitConfiguration, "p3_z") + ((scalingFactor-1.0) * zHeightOffset)},
+                                     (float) getMapValue(gaitConfiguration, "p3_z")},
                                     {getMapValue(gaitConfiguration, "p4_x") * scalingFactor,
                                      ((getMapValue(gaitConfiguration, "p4_y") - groundCenterPoint) * scalingFactor) + groundCenterPoint,
-                                     (float) getMapValue(gaitConfiguration, "p4_z") + ((scalingFactor-1.0) * zHeightOffset)}};
+                                     (float) getMapValue(gaitConfiguration, "p4_z")}};
 
     std::vector<int> indexes = {0, 1, 2};
 

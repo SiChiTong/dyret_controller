@@ -38,6 +38,21 @@ public:
 
     }
 
+    void writeWagLog(std::string logFilePath){
+        float numberOfPointsToGenerate = 1000.0;
+
+        FILE * fp;
+        fp = fopen((logFilePath + "_wag.csv").c_str(), "w");
+        fprintf(fp, "t, x, y, z\n");
+
+        for (int i = 0; i < numberOfPointsToGenerate; i++) {
+            vec3P wag = getGaitWagPoint(i / numberOfPointsToGenerate * 1000.0, true);
+            fprintf(fp, "%f, %f, %f, %f\n", i/numberOfPointsToGenerate*1000.0, wag.x(), wag.y(), wag.z());
+        }
+
+        fclose(fp);
+    }
+
 };
 
 #endif

@@ -472,8 +472,11 @@ bool gaitConfigurationCallback(dyret_controller::ConfigureGait::Request  &req,
                                getMapValue(gaitConfiguration, "wagAmplitude_x"),
                                getMapValue(gaitConfiguration, "wagAmplitude_y"));
 
+
+
         if (!req.gaitConfiguration.logFilePath.empty()) {
             bSplineGait.writeGaitToFile(req.gaitConfiguration.logFilePath);
+            wagGenerator.writeWagLog(req.gaitConfiguration.logFilePath);
         }
 
     } else if (gaitType == "lowLevelAdvancedSplineGait"){

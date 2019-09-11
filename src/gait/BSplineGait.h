@@ -14,7 +14,8 @@ class BSplineGait {
     LoopingCubicHermiteSpline<Vector3>* bSpline = NULL;
 
     // Leg phase offsets forwards and reverse, with a leg order of FL, BR, FR, BL
-    double const legPhaseOffset[4][2] = { {0.00, 0.75}, {0.50, 0.25}, {0.75, 0.00}, {0.25, 0.50} };
+    const double legPhaseOffset[4][2] = { {0.00, 0.75}, {0.50, 0.25}, {0.75, 0.00}, {0.25, 0.50} };
+    const double zHeightOffset = 25.0; // How many millimeters we add for scaling 2.0
 
     double stepLength;
     double offsetFront;

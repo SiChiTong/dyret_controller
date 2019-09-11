@@ -67,9 +67,10 @@ double currentInferredPosition = 0.0;
 bool movingForward = true;
 double globalGaitFrequency;
 double globalLiftDuration;
-const double groundHeightOffset = -470.0f;
-const double groundCorrectionFactor = 0.8;
 
+const double groundHeightOffset = -470.0f; // Ground height at femurlength  0, tibialength   0
+const double groundHeightMax = -600.0f;    // Ground height at femurlength 50, tibialength 100
+const double groundCorrectionFactor = -(groundHeightMax - groundHeightOffset) / 150.0f;
 
 double gaitTimingOffset = 0.0; // Offset to allow for lining up different frequency gaits
 double globalTime;

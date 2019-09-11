@@ -29,16 +29,14 @@ void BSplineGait::writeGaitToFile(std::string logFilePath){
   // Save raw points:
   FILE * fp;
   fp = fopen((logFilePath + "_raw.csv").c_str(), "w");
+  fprintf(fp, "t, x, y, z\n");
 
   for (int i = 0; i < numberOfPointsToGenerate; i++) {
     float scaled = (float) (totalLength / numberOfPointsToGenerate) * i;
 
     Vector3 currentPoint = bSpline->getPosition(ArcLength::solveLengthCyclic(*bSpline, 0.0f, scaled));
 
-    double z = currentPoint[2];
-    //if (z < groundHeight) z = groundHeight; // Add same ground limit we have in getPosition
-
-    fprintf(fp, "%.2f, %.2f, %.2f\n", scaled, currentPoint[1], z);
+    fprintf(fp, "%.2f, %.2f, %.2f, %.2f\n", scaled, currentPoint[0], currentPoint[1], fmax(currentPoint[2], 0.0));
 
   }
 

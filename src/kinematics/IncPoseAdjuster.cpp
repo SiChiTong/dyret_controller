@@ -97,7 +97,7 @@ bool IncPoseAdjuster::Spin(){
             case LEAN_GENERATE: // Calculate where to lean based on which leg we are going to move
               {
                 std::vector<vec3P> currentPositions(4);
-                double leanAmount = 35.0;
+                double leanAmount = 20.0;
 
                 if (legId == 0) currentLean = { -leanAmount,  leanAmount}; // Lener bak høyre
                 if (legId == 1) currentLean = {  leanAmount,  leanAmount}; // Lener bak venstre

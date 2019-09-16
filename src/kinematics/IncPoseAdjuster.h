@@ -24,7 +24,7 @@ class IncPoseAdjuster{
   bool reachedPose;
 
   // Parameters for movement:
-  const float stepHeight = 40.0;
+  const float stepHeight = 60.0;
   const float leanSpeed = 5;
   const float legMoveSpeed = 15.0;
   const float stepDownSpeed = 2.5;

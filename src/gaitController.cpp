@@ -310,11 +310,7 @@ void spinGaitOnce(){
                 anglesInRad.push_back(inverseReturn[j]);
             }
 
-            printf("%.2f, %.2f, %.2f => %.2f, %.2f, %.2f\n", legPosition.x(), legPosition.y(), legPosition.z(), inverseReturn[0], inverseReturn[1], inverseReturn[2]);
-
         }
-
-        printf("\n");
 
         if (validSolution) {
 

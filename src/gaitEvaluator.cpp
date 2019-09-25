@@ -29,6 +29,7 @@ bool firstLine = true;
 
 std::vector<std::vector<double>> imuData;
 std::vector<std::vector<double>> currentData;
+std::vector<std::vector<double>> voltageData;
 
 ros::Time startTime;
 double accTime;
@@ -69,11 +70,10 @@ float getInferredPosition(){
 }
 
 std::map<std::string, double> getResults(std::map<std::string, double> resultMap, bool useCurrentTime = false){
-
     double timePassed = accTime;
 
     if (useCurrentTime){
-        timePassed = (ros::Time::now() - startTime).sec;
+        timePassed = (ros::Time::now() - startTime).toSec();
     }
 
     // Calculate IMU fitness values:
@@ -94,15 +94,20 @@ std::map<std::string, double> getResults(std::map<std::string, double> resultMap
     // Calculate servo fitness value:
     std::vector<float> currentSums(currentData.size());
     std::vector<float> currentMeans(currentData.size());
+    std::vector<float> voltageSums(currentData.size());
+    std::vector<float> voltageMeans(currentData.size());
     float averagePowerDraw;
     float ampHours;
     float powerFitness;
 
     for (int i = 0; i < currentData.size(); i++){
         currentSums[i] = std::accumulate(currentData[i].begin(), currentData[i].end(), 0.0f);
-        currentMeans[i] = currentSums[i] / currentData[i].size();
+        voltageSums[i] = std::accumulate(voltageData[i].begin(), voltageData[i].end(), 0.0f);
+        currentMeans[i] = (currentSums[i] / currentData[i].size()) / 1000.0;
+        voltageMeans[i] = (voltageSums[i] / voltageData[i].size());
     }
     averagePowerDraw = std::accumulate(currentMeans.begin(), currentMeans.end(), 0.0f);
+
     if (averagePowerDraw != 0) {
         ampHours = averagePowerDraw * ((((float) timePassed) / 60.0f) / 60.0f);
         powerFitness = (fabs(getInferredPosition()) / 1000.0f) / ampHours; // m / Ah
@@ -133,6 +138,25 @@ std::map<std::string, double> getResults(std::map<std::string, double> resultMap
         filteredSpeed = queueSum / (double) queueLength;
     }
 
+    // Calculate energy usage:
+    float totalWatts = 0.0;
+
+    std::vector<float> powerMeans(currentData.size());
+    for (int i = 0; i < powerMeans.size(); i++){ // For each joint
+        powerMeans[i] = voltageMeans[i] * currentMeans[i];
+        totalWatts += powerMeans[i];
+    }
+
+    /*if (enableCapture){
+        fprintf(stderr, "0: %.3fV, 1: %.3fV, 2: %.3fV, 3: %.3fV\n", voltageMeans[0], voltageMeans[1], voltageMeans[2], voltageMeans[3]);
+        fprintf(stderr, "0: %.3fA, 1: %.3fA, 2: %.3fA, 3: %.3fA\n", currentMeans[0], currentMeans[1], currentMeans[2], currentMeans[3]);
+        fprintf(stderr, "0: %.3fW, 1: %.3fW, 2: %.3fW, 3: %.3fW\n", powerMeans[0], powerMeans[1], powerMeans[2], powerMeans[3]);
+        fprintf(stderr, "0: %.3fJ, 1: %.3fJ, 2: %.3fJ, 3: %.3fJ\n", powerMeans[0] * timePassed, powerMeans[1] * timePassed, powerMeans[2] * timePassed, powerMeans[3] * timePassed);
+        fprintf(stderr, "=> %.3fJ\n\n", totalWatts * timePassed);
+    }*/
+
+    float totalJoule = totalWatts * timePassed; // P(J) = P(w) * t(s)
+
     //ROS_INFO("Origin: %.2f, %.2f\n", startPosition[0], startPosition[1]);
     //ROS_INFO("End:    %.2f, %.2f\n", lastSavedPosition[0], lastSavedPosition[1]);
 
@@ -150,6 +174,10 @@ std::map<std::string, double> getResults(std::map<std::string, double> resultMap
     setMapValue(resultMap, "linAcc_z", (float) linAcc_z);
     setMapValue(resultMap, "sensorSpeedForward", sensorPoseSpeedForward);
     setMapValue(resultMap, "filteredSpeed", filteredSpeed);
+    setMapValue(resultMap, "distance", sensorPoseDist);
+    setMapValue(resultMap, "time", timePassed);
+    setMapValue(resultMap, "power", totalWatts);
+    setMapValue(resultMap, "energy", totalJoule);
 
     return resultMap;
 }
@@ -201,7 +229,11 @@ bool getGaitEvaluationService(dyret_controller::GetGaitEvaluation::Request  &req
                                            {"combImuStab", 0.0},
                                            {"linAcc_z", 0.0},
                                            {"sensorSpeedForward",  0.0},
-                                           {"filteredSpeed",  0.0}};
+                                           {"filteredSpeed",  0.0},
+                                           {"distance",  0.0},
+                                           {"time",  0.0},
+                                           {"power",  0.0},
+                                           {"energy",  0.0}};
 
   switch (req.givenCommand){
     case (dyret_controller::GetGaitEvaluationRequest::t_getDescriptors):
@@ -211,6 +243,7 @@ bool getGaitEvaluationService(dyret_controller::GetGaitEvaluation::Request  &req
     case (dyret_controller::GetGaitEvaluationRequest::t_start):
     {
         ROS_INFO("req.t_start received\n");
+
         enableCapture = true;
         startTime = ros::Time::now();
 
@@ -240,6 +273,7 @@ bool getGaitEvaluationService(dyret_controller::GetGaitEvaluation::Request  &req
 
       for (int i = 0; i < imuData.size(); i++) imuData[i].clear();
       for (int i = 0; i < currentData.size(); i++) currentData[i].clear();
+      for (int i = 0; i < voltageData.size(); i++) voltageData[i].clear();
 
       break;
     case (dyret_controller::GetGaitEvaluationRequest::t_getResults):
@@ -313,24 +347,30 @@ void imuDataCallback(const sensor_msgs::Imu::ConstPtr& msg) {
 
 void servoStatesCallback(const dyret_common::State::ConstPtr& msg){
   if (enableCapture){
+
       for(int i = 0; i < 12; i++){
-          currentData[i].push_back(msg->revolute[i].current);
+          currentData[i].push_back(fabs(msg->revolute[i].current));
+          voltageData[i].push_back(msg->revolute[i].voltage);
       }
   }
 }
 
 void logCallback(const ros::TimerEvent&) {
 
-    std::map<std::string, double> results = {{"inferredSpeed",      0.0},
-                                             {"angVel",             0.0},
-                                             {"linAcc",             0.0},
-                                             {"combAngStab",        0.0},
-                                             {"power",              0.0},
-                                             {"sensorSpeed",        0.0},
-                                             {"combImuStab",        0.0},
-                                             {"linAcc_z",           0.0},
-                                             {"sensorSpeedForward", 0.0},
-                                             {"filteredSpeed",      0.0}};
+    std::map<std::string, double> results = {{"inferredSpeed", 0.0},
+                                             {"angVel", 0.0},
+                                             {"linAcc", 0.0},
+                                             {"combAngStab", 0.0},
+                                             {"power", 0.0},
+                                             {"sensorSpeed", 0.0},
+                                             {"combImuStab", 0.0},
+                                             {"linAcc_z", 0.0},
+                                             {"sensorSpeedForward",  0.0},
+                                             {"filteredSpeed",  0.0},
+                                             {"distance",  0.0},
+                                             {"time",  0.0},
+                                             {"power",  0.0},
+                                             {"energy",  0.0}};
     results = getResults(results, true);
 
     if (!isnan(results["sensorSpeed"])) {
@@ -349,6 +389,7 @@ void logCallback(const ros::TimerEvent&) {
 
         fprintf(fitnessLogFile, "      \"msec\": %lu,\n", ros::Time::now().toNSec() / 1000);
         printMap(results, "      ", fitnessLogFile);
+
     }
 
 }
@@ -359,6 +400,7 @@ int main(int argc, char **argv) {
   startPosition.resize(3);     // 3D mocap
   imuData.resize(9);           // 9 axes
   currentData.resize(12);      // 12 servos
+  voltageData.resize(12);      // 12 servos
 
   enableCapture = false;
   linAcc_z = 9.81;

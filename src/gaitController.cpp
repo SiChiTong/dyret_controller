@@ -242,12 +242,12 @@ void spinGaitOnce(){
         globalTime = (currentRelativeTime * globalGaitFrequency) - gaitTimingOffset;
 
         if (globalTimeAtChange != 0.0){ // There has been a gait reconfiguration
-            fprintf(stderr, "Global time: %.2f, globalTimeAtChange: %.2f\n", globalTime, globalTimeAtChange);
-            fprintf(stderr, "Old gaitTimingOffset: %.2f\n", gaitTimingOffset);
+            //fprintf(stderr, "Global time: %.2f, globalTimeAtChange: %.2f\n", globalTime, globalTimeAtChange);
+            //fprintf(stderr, "Old gaitTimingOffset: %.2f\n", gaitTimingOffset);
 
             gaitTimingOffset = globalTime + gaitTimingOffset - globalTimeAtChange;
 
-            fprintf(stderr, "New gaitTimingOffset: %.2f\n", gaitTimingOffset);
+            //fprintf(stderr, "New gaitTimingOffset: %.2f\n", gaitTimingOffset);
 
             globalTime = (currentRelativeTime * globalGaitFrequency) - gaitTimingOffset;
 
@@ -394,6 +394,8 @@ bool gaitConfigurationCallback(dyret_controller::ConfigureGait::Request  &req,
     } else {
         gaitTimingOffset = 0.0;
     }
+
+    //if (req.gaitConfiguration.liveUpdate) fprintf(stderr, "Live update\n"); else fprintf(stderr, "Offline update\n");
 
     if (req.gaitConfiguration.liveUpdate == false) {
         // Set leg lengths and wait until they reach the correct length

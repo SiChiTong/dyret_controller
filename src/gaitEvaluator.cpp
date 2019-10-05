@@ -157,6 +157,8 @@ std::map<std::string, double> getResults(std::map<std::string, double> resultMap
 
     float totalJoule = totalWatts * timePassed; // P(J) = P(w) * t(s)
 
+    float cot = totalJoule / (4.5 * 9.81 * sensorPoseDist);
+
     //ROS_INFO("Origin: %.2f, %.2f\n", startPosition[0], startPosition[1]);
     //ROS_INFO("End:    %.2f, %.2f\n", lastSavedPosition[0], lastSavedPosition[1]);
 
@@ -178,6 +180,7 @@ std::map<std::string, double> getResults(std::map<std::string, double> resultMap
     setMapValue(resultMap, "time", timePassed);
     setMapValue(resultMap, "power", totalWatts);
     setMapValue(resultMap, "energy", totalJoule);
+    setMapValue(resultMap, "cot", cot);
 
     return resultMap;
 }
@@ -233,7 +236,8 @@ bool getGaitEvaluationService(dyret_controller::GetGaitEvaluation::Request  &req
                                            {"distance",  0.0},
                                            {"time",  0.0},
                                            {"power",  0.0},
-                                           {"energy",  0.0}};
+                                           {"energy",  0.0},
+                                           {"cot",  0.0}};
 
   switch (req.givenCommand){
     case (dyret_controller::GetGaitEvaluationRequest::t_getDescriptors):
@@ -370,7 +374,8 @@ void logCallback(const ros::TimerEvent&) {
                                              {"distance",  0.0},
                                              {"time",  0.0},
                                              {"power",  0.0},
-                                             {"energy",  0.0}};
+                                             {"energy",  0.0},
+                                             {"cot",  0.0}};
     results = getResults(results, true);
 
     if (!isnan(results["sensorSpeed"])) {

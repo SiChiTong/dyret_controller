@@ -33,6 +33,9 @@ class BSplineGait {
     void writeGaitToFile(std::vector<vec3P> customPoints, LoopingCubicHermiteSpline<Vector3> customSpline, int index);
 
   public:
+
+    void setGroundHeights(std::array<double, 4> givenGroundHeights) { groundHeights = givenGroundHeights;}
+
     void initHighLevelGait(double stepHeight,
                            double stepLength,
                            double smoothing,

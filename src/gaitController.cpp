@@ -203,7 +203,7 @@ std::vector<vec3P> getRestPose() {
     const std::vector<vec3P> restPose = {{-spreadAmount, frontOffset, (float) groundHeights[0]},
                                          {spreadAmount,  frontOffset, (float) groundHeights[1]},
                                          {spreadAmount,  frontOffset, (float) groundHeights[2]},
-                                         {-spreadAmount, frontOffset, (float) groundHeights[3]}}; //todo: do we use groundHeight here, or just the set height?
+                                         {-spreadAmount, frontOffset, (float) groundHeights[3]}};
 
     return restPose;
 }
@@ -232,6 +232,10 @@ void spinGaitOnce(){
     }
 
     if ((ros::Time::now() - lastUpdate).toSec() >= 0.02){ //
+
+        // Update groundheights:
+        bSplineGait.setGroundHeights(groundHeights);
+
         lastUpdate = ros::Time::now();
 
         // Get leg positions:
@@ -397,23 +401,24 @@ bool gaitConfigurationCallback(dyret_controller::ConfigureGait::Request  &req,
 
     //if (req.gaitConfiguration.liveUpdate) fprintf(stderr, "Live update\n"); else fprintf(stderr, "Offline update\n");
 
-    if (req.gaitConfiguration.liveUpdate == false) {
-        // Set leg lengths and wait until they reach the correct length
-        if (req.gaitConfiguration.femurLengths.size() == 1 && req.gaitConfiguration.tibiaLengths.size() == 1) {
-            prismaticCommands = {req.gaitConfiguration.femurLengths[0], req.gaitConfiguration.tibiaLengths[0],
-                                 req.gaitConfiguration.femurLengths[0], req.gaitConfiguration.tibiaLengths[0],
-                                 req.gaitConfiguration.femurLengths[0], req.gaitConfiguration.tibiaLengths[0],
-                                 req.gaitConfiguration.femurLengths[0], req.gaitConfiguration.tibiaLengths[0]};
-        } else if (req.gaitConfiguration.femurLengths.size() == 4 && req.gaitConfiguration.tibiaLengths.size() == 4) {
-            prismaticCommands = {req.gaitConfiguration.femurLengths[0], req.gaitConfiguration.tibiaLengths[0],
-                                 req.gaitConfiguration.femurLengths[1], req.gaitConfiguration.tibiaLengths[1],
-                                 req.gaitConfiguration.femurLengths[2], req.gaitConfiguration.tibiaLengths[2],
-                                 req.gaitConfiguration.femurLengths[3], req.gaitConfiguration.tibiaLengths[3]};
-        } else {
-            ROS_ERROR("Unsupported leg length vector size in gait configuration message");
-            prismaticCommands = {0, 0, 0, 0, 0, 0, 0, 0};
-        }
+    if (req.gaitConfiguration.femurLengths.size() == 1 && req.gaitConfiguration.tibiaLengths.size() == 1) {
+        prismaticCommands = {req.gaitConfiguration.femurLengths[0], req.gaitConfiguration.tibiaLengths[0],
+                             req.gaitConfiguration.femurLengths[0], req.gaitConfiguration.tibiaLengths[0],
+                             req.gaitConfiguration.femurLengths[0], req.gaitConfiguration.tibiaLengths[0],
+                             req.gaitConfiguration.femurLengths[0], req.gaitConfiguration.tibiaLengths[0]};
+    } else if (req.gaitConfiguration.femurLengths.size() == 4 && req.gaitConfiguration.tibiaLengths.size() == 4) {
+        prismaticCommands = {req.gaitConfiguration.femurLengths[0], req.gaitConfiguration.tibiaLengths[0],
+                             req.gaitConfiguration.femurLengths[1], req.gaitConfiguration.tibiaLengths[1],
+                             req.gaitConfiguration.femurLengths[2], req.gaitConfiguration.tibiaLengths[2],
+                             req.gaitConfiguration.femurLengths[3], req.gaitConfiguration.tibiaLengths[3]};
+    } else {
+        ROS_ERROR("Unsupported leg length vector size in gait configuration message");
+        prismaticCommands = {0, 0, 0, 0, 0, 0, 0, 0};
+    }
 
+    if (req.gaitConfiguration.liveUpdate == false) {
+
+        // Set leg lengths and wait until they reach the correct length
         if (req.gaitConfiguration.prepareForGait) {
             setLegLengths(prismaticCommands);
             if (ros::Time::isSimTime()) ros::Duration(2).sleep();
@@ -602,7 +607,7 @@ bool gaitConfigurationCallback(dyret_controller::ConfigureGait::Request  &req,
 
                     ros::spinOnce();
                     usleep(10000);
-                    setLegLengths(prismaticCommands);
+                    //setLegLengths(prismaticCommands);
 
                     moveAllLegsToGlobalPosition(startGaitPose,
                                                 &positionCommand_pub); // Continuously send pose to adjust to leg length change
